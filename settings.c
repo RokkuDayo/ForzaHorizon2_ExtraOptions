@@ -40,6 +40,8 @@ static const SettingDefinition legacy_settings[] = {
     SETTING("PhotoMode", "Samples", photo_mode_samples, SETTING_PHOTO_SAMPLES),
     {"Autodrive", "Cinematic", "AutodriveCinematic", offsetof(ModOptions, autodrive_cinematic),
      SETTING_BOOLEAN},
+    {"Autodrive", "Races", "AutodriveRaces", offsetof(ModOptions, autodrive_races),
+     SETTING_BOOLEAN},
 };
 
 const size_t setting_count = ARRAY_COUNT(setting_definitions);

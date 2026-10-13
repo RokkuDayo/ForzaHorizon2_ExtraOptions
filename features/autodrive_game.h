@@ -2,6 +2,9 @@
 #define FH2_AUTODRIVE_GAME_H
 #include "extra_options.h"
 
+// Event context 1 was observed in a race; other activities may share it.
+enum { AUTODRIVE_CONTEXT_EVENT = 1, AUTODRIVE_CONTEXT_FREEROAM = 2 };
+
 typedef struct {
     void *object, *counter;
 } GameShared;
@@ -23,6 +26,7 @@ void autodrive_game_bind(unsigned char *image);
 int autodrive_game_get_hud(AutodriveHud *hud);
 void autodrive_game_release_shared(GameShared *value);
 int autodrive_game_is_freeroam(void);
+int autodrive_game_context(void);
 int autodrive_game_can_start(void *controller);
 int autodrive_game_has_gameplay_input(void *controller);
 int autodrive_game_is_carmeet(void);

@@ -25,6 +25,24 @@ A quality-of-life mod for the Xbox One version of Forza Horizon 2 that adds seve
 
 Many of the features can now be toggled and tweaked inside the game itself through the native menus.
 
+To enable Autodrive during races, set:
+
+```ini
+[Autodrive]
+Enabled=1
+Races=1
+```
+
+`Races` is experimental and disabled by default. The tested race deactivated
+the free-roam GPS route, so this option hands the player's car to the game's
+native AI driver without creating a GPS route task. F2,
+D-Pad Down, driving input, pausing, or leaving the event restores player control.
+In one live race on the earlier codebase, the AI followed the course and passed
+checkpoints. The tested race used event context `1`; other activities sharing
+that context may also accept Autodrive. Other event types have not been measured.
+The version rebased onto the current upstream has been build-checked but has not
+yet been tested in gameplay.
+
 The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap" to 1 if you wish to have it.
 
 Autodrive is engaged with D-Pad Down on a controller or F2 on a keyboard.
