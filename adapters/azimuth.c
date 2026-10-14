@@ -154,6 +154,17 @@ static int azimuth_resolve_game_paths(HINSTANCE instance) {
     }
     n = GetPrivateProfileStringW(L"launcher", L"game_folder", L"", azimuth_folder, 32768,
                                  file_path);
+    if (!n) {
+        /* Azimuth 0.9.9+: launcher.game names the selected title and its
+           [title-<game>] section holds the game folder as folder=. */
+        wchar_t section[64] = L"title-";
+        DWORD id = GetPrivateProfileStringW(L"launcher", L"game", L"", section + 6, 64 - 6,
+                                            file_path);
+        if (id && id < 64 - 7) {
+            n = GetPrivateProfileStringW(section, L"folder", L"", azimuth_folder, 32768,
+                                         file_path);
+        }
+    }
     if (!n || n >= 32767) {
         goto path_error;
     }
@@ -176,7 +187,8 @@ static int azimuth_resolve_game_paths(HINSTANCE instance) {
     return 1;
 path_error:
     status_set(
-        "REFUSED: cannot resolve launcher.game_folder from data/azimuth.ini. No patches applied.");
+        "REFUSED: cannot resolve the game folder from data/azimuth.ini (launcher.game_folder or "
+        "[title-<game>] folder). No patches applied.");
     ModOptions options;
     settings_defaults(&options);
     log_start(mod_directory, &options);
