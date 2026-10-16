@@ -106,18 +106,24 @@ static int simulation_is_running(void) {
            memory_read((unsigned char *)simulation + 0x28, &paused, 1) && !paused;
 }
 
-int autodrive_game_is_freeroam(void) {
+int autodrive_game_context(void) {
     void *hud_manager, *services;
     if (!simulation_is_running() || !memory_read_pointer(image + 0x34c0f40, &hud_manager) ||
         !memory_read_pointer((unsigned char *)hud_manager + 8, &services)) {
-        return 0;
+        return -1;
     }
     GameShared context = {0};
     ((SharedGetter)game_function(0x2129a0))(hud_manager, &context);
     int event_context = -1;
-    memory_read((unsigned char *)context.object + 0x60, &event_context, 4);
+    if (context.object) {
+        memory_read((unsigned char *)context.object + 0x60, &event_context, 4);
+    }
     autodrive_game_release_shared(&context);
-    return event_context == 2;
+    return event_context;
+}
+
+int autodrive_game_is_freeroam(void) {
+    return autodrive_game_context() == AUTODRIVE_CONTEXT_FREEROAM;
 }
 
 int autodrive_game_has_gameplay_input(void *controller) {

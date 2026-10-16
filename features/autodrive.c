@@ -13,7 +13,7 @@ typedef void (*UpdateFn)(void *, float);
 typedef void (*ActionFn)(void *);
 typedef void *(*DestroyFn)(void *, unsigned);
 static unsigned char *game_image;
-static int cinematic_enabled, autodrive_enabled;
+static int cinematic_enabled, autodrive_enabled, races_enabled;
 static int f2_was_down, pad_was_down, pad_blocked = 1;
 
 void autodrive_set_cinematic(int enabled) {
@@ -26,7 +26,7 @@ static void *available_tracker;
 typedef struct {
     void *satnav, *tracker, *car, *route;
     float elapsed;
-    int cinematic, tried_camera;
+    int cinematic, tried_camera, context, route_owned;
     AutodriveCamera camera;
 } AutodriveState;
 
@@ -41,7 +41,9 @@ static void stop_driving(int flash) {
     autodrive_ui_set_hidden(0);
     int restored = autodrive_game_restore_camera(&drive.camera);
     autodrive_game_set_ai(drive.car, 0);
-    autodrive_game_end_route(drive.tracker);
+    if (drive.route_owned) {
+        autodrive_game_end_route(drive.tracker);
+    }
     autodrive_game_release_car(drive.car);
     if (flash && restored) {
         autodrive_game_flash(camera);
@@ -50,16 +52,19 @@ static void stop_driving(int flash) {
 }
 
 static void start_driving(void *satnav, void *controller) {
-    if (!autodrive_game_can_start(controller)) {
+    int context = autodrive_game_context();
+    int race = context == AUTODRIVE_CONTEXT_EVENT && races_enabled;
+    if ((!race && context != AUTODRIVE_CONTEXT_FREEROAM) ||
+        !autodrive_game_has_gameplay_input(controller)) {
         return;
     }
-    int arrived;
-    void *route = autodrive_game_route(satnav, &arrived);
-    if (!route || arrived) {
-        return;
-    }
-    if (!autodrive_game_tracker_matches(available_tracker, satnav)) {
-        return;
+    void *route = 0;
+    if (!race) {
+        int arrived;
+        route = autodrive_game_route(satnav, &arrived);
+        if (!route || arrived || !autodrive_game_tracker_matches(available_tracker, satnav)) {
+            return;
+        }
     }
     void *car = autodrive_game_get_car();
     if (!car) {
@@ -69,23 +74,34 @@ static void start_driving(void *satnav, void *controller) {
         autodrive_game_release_car(car);
         return;
     }
-    if (!autodrive_game_begin_route(available_tracker)) {
+    if (!race && !autodrive_game_begin_route(available_tracker)) {
         autodrive_game_release_car(car);
         log_append("AUTODRIVE: GPS event-route tracking could not start, or is "
                    "already owned.\r\n");
         return;
     }
     if (!autodrive_game_set_ai(car, 1)) {
-        autodrive_game_end_route(available_tracker);
+        if (autodrive_game_driver_mode(car) == 0) {
+            autodrive_game_set_ai(car, 0);
+        }
+        if (!race) {
+            autodrive_game_end_route(available_tracker);
+        }
         autodrive_game_release_car(car);
         log_append("AUTODRIVE: native AI driver handoff failed.\r\n");
         return;
     }
     drive.satnav = satnav;
-    drive.tracker = available_tracker;
+    drive.tracker = race ? 0 : available_tracker;
     drive.car = car;
     drive.route = route;
-    autodrive_notice_show();
+    drive.context = context;
+    drive.route_owned = !race;
+    if (!race) {
+        autodrive_notice_show();
+    } else {
+        log_append("AUTODRIVE: native AI handoff started in event context without a GPS route.\r\n");
+    }
 }
 
 static void enter_cinematic(void) {
@@ -116,10 +132,12 @@ static void autodrive_tick(void *satnav, float dt, int f2, int escape, int focus
             return;
         }
         if (pressed || escape || !focused) {
-            stop_driving(pressed && focused && !escape && autodrive_game_is_freeroam());
+            stop_driving(pressed && focused && !escape &&
+                         drive.context == AUTODRIVE_CONTEXT_FREEROAM &&
+                         autodrive_game_is_freeroam());
             return;
         }
-        if (!autodrive_game_is_freeroam()) {
+        if (autodrive_game_context() != drive.context) {
             stop_driving(0);
             return;
         }
@@ -134,17 +152,20 @@ static void autodrive_tick(void *satnav, float dt, int f2, int escape, int focus
             stop_driving(0);
             return;
         }
-        int arrived;
-        void *route = autodrive_game_route(satnav, &arrived);
-        if (arrived || route != drive.route) {
-            stop_driving(1);
-            return;
+        if (drive.context == AUTODRIVE_CONTEXT_FREEROAM) {
+            int arrived;
+            void *route = autodrive_game_route(satnav, &arrived);
+            if (arrived || route != drive.route) {
+                stop_driving(1);
+                return;
+            }
         }
         if (dt > 0.0f && dt <= 1.0f) {
             drive.elapsed += dt;
         }
         autodrive_notice_update(drive.elapsed);
-        if (cinematic_enabled && !drive.tried_camera && drive.elapsed >= CINEMATIC_DELAY) {
+        if (cinematic_enabled && drive.context == AUTODRIVE_CONTEXT_FREEROAM &&
+            !drive.tried_camera && drive.elapsed >= CINEMATIC_DELAY) {
             enter_cinematic();
         } else if (drive.cinematic) {
             autodrive_game_cycle_camera(&drive.camera);
@@ -227,6 +248,7 @@ void autodrive_prepare_hooks(unsigned char *image, const ModOptions *options) {
     autodrive_game_bind(image);
     vehicle_controls_bind(image);
     autodrive_enabled = options->autodrive;
+    races_enabled = options->autodrive_races;
     autodrive_notice_prepare(image);
     autodrive_ui_prepare(image);
     cinematic_enabled = options->autodrive_cinematic;

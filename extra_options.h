@@ -77,6 +77,7 @@ typedef struct {
     int unlock_treasure_map;
     int autodrive;
     int autodrive_cinematic;
+    int autodrive_races;
     int disable_azimuth_save_checksums;
     int smooth_sun_shadows;
     int skip_ineligible_car_dialogue;
