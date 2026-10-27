@@ -3,6 +3,7 @@
 #pragma clang diagnostic ignored "-Wunused-function"
 #endif
 #include "kbm_input.h"
+#include "controller_pause.h"
 #include "game_addresses.h"
 #include "kbm_win32.h"
 #include "kbm_pitch.h"
@@ -4579,89 +4580,16 @@ static void install_pairing_raise(void) {
                "(no pad demanded on keyboard & mouse).\r\n");
 }
 
-/* The pause flow's WaitForPause behaviour (vtable 0x2d2f6f8, per-frame slot
-   14, 0x964810) fires onPause (0x1925260(behavior, behavior+0x28) at
-   0x9648fa) whenever the signed-in user's controller (user->vt+0x120(0))
-   reports itself not connected ([controller+4] == 0) - the console's
-   "controller lost: pause" rule. A player on the keyboard has no connected
-   pad, so every close of the pause hub was undone at once. While keyboard &
-   mouse is the active source and no pad is attached that one fire is skipped;
-   Esc, Menu and every other pause request are untouched. The call is pointed
-   at an absolute jump in the int3 gap at 0x9ae750. */
-#define PAUSE_CHECK 0x9648edu
-#define PAUSE_FIRE_CALL 0x9648fau
-#define PAUSE_FIRE 0x1925260u
-#define PAUSE_CAVE 0x9ae750u
-typedef void (*TransitionFireFn)(void *, void *);
-/* cmp byte [rbx+4],0; jne +0xc; lea rdx,[rdi+0x28]; mov rcx,rdi */
-static const unsigned char pause_check_bytes[] = {0x80, 0x7b, 0x04, 0x00, 0x75, 0x0c, 0x48,
-                                                  0x8d, 0x57, 0x28, 0x48, 0x8b, 0xcf};
-
-static void pause_fire_hook(void *behavior, void *transition) {
-    if (installed && config.enabled && config.mode != KBM_MODE_PAD && source == SOURCE_KBM &&
-        !any_pad_attached()) {
-        static int logged;
-        if (!logged) {
-            logged = 1;
-            log_append("KBM: controller-missing auto-pause suppressed (keyboard & mouse, no pad).\r\n");
-        }
-        return;
-    }
-    /* With keyboard & mouse off (or a pad the game never paired to the
-       signed-in user) the rule fired again on every close of the pause hub.
-       It is kept only for a real unplug: a pad that was attached and is now
-       gone pauses once. */
-    if (!installed || source != SOURCE_KBM) {
-        static int pad_was_attached = -1;
-        int attached = any_pad_attached();
-        int unplugged = pad_was_attached == 1 && !attached;
-        pad_was_attached = attached;
-        if (!unplugged) {
-            static int logged;
-            if (!logged) {
-                logged = 1;
-                log_append("KBM: controller-missing pause skipped (no pad was unplugged).\r\n");
-            }
-            return;
-        }
-    }
-    ((TransitionFireFn)(void *)(image + PAUSE_FIRE))(behavior, transition);
+/* The controller-missing pause (features/controller_pause.c): while keyboard &
+   mouse is the active source and no pad is attached it is never fired. */
+static int pause_suppressed(void) {
+    return installed && config.enabled && config.mode != KBM_MODE_PAD && source == SOURCE_KBM &&
+           !any_pad_attached();
 }
 
 static void install_pause_check(void) {
-    unsigned char *cave = image + PAUSE_CAVE, *call = image + PAUSE_FIRE_CALL;
-    unsigned char expected[5] = {0xe8, 0, 0, 0, 0};
-    int32_t relative = (int32_t)((image + PAUSE_FIRE) - (call + 5));
-    memory_copy(expected + 1, &relative, 4);
-    for (unsigned i = 0; i < 16; ++i) {
-        if (cave[i] != 0xcc) {
-            log_append("KBM: pause cave 0x9ae750 is in use; the controller-missing pause is left alone.\r\n");
-            return;
-        }
-    }
-    if (cave[-1] != 0xc3 || !memory_equal(image + PAUSE_CHECK, pause_check_bytes, sizeof(pause_check_bytes)) ||
-        !memory_equal(call, expected, sizeof(expected))) {
-        log_append("KBM: WaitForPause controller check 0x9648ed changed; the controller-missing pause is "
-                   "left alone.\r\n");
-        return;
-    }
-    DWORD old_cave, old_call, ignored;
-    if (!VirtualProtect(cave, 16, PAGE_EXECUTE_READWRITE, &old_cave)) {
-        return;
-    }
-    if (!VirtualProtect(call, 5, PAGE_EXECUTE_READWRITE, &old_call)) {
-        VirtualProtect(cave, 16, old_cave, &ignored);
-        return;
-    }
-    write_jump(cave, (void *)pause_fire_hook);
-    relative = (int32_t)(cave - (call + 5));
-    memory_copy(call + 1, &relative, 4);
-    VirtualProtect(call, 5, old_call, &ignored);
-    VirtualProtect(cave, 16, old_cave, &ignored);
-    FlushInstructionCache(GetCurrentProcess(), cave, 16);
-    FlushInstructionCache(GetCurrentProcess(), call, 5);
-    log_append("KBM: hook WaitForPause controller-missing pause 0x9648fa (0x1925260) installed via "
-               "0x9ae750.\r\n");
+    controller_pause_set_suppressed(pause_suppressed);
+    controller_pause_install(image);
 }
 
 /* The same per-frame check hands the UI its input controller: Player 1's

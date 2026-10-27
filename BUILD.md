@@ -49,6 +49,7 @@ work in a temporary folder and never start the game:
 ```text
 python build.py /absolute/path/to/zig.exe --azimuth --test --output out/winmm-test.dll
 python tools/test-keyboard-mouse.py out/winmm-test.dll
+python tools/test-controller-pause.py out/winmm-test.dll
 ```
 
 ## Patch data

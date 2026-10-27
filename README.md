@@ -22,6 +22,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  
 # Enhancements
  - Skip developer opening videos.
+ - No repeated "controller disconnected" pause without a pad (optional, off by default).
  - All DLC packs properly unlocked.
  - VIP status & "Treasure Map" unlocks.
  - Toggle for 4K liveries w/ enhanced sampling.
@@ -88,7 +89,15 @@ Every action above can be rebound with its name (`Throttle`, `Brake`, `SteerLeft
 | `MenuArrows` | Stick | Arrow keys act as the left stick (`Stick`) or the D-pad (`DPad`) in menus. |
 | `Trace` | 0 | Logs every key and mouse event (diagnostics). |
 
-With keyboard & mouse on and no pad attached, the game no longer pauses for a missing controller.
+With keyboard & mouse on and no pad attached, the game never pauses for a missing controller (see Controller-Missing Pause).
+
+### Controller-Missing Pause
+Off by default. Without a paired pad (for example playing with a keyboard, or with a pad the game never paired to your profile), the game's "controller lost" rule pauses again every time the pause menu is closed. With this on, it pauses only when a pad that was connected is actually unplugged:
+```ini
+[Frontend]
+PauseOnlyOnControllerUnplug=1
+```
+Esc, Menu and every other way of pausing work as before.
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.
