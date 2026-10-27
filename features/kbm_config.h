@@ -3,8 +3,7 @@
 #include "extra_options.h"
 
 /* Keyboard & mouse settings from [KeyboardMouse] in FH2_ExtraOptions.ini.
-   They live outside ModOptions so the builder-shared options layout is
-   unchanged. Key codes are physical scan codes: the make code, plus 0x80 for
+   They live outside ModOptions (settings.c keeps them). Key codes are physical scan codes: the make code, plus 0x80 for
    E0-prefixed keys, so bindings do not move with the keyboard layout. */
 
 typedef enum { KBM_MODE_AUTO, KBM_MODE_KBM, KBM_MODE_PAD } KbmMode;
@@ -77,16 +76,9 @@ typedef struct {
 
 void kbm_config_defaults(KbmSettings *settings);
 /* 1 = accepted, 0 = unknown key or invalid value. */
-/* 1 when key is a [KeyboardMouse] key this version reads. */
-int kbm_config_known_key(const char *key);
 int kbm_config_parse(KbmSettings *settings, const char *key, const char *value);
 /* 1 when no key is bound twice inside the driving or the menu group. */
 int kbm_config_validate(const KbmSettings *settings);
 const char *kbm_config_binding_name(unsigned binding);
 const char *kbm_config_key_name(unsigned code);
-/* The bindable keys in table order (in-game rebinding, kbm_rebind.c). */
-unsigned kbm_config_key_count(void);
-unsigned kbm_config_key_code(unsigned index);
-/* "W", "Down,B" or "None": the [KeyboardMouse] value for a binding's keys. */
-void kbm_config_format_keys(const unsigned short keys[KBM_KEYS_PER_BINDING], char *out, size_t capacity);
 #endif

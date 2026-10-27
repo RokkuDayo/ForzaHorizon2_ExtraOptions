@@ -119,41 +119,6 @@ const char *kbm_config_key_name(unsigned code) {
     return "?";
 }
 
-unsigned kbm_config_key_count(void) {
-    return ARRAY_COUNT(key_names);
-}
-
-unsigned kbm_config_key_code(unsigned index) {
-    return index < ARRAY_COUNT(key_names) ? key_names[index].code : 0;
-}
-
-void kbm_config_format_keys(const unsigned short keys[KBM_KEYS_PER_BINDING], char *out,
-                            size_t capacity) {
-    size_t used = 0;
-    if (!capacity) {
-        return;
-    }
-    for (unsigned k = 0; k < KBM_KEYS_PER_BINDING; ++k) {
-        const char *name = keys[k] ? kbm_config_key_name(keys[k]) : NULL;
-        if (!name) {
-            continue;
-        }
-        if (used && used + 1 < capacity) {
-            out[used++] = ',';
-        }
-        for (; *name && used + 1 < capacity; ++name) {
-            out[used++] = *name;
-        }
-    }
-    if (!used) {
-        const char *none = "None";
-        for (; *none && used + 1 < capacity; ++none) {
-            out[used++] = *none;
-        }
-    }
-    out[used] = 0;
-}
-
 static int parse_key(const char *text, size_t length, unsigned short *code) {
     char name[24];
     while (length && (*text == ' ' || *text == '\t')) {
@@ -235,25 +200,6 @@ static int parse_boolean(const char *text, int *value) {
     if (text_equal_ignore_case(text, "0") || text_equal_ignore_case(text, "1")) {
         *value = text[0] - '0';
         return 1;
-    }
-    return 0;
-}
-
-int kbm_config_known_key(const char *key) {
-    static const char *const names[] = {
-        "Enabled", "Mode", "MouseLook", "MouseLookPitch", "InvertMouseY", "MouseCapture",
-        "MouseSensitivity", "MouseReturnDelay", "MouseReturnSpeed", "SteeringSpeed",
-        "InvertSteering", "Trace", "Escape", "MenuCursor", "MapCursorSpeed", "CursorSize",
-        "MenuArrows"};
-    for (unsigned i = 0; i < ARRAY_COUNT(names); ++i) {
-        if (text_equal_ignore_case(key, names[i])) {
-            return 1;
-        }
-    }
-    for (unsigned i = 0; i < KBM_BINDING_COUNT; ++i) {
-        if (text_equal_ignore_case(key, binding_names[i])) {
-            return 1;
-        }
     }
     return 0;
 }
