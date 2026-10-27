@@ -13,6 +13,25 @@ EXPORTS
     ReadFile
     SetLastError
     VirtualProtect
+    CopyFileW
+    CreateDirectoryW
+    FileTimeToSystemTime
+    FindFirstFileExW
+    GetCurrentThread
+    GetDiskFreeSpaceExW
+    GetEnvironmentVariableW
+    GetFileAttributesExW
+    GetFileInformationByHandleEx
+    GetFinalPathNameByHandleW
+    GetPrivateProfileIntW
+    RemoveDirectoryW
+    SetFileInformationByHandle
+    SetFileTime
+    SetThreadPriority
+    SystemTimeToTzSpecificLocalTime
+    VirtualAlloc
+    VirtualFree
+    WritePrivateProfileStringW
     WriteFile
     ReadProcessMemory
     VirtualQuery

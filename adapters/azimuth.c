@@ -1,5 +1,6 @@
 #include "azimuth_proxy.h"
 #include "azimuth_host.h"
+#include "azimuth_saves.h"
 #include "logging.h"
 #include "runtime.h"
 #include "settings.h"
@@ -67,6 +68,7 @@ static int refuse(const char *reason) {
     ModOptions options;
     settings_defaults(&options);
     log_start(mod_directory, &options);
+    saves_redirect_log_ready();
     notify_refusal();
     return 0;
 }
@@ -294,6 +296,11 @@ void azimuth_proxy_start(void *caller) {
 void adapter_process_attach(HINSTANCE instance) {
     mod_instance = instance;
     DisableThreadLibraryCalls(instance);
+    /* [Saves] InDocuments (off by default): decided, copied and hooked here,
+       before Azimuth's own code runs and opens its storage. */
+    if (directory_from_module(instance, mod_directory)) {
+        saves_redirect_attach(mod_directory);
+    }
 }
 
 #ifdef FH2_TWEAKS_TEST

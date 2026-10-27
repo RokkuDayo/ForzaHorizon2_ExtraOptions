@@ -18,6 +18,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - New rim style category with all stock rims.
  - Custom spawn locations.
  - "mediapc" modding folder support.
+ - Saves in Documents and photos exported as JPG (optional, off by default).
  
 # Enhancements
  - Skip developer opening videos.
@@ -56,6 +57,19 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 
 ### Autodrive
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
+
+### Saves in Documents and Photos as JPG
+Both are off by default and apply at the next start (Azimuth 1.0.x).
+```ini
+[Saves]
+InDocuments=1
+
+[Photos]
+ExportJpg=1
+```
+`InDocuments=1` keeps the saves in `Documents/My Games/Forza Horizon 2/Saves/1A96545B` instead of Azimuth's `data/titles/1A96545B/saves`. Azimuth refuses a saves folder that is a link, so none is made: Azimuth's own file calls for its saves folder are pointed at the Documents folder instead. The first start with it on copies the existing saves there once and verifies the copy; the originals are kept and never changed. If the Documents folder already has saves, they are used.
+
+`ExportJpg=1` copies every photo saved in game to `Documents/My Games/Forza Horizon 2/Photos` as a JPG named by the time it was taken. The game already stores photos as JPEGs inside its saves; they are only read, and an exported file is never overwritten or deleted.
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.

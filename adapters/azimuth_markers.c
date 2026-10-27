@@ -1,4 +1,5 @@
 #include "azimuth_markers.h"
+#include "azimuth_saves.h"
 #include "azimuth_host.h"
 #include "logging.h"
 #include "sha256.h"
@@ -317,6 +318,8 @@ void azimuth_repair_missing_markers(unsigned char *host) {
                                                             : L"data\\saves")) {
         goto done;
     }
+    // [Saves] InDocuments: the markers to repair are in the redirected folder.
+    saves_redirect_path(scan->search);
     repair_root(scan->search);
     if (marker_count) {
         log_append("AZIMUTH: missing save commit markers rebuilt from actual blob "

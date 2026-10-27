@@ -119,7 +119,8 @@ static int known_section(const char *name) {
     if (text_equal_ignore_case(name, "Gameplay") || text_equal_ignore_case(name, "Camera") ||
         text_equal_ignore_case(name, "Graphics") || text_equal_ignore_case(name, "Livery") ||
         text_equal_ignore_case(name, "HUD") || text_equal_ignore_case(name, "Bindings") ||
-        text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language")) {
+        text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language") ||
+        text_equal_ignore_case(name, "Saves") || text_equal_ignore_case(name, "Photos")) {
         return 1;
     }
     for (size_t index = 0; index < setting_count; ++index) {
@@ -290,6 +291,16 @@ static int parse_ini(char *text, ModOptions *options) {
 
         if (text_equal_ignore_case(section, "Bindings")) {
             if (bindings_parse(key, value) != 1) {
+                goto invalid;
+            }
+            continue;
+        }
+        /* [Saves] InDocuments (adapters/azimuth_saves.c reads it from DllMain,
+           before this parser runs) and [Photos] ExportJpg
+           (adapters/azimuth_photos.c); both off by default. */
+        if ((text_equal_ignore_case(section, "Saves") && text_equal_ignore_case(key, "InDocuments")) ||
+            (text_equal_ignore_case(section, "Photos") && text_equal_ignore_case(key, "ExportJpg"))) {
+            if (!text_equal_ignore_case(value, "0") && !text_equal_ignore_case(value, "1")) {
                 goto invalid;
             }
             continue;

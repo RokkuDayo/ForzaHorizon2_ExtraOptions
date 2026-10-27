@@ -10,6 +10,8 @@
 
 #ifdef FH2_AZIMUTH
 #include "adapters/azimuth_host.h"
+#include "adapters/azimuth_photos.h"
+#include "adapters/azimuth_saves.h"
 #endif
 
 static void log_enabled_features(const wchar_t *settings_directory, const ModOptions *options) {
@@ -80,9 +82,12 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
     }
     log_start(settings_directory, &options);
 #ifdef FH2_AZIMUTH
+    saves_redirect_log_ready();
     if (initialized && options.enabled) {
         log_set_directory(settings_directory);
         azimuth_apply_save_compatibility(options.disable_azimuth_save_checksums);
+        // [Photos] ExportJpg (off by default): a background thread; saves are only read.
+        photo_export_start(settings_directory);
     }
 #endif
     if (initialized && options.enabled) {
