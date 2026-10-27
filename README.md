@@ -18,6 +18,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - New rim style category with all stock rims.
  - Custom spawn locations.
  - "mediapc" modding folder support.
+ - Custom radio station with your own MP3s (optional, off by default).
  
 # Enhancements
  - Skip developer opening videos.
@@ -56,6 +57,25 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 
 ### Autodrive
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
+
+### Custom Radio Station
+Off by default. Put MP3 files in a `Music` folder beside `FH2_ExtraOptions.ini` and add:
+```ini
+[CustomRadio]
+Enabled=1
+```
+The files play in folder order as an extra station on the game's own radio, so the in-game radio volume, ducking, pausing and station banner all apply. MP3s are decoded by Windows.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `Enabled` | 0 | Adds the station. |
+| `Folder` | Music | The MP3 folder, beside the mod or an absolute path. |
+| `Name` | MY MUSIC | The station name shown in game. |
+| `Volume` | 100 | Station volume in percent (0-400). |
+| `UnlockAllStations` | 0 | All stations are available regardless of progression (also works with `Enabled=0`). |
+| `PcmDecode` | 1 | 0 hands the MP3s to the game's FMOD decoder instead. |
+
+Keys are in `[Bindings]`: `RadioStation` tunes to the station (F9), `RadioNext` skips to the next track (F7) and `RadioRestart` restarts the track, or goes to the previous one within 3 seconds of its start (F6). Their Xbox bindings are `None` by default.
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.

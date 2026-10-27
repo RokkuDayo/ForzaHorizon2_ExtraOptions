@@ -2,6 +2,7 @@
 #include "features.h"
 #include "features/addons.h"
 #include "features/plugins.h"
+#include "features/radio_station.h"
 #include "features/video_settings.h"
 #include "logging.h"
 #include "patch_engine.h"
@@ -87,6 +88,8 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
 #endif
     if (initialized && options.enabled) {
         log_enabled_features(settings_directory, &options);
+        // Custom radio station ([CustomRadio]; off by default).
+        radio_station_install(game_image, settings_directory);
     }
     return initialized;
 }
