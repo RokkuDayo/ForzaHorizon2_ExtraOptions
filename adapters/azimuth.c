@@ -5,6 +5,7 @@
 #include "settings.h"
 #include "sha256.h"
 #include "support.h"
+#include "features/monitor_bootstrap.h"
 
 #define FH2_TITLE_ID 0x1a96545bu
 
@@ -288,12 +289,23 @@ void azimuth_proxy_start(void *caller) {
         refuse("REFUSED: unexpected Azimuth initialization order. No patches applied.");
         return;
     }
-    arm_loader(host);
+    if (arm_loader(host)) {
+        monitor_arm(host, mod_directory);
+    }
 }
 
 void adapter_process_attach(HINSTANCE instance) {
     mod_instance = instance;
     DisableThreadLibraryCalls(instance);
+    /* [Monitor] (off by default): Azimuth creates its D3D12 device early, so
+       the monitor's device hook is armed here, before Azimuth's code runs; the
+       monitor itself loads at that device creation, outside the loader lock. */
+    if (directory_from_module(instance, mod_directory) && monitor_requested(mod_directory)) {
+        unsigned char *host = (unsigned char *)GetModuleHandleW(NULL);
+        if (azimuth_host_build(host) != AZIMUTH_UNKNOWN) {
+            monitor_arm(host, mod_directory);
+        }
+    }
 }
 
 #ifdef FH2_TWEAKS_TEST
