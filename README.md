@@ -24,6 +24,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - All DLC packs properly unlocked.
  - VIP status & "Treasure Map" unlocks.
  - Toggle for 4K liveries w/ enhanced sampling.
+ - Sharper garage car pictures (optional, off by default).
  - Unrestricted Photo Mode.
  - "Return to Garage" button in the pause menu.
  - Aero tuning without equipping Forza Aero parts.
@@ -56,6 +57,14 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 
 ### Autodrive
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
+
+### Car Previews
+Off by default. The pictures of your own cars in My Cars and the car strip are rendered at the console's 816x459 (and 192x108), which looks soft at 1440p and 4K. Set a scale in `FH2_ExtraOptions.ini`:
+```ini
+[Graphics]
+CarPreviewScale=2   ; 1 (default) = console size, 2-4 = that many times larger
+```
+2 is pixel for pixel in the My Cars panel at 2160p. It applies to pictures the game makes after startup (a car bought, painted or upgraded). To redraw the pictures you already have, press F8 (`[Bindings]` `RebuildCarPreviews`): every car with a saved picture is rendered again through the game's own background save. Stock cars use the game's packaged pictures and are not affected. Larger scales make the save larger (2 has four times the pixels).
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.

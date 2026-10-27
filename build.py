@@ -75,6 +75,8 @@ COMMON_SOURCES = [
     "features/autodrive.c",
     "features/game_input.c",
     "features/bindings.c",
+    "features/car_previews.c",
+    "features/car_preview_rebuild.c",
     "features/offline_events.c",
     "features/custom_showcases.c",
     "features/offline_event_division.c",
