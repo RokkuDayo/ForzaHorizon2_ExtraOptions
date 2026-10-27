@@ -32,7 +32,8 @@ Autodrive loads User32 lazily on a native GPS update to read F2 and focus.
 Controller buttons and telemetry visibility are read from native game state;
 the cinematic transition calls the game's existing white-flash routine.
 The custom radio station (off by default) loads User32 (for its keys) and the
-system MP3 codec (msacm32) lazily when enabled; it starts no thread.
+system MP3 codec (msacm32) lazily when enabled; with PcmDecode=1 one worker
+thread decodes the next tracks ahead.
 
 Both adapters initialize synchronously in `DllMain`. Startup performs simple
 configuration I/O, hashing, mapped-image validation, and memory patching.
