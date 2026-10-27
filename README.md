@@ -59,7 +59,7 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
 
 ### Exit Game
-Off by default. The game has no way to quit from its menus. With this on, the pause menu's Car Packs tile (Marketplace tab, a store page that does not open offline) becomes Exit Game, with the Quit icon and a caption in the game's language, and closes the game:
+Off by default. The game has no way to quit from its menus. With this on, the pause menu's Home tab gets an Exit Game tile (the Quit icon, a caption in the game's language) beside Online Road Trip, which becomes a square tile, and choosing it closes the game:
 ```ini
 [Frontend]
 ExitGame=1
