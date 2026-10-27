@@ -45,7 +45,7 @@ work in a temporary folder and never start the game:
 
 ```text
 python build.py /absolute/path/to/zig.exe --azimuth --test --output out/winmm-test.dll
-python tools/test-exit-game.py out/winmm-test.dll
+python tools/test-exit-game.py out/winmm-test.dll <game>/Mount/media/UI.zip
 ```
 
 ## Patch data

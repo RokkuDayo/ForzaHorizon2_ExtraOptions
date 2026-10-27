@@ -462,11 +462,12 @@ static void **get_resource(void *reader, void **output) {
     if (!original || !original->bytes || original->length <= 0 || original->length > 262144) {
         return output;
     }
-    // [Frontend] ExitGame: Car Packs' caption, in place; the pause layout below still applies.
-    original->length = exit_game_relabel(original->bytes, original->length, original->capacity);
     int results_layout=text_find(original->bytes,original->length,"x:Class=\"ForzaUI.A_PostRaceEventResults\"")!=NULL;
     int photo_layout=driver_photo_is_xaml(original->bytes,(size_t)original->length);
     int pause_layout = pause_menu_is_xaml(original->bytes, (size_t)original->length);
+    // [Frontend] ExitGame: the pause page gets its Exit Game tile (after Cars next to Home).
+    int exit_layout = exit_game_is_xaml(original->bytes, (size_t)original->length);
+    pause_layout = pause_layout || exit_layout;
     const char *logo = original && original->bytes && original->length > 0 &&
                                original->length < (int)(XAML_LIMIT / 2)
                            ? text_find_unique(original->bytes, (size_t)original->length,
@@ -490,7 +491,8 @@ static void **get_resource(void *reader, void **output) {
          !video_options_is_xaml(original->bytes, original->length))) {
         return output;
     }
-    size_t capacity = pause_layout ? (size_t)original->length + 1 : XAML_LIMIT;
+    size_t capacity = pause_layout ? (size_t)original->length + 1 + (exit_layout ? 8192 : 0)
+                                   : XAML_LIMIT;
     NativeResource *replacement = allocate(sizeof(NativeResource) + capacity);
     if (!replacement) {
         return output;
@@ -502,7 +504,16 @@ static void **get_resource(void *reader, void **output) {
     } else if(photo_layout){
         length=driver_photo_xaml(original->bytes,original->length,bytes,capacity);
     } else if (pause_layout) {
-        length = pause_menu_reorder(original->bytes, original->length, bytes, capacity);
+        if (pause_menu_is_xaml(original->bytes, (size_t)original->length)) {
+            length = pause_menu_reorder(original->bytes, original->length, bytes, capacity);
+        } else {
+            memory_copy(bytes, original->bytes, (size_t)original->length);
+            length = (size_t)original->length;
+            bytes[length] = 0;
+        }
+        if (length && exit_layout) {
+            length = exit_game_extend_xaml(bytes, length, capacity);
+        }
     } else if (make_grid) {
         length = manufacturer_jump_xaml(original->bytes, original->length, bytes, XAML_LIMIT);
     } else if (footer) {

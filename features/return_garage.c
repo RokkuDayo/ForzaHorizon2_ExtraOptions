@@ -4,6 +4,7 @@
 #include "autodrive_game.h"
 #include "video_options_text.h"
 #include "bindings.h"
+#include "exit_game.h"
 
 typedef void (*Action)(void *);
 typedef void **(*MakeString)(void **, const wchar_t *);
@@ -236,6 +237,7 @@ static void initialize_pause(void *page) {
         pending_return.page = NULL;
     }
     ((Action)(image + 0xdc6e30))(page);
+    exit_game_page_ready(page); // [Frontend] ExitGame's tile (exit_game.c)
     read_garage_binding(page,1);
     if (!garage_is_available(page)) {
         return;
