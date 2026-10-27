@@ -10,6 +10,7 @@
 #include "photo_environment.h"
 #include "offline_events.h"
 #include "bindings.h"
+#include "exit_game.h"
 
 #define RESOURCE_THUNK_RVA 0x13fe354u
 #define RESET_SLOT_RVA (0x2e60370u + 0x590u)
@@ -461,6 +462,8 @@ static void **get_resource(void *reader, void **output) {
     if (!original || !original->bytes || original->length <= 0 || original->length > 262144) {
         return output;
     }
+    // [Frontend] ExitGame: Car Packs' caption, in place; the pause layout below still applies.
+    original->length = exit_game_relabel(original->bytes, original->length, original->capacity);
     int results_layout=text_find(original->bytes,original->length,"x:Class=\"ForzaUI.A_PostRaceEventResults\"")!=NULL;
     int photo_layout=driver_photo_is_xaml(original->bytes,(size_t)original->length);
     int pause_layout = pause_menu_is_xaml(original->bytes, (size_t)original->length);

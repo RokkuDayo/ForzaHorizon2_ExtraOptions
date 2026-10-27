@@ -26,6 +26,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - Toggle for 4K liveries w/ enhanced sampling.
  - Unrestricted Photo Mode.
  - "Return to Garage" button in the pause menu.
+ - Exit Game in the pause menu (optional, off by default).
  - Aero tuning without equipping Forza Aero parts.
  - New rim style category with all aftermarket rims.
  - Toggle for having the minimap follow the orbit camera.
@@ -56,6 +57,13 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 
 ### Autodrive
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
+
+### Exit Game
+Off by default. The game has no way to quit from its menus. With this on, the pause menu's Car Packs tile (Marketplace tab, a store page that does not open offline) becomes Exit Game, with the Quit icon and a caption in the game's language, and closes the game:
+```ini
+[Frontend]
+ExitGame=1
+```
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.
