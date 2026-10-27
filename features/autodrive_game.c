@@ -2,6 +2,9 @@
 #include "game_addresses.h"
 #include "logging.h"
 #include "support.h"
+#ifdef FH2_AZIMUTH
+#include "kbm_input.h"
+#endif
 #include "bindings.h"
 
 static unsigned char *image;
@@ -90,6 +93,12 @@ int autodrive_game_dpad_down(void **controller) {
 int autodrive_game_driving_input(void *controller) {
     unsigned char triggers[2];
     float steering;
+#ifdef FH2_AZIMUTH
+    // Keyboard driving ends Autodrive through the same cancel route.
+    if (kbm_driving_input_active()) {
+        return 1;
+    }
+#endif
     if (!controller ||
         !memory_read((unsigned char *)controller + 0x70, triggers, sizeof(triggers)) ||
         !memory_read((unsigned char *)controller + 0xa0, &steering, sizeof(steering))) {

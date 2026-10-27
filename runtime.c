@@ -10,6 +10,8 @@
 
 #ifdef FH2_AZIMUTH
 #include "adapters/azimuth_host.h"
+#include "features/kbm_input.h"
+#include "features/kbm_pitch.h"
 #endif
 
 static void log_enabled_features(const wchar_t *settings_directory, const ModOptions *options) {
@@ -83,6 +85,11 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
     if (initialized && options.enabled) {
         log_set_directory(settings_directory);
         azimuth_apply_save_compatibility(options.disable_azimuth_save_checksums);
+        // Keyboard & mouse ([KeyboardMouse] Enabled=1; off by default).
+        if (settings_keyboard_mouse()->enabled) {
+            kbm_pitch_install(game_image);
+            kbm_install(game_image, settings_keyboard_mouse());
+        }
     }
 #endif
     if (initialized && options.enabled) {

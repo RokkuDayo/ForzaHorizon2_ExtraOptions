@@ -13,6 +13,8 @@ EXPORTS
     ReadFile
     SetLastError
     VirtualProtect
+    VirtualAlloc
+    VirtualFree
     WriteFile
     ReadProcessMemory
     VirtualQuery
