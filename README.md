@@ -25,7 +25,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - VIP status & "Treasure Map" unlocks.
  - Toggle for 4K liveries w/ enhanced sampling.
  - Unrestricted Photo Mode.
- - Quick car scan in photo mode (optional, off by default).
+ - Quick car scan in photo mode, ported from Forza Horizon 6 (optional, off by default).
  - "Return to Garage" button in the pause menu.
  - Aero tuning without equipping Forza Aero parts.
  - New rim style category with all aftermarket rims.
@@ -59,7 +59,7 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
 
 ### Quick Car Scan
-Off by default. As in the newer Forza Horizon games, RB in photo mode credits the cars in view to the photo collection without taking a picture:
+Off by default. A port of Forza Horizon 6's quick car scan: RB in photo mode credits the cars in view to the photo collection without taking a picture:
 ```ini
 [PhotoMode]
 QuickCarScan=1
