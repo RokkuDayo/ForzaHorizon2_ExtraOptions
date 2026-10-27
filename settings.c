@@ -13,6 +13,8 @@ const SettingDefinition setting_definitions[] = {
     SETTING("Experiments", "LocalDrivatarLiveries", local_drivatar_liveries, SETTING_BOOLEAN),
     SETTING("Experiments", "MaxDrivatarLiveries", max_drivatar_liveries, SETTING_LIVERY_COUNT),
     SETTING("Frontend", "SkipIntro", skip_intro, SETTING_BOOLEAN),
+    SETTING("Frontend", "PauseOnlyOnControllerUnplug", controller_pause_on_unplug_only,
+            SETTING_BOOLEAN),
     SETTING("Frontend", "CarsNextToHome", cars_next_to_home, SETTING_BOOLEAN),
     SETTING("Frontend", "MenuTurboIntervalMs", menu_turbo_interval_ms, SETTING_TURBO_INTERVAL),
     SETTING("Frontend", "AllRimsCategory", all_rims_category, SETTING_BOOLEAN),

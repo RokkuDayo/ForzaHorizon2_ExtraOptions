@@ -21,6 +21,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  
 # Enhancements
  - Skip developer opening videos.
+ - No repeated "controller disconnected" pause without a pad (optional, off by default).
  - All DLC packs properly unlocked.
  - VIP status & "Treasure Map" unlocks.
  - Toggle for 4K liveries w/ enhanced sampling.
@@ -56,6 +57,14 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 
 ### Autodrive
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
+
+### Controller-Missing Pause
+Off by default. Without a paired pad (for example playing with a keyboard, or with a pad the game never paired to your profile), the game's "controller lost" rule pauses again every time the pause menu is closed. With this on, it pauses only when a pad that was connected is actually unplugged:
+```ini
+[Frontend]
+PauseOnlyOnControllerUnplug=1
+```
+Esc, Menu and every other way of pausing work as before.
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.
