@@ -32,7 +32,8 @@ Autodrive loads User32 lazily on a native GPS update to read F2 and focus.
 Controller buttons and telemetry visibility are read from native game state;
 the cinematic transition calls the game's existing white-flash routine.
 Keyboard & mouse (off by default) loads User32 and GDI32 lazily when enabled and
-reads Raw Input on its own thread (the game window's messages are not touched).
+reads Raw Input on its own thread through a message-only window; while its menu
+pointer is shown it sets the game window's class cursor.
 
 Both adapters initialize synchronously in `DllMain`. Startup performs simple
 configuration I/O, hashing, mapped-image validation, and memory patching.
