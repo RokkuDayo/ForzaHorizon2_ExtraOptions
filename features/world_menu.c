@@ -75,12 +75,29 @@ int world_menu_set(unsigned setting, int value) {
     return 1;
 }
 
+/* The hub init slot holds the game's init, or another Settings hub hook of
+   this DLL (the World and KEYBOARD & MOUSE tiles each add one): either is
+   chained, so the tiles install in any order. Anything else is left alone. */
+static int hub_init_known(unsigned char *game_image, void *current) {
+    HMODULE ours = NULL, owner = NULL;
+    if (current == game_image + HUB_INIT) {
+        return 1;
+    }
+    return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                  GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                              (LPCWSTR)(uintptr_t)hub_init_known, &ours) &&
+           GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                  GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                              (LPCWSTR)current, &owner) &&
+           owner == ours;
+}
+
 void world_menu_install(unsigned char *game_image, int time_choice, int weather_choice) {
     static const unsigned char bind_code[] = {0x48, 0x8b, 0xc4, 0x57, 0x48, 0x81,
                                               0xec, 0x90, 0x00, 0x00, 0x00};
     static const unsigned char video_code[] = {0x40, 0x53, 0x48, 0x83, 0xec, 0x30, 0x48, 0x8b, 0xd9};
     void **slot = (void **)(game_image + HUB_INIT_SLOT), *current;
-    if (!memory_read(slot, &current, sizeof(current)) || current != game_image + HUB_INIT ||
+    if (!memory_read(slot, &current, sizeof(current)) || !hub_init_known(game_image, current) ||
         !memory_equal(game_image + BIND_BUTTON, bind_code, sizeof(bind_code)) ||
         !memory_equal(game_image + VIDEO_TILE, video_code, sizeof(video_code))) {
         log_append("WORLD MENU: Settings hub not as expected; World tile left out.\r\n");
