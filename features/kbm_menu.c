@@ -52,6 +52,23 @@ int kbm_menu_installed(void) {
     return installed;
 }
 
+/* The hub init slot holds the game's init, or another Settings hub hook of
+   this DLL (the World and KEYBOARD & MOUSE tiles each add one): either is
+   chained, so the tiles install in any order. Anything else is left alone. */
+static int hub_init_known(unsigned char *game_image, void *current) {
+    HMODULE ours = NULL, owner = NULL;
+    if (current == game_image + HUB_INIT) {
+        return 1;
+    }
+    return GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                  GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                              (LPCWSTR)(uintptr_t)hub_init_known, &ours) &&
+           GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
+                                  GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                              (LPCWSTR)current, &owner) &&
+           owner == ours;
+}
+
 void kbm_menu_install(unsigned char *game_image, const wchar_t *directory) {
     if (!directory || !path_join(ini_path, directory, MOD_INI_NAME)) {
         ini_path[0] = 0;
@@ -63,7 +80,7 @@ void kbm_menu_install(unsigned char *game_image, const wchar_t *directory) {
                                                0x30, 0x48, 0x8b, 0xd9};
     void **slot = (void **)(game_image + HUB_INIT_SLOT), *current;
     if (!ini_path[0] || !memory_read(slot, &current, sizeof(current)) ||
-        current != game_image + HUB_INIT ||
+        !hub_init_known(game_image, current) ||
         !memory_equal(game_image + BIND_BUTTON, bind_code, sizeof(bind_code)) ||
         !memory_equal(game_image + VIDEO_TILE, video_code, sizeof(video_code))) {
         log_append("KBM MENU: Settings hub not as expected; KEYBOARD & MOUSE tile left out "
