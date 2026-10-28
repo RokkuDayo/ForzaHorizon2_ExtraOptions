@@ -100,7 +100,7 @@ enum {
 };
 
 enum { PHOTO_DRIVER_PROPERTY=VIDEO_SETTING_COUNT+CHOICE_COLLECTION_COUNT,
-       PHOTO_TIME_PROPERTY,PHOTO_WEATHER_PROPERTY,PHOTO_LIGHTS_PROPERTY };
+       PHOTO_TIME_PROPERTY,PHOTO_WEATHER_PROPERTY,PHOTO_LIGHTS_PROPERTY,PHOTO_HOUR_PROPERTY,PHOTO_HOUR_POSITION_PROPERTY };
 
 static unsigned char *image;
 static Allocate allocate;
@@ -110,8 +110,8 @@ static ResetOptions native_reset, native_hud_reset, native_audio_reset, native_d
 static ObjectInitialize object_initialize, object_cleanup;
 static BoxValue box_int, box_float;
 static PropertyChanged property_changed;
-static NativeProperty properties[VIDEO_SETTING_COUNT + CHOICE_COLLECTION_COUNT + 4];
-static NativePropertyLink links[SETTINGS_PAGE_COUNT][VIDEO_SETTING_COUNT + CHOICE_COLLECTION_COUNT + 4];
+static NativeProperty properties[VIDEO_SETTING_COUNT + CHOICE_COLLECTION_COUNT + 6];
+static NativePropertyLink links[SETTINGS_PAGE_COUNT][VIDEO_SETTING_COUNT + CHOICE_COLLECTION_COUNT + 6];
 static void *choices[CHOICE_COLLECTION_COUNT];
 static const unsigned choice_counts[] = {3, 2, 6, 2, 3, 2, 3, 2, 2, 2, 4, 4, 0, 2, 5, 1};
 static void *registered_image[SETTINGS_PAGE_COUNT], *initialized_image;
@@ -193,7 +193,7 @@ static const char *const property_names[] = {"DriftMode",
                                              "PhotoDriver",
                                              "PhotoTimeOfDay",
                                              "PhotoWeather",
-                                             "PhotoLights"};
+                                             "PhotoLights", "PhotoHour", "PhotoHourPosition"};
 
 static void release_object(void *object) {
     if (object && InterlockedDecrement((volatile LONG *)((unsigned char *)object + 0x10)) == 0) {
@@ -218,6 +218,8 @@ static void **get_value(void **output, NativeProperty *property, void *page) {
     (void)page;
     unsigned index = property_index(property);
     *output = NULL;
+    if(index==PHOTO_HOUR_POSITION_PROPERTY){float value=photo_environment_get(3)/95.0f;return box_float(output,&value);}
+    if(index==PHOTO_HOUR_PROPERTY){float value=photo_environment_get(3)*0.25f;return box_float(output,&value);}
     if(index>=PHOTO_DRIVER_PROPERTY && index<ARRAY_COUNT(properties)){
         int value=index==PHOTO_DRIVER_PROPERTY?driver_photo_get():photo_environment_get(index-PHOTO_TIME_PROPERTY);
         return box_int(output,&value);
@@ -248,6 +250,16 @@ static void set_value(NativeProperty *property, void *page, void *boxed) {
     unsigned index = property_index(property);
     if (!boxed || index>=ARRAY_COUNT(properties) || (index >= VIDEO_SETTING_COUNT && index<PHOTO_DRIVER_PROPERTY)) {
         return;
+    }
+    if(index==PHOTO_HOUR_PROPERTY || index==PHOTO_HOUR_POSITION_PROPERTY){
+        float value;int position=index==PHOTO_HOUR_POSITION_PROPERTY;
+        if(!memory_read((unsigned char *)boxed+0x28,&value,4) || !float_is_finite(value) ||
+           value<0 || value>(position?1.0f:23.75f))return;
+        if(photo_environment_set(3,(int)(value*(position?95.0f:4.0f)+0.5f))){
+            photo_environment_invalidate(page);
+            property_changed(page,&properties[PHOTO_HOUR_PROPERTY]);
+            property_changed(page,&properties[PHOTO_HOUR_POSITION_PROPERTY]);
+        }return;
     }
     int value;
     if (index == DRIFT_MODE || (index >= CAMERA_SETTING_COUNT && index != MASTER_VOLUME)) {
@@ -290,7 +302,7 @@ static const wchar_t *choice_text(unsigned collection, unsigned index) {
             if(!index)return text->default_choice;
             driver_model_label(index,label);return label;
         }
-        case CHOICES_PHOTO_TIME:
+        case CHOICES_PHOTO_TIME:return text->choices[index?0:2];
         case CHOICES_PHOTO_WEATHER:return index?NULL:text->default_choice;
         case CHOICES_DRIVER_VISIBILITY:return index?text->choices[2]:text->default_choice;
         case CHOICES_POWER_UNITS: {
@@ -378,7 +390,7 @@ static int register_properties(unsigned page) {
         }
         unsigned factory =
             index >= VIDEO_SETTING_COUNT && index<PHOTO_DRIVER_PROPERTY ? NATIVE_COLLECTION_PROPERTY
-            : index == DRIFT_MODE || (index >= CAMERA_SETTING_COUNT && index != MASTER_VOLUME)
+            : index == DRIFT_MODE || (index >= CAMERA_SETTING_COUNT && index != MASTER_VOLUME && index != PHOTO_HOUR_PROPERTY && index != PHOTO_HOUR_POSITION_PROPERTY)
                 ? NATIVE_INT_PROPERTY
                 : NATIVE_FLOAT_PROPERTY;
         NativeProperty *property = &properties[index];

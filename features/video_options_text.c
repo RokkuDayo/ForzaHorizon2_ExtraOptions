@@ -4,6 +4,8 @@
 
 static const VideoOptionsText english = {
     .photo_lights = L"Headlights",
+    .photo_custom_time = L"Time of Day Lock",
+    .photo_hour = L"Locked Hour",
     .player_character = "Player Character",
     .player_character_description = "Choose the player model. Default follows the game. Changes apply when the player model next loads.",
     .open_world_drivatars = "Open World Drivatars",
@@ -24,7 +26,7 @@ static const VideoOptionsText english = {
     .event_labels = {L"Drivatar Count", L"Grid Order", L"Stock Cars Only", L"Traffic"},
     .grid_choices = {L"Random", L"Lowest PI First", L"Highest PI First"},
     .division_label = L"Car Division",
-    .garage_label = L"Return to Garage",
+    .garage_label = L"Return to garage",
     .garage_question = L"Return to the festival garage on the current map?",
     .camera = "Drift Camera",
     .driver = "Driver",
@@ -100,6 +102,8 @@ static const VideoOptionsText english = {
 
 static const VideoOptionsText brazilian = {
     .photo_lights = L"Faróis",
+    .photo_custom_time = L"Fixar horário",
+    .photo_hour = L"Horário fixo",
     .player_character = "Personagem do jogador",
     .player_character_description = "Escolha o modelo do jogador. Padrão segue o jogo. As alterações são aplicadas na próxima vez que o modelo do jogador for carregado.",
     .open_world_drivatars = "Drivatars no mundo aberto",
@@ -180,6 +184,8 @@ static const VideoOptionsText brazilian = {
 
 static const VideoOptionsText german = {
     .photo_lights = L"Scheinwerfer",
+    .photo_custom_time = L"Tageszeit fixieren",
+    .photo_hour = L"Feste Uhrzeit",
     .player_character = "Spielercharakter",
     .player_character_description = "Wähle das Spielermodell. Standard folgt dem Spiel. Änderungen gelten, sobald das Spielermodell das nächste Mal geladen wird.",
     .open_world_drivatars = "Drivatars in der offenen Welt",
@@ -255,6 +261,8 @@ static const VideoOptionsText german = {
 
 static const VideoOptionsText french = {
     .photo_lights = L"Phares",
+    .photo_custom_time = L"Bloquer l’heure",
+    .photo_hour = L"Heure fixe",
     .player_character = "Personnage du joueur",
     .player_character_description = "Choisissez le modèle du joueur. Par défaut suit le jeu. Les modifications prennent effet au prochain chargement du modèle du joueur.",
     .open_world_drivatars = "Drivatars en monde ouvert",
@@ -335,6 +343,8 @@ static const VideoOptionsText french = {
 
 static const VideoOptionsText spanish = {
     .photo_lights = L"Faros",
+    .photo_custom_time = L"Fijar hora del día",
+    .photo_hour = L"Hora fija",
     .player_character = "Personaje del jugador",
     .player_character_description = "Elige el modelo del jugador. Predeterminado sigue al juego. Los cambios se aplican la próxima vez que se cargue el modelo del jugador.",
     .open_world_drivatars = "Drivatars en el mundo abierto",
@@ -414,6 +424,8 @@ static const VideoOptionsText spanish = {
 
 static const VideoOptionsText mexican = {
     .photo_lights = L"Faros",
+    .photo_custom_time = L"Fijar hora del día",
+    .photo_hour = L"Hora fija",
     .player_character = "Personaje del jugador",
     .player_character_description = "Elige el modelo del jugador. Predeterminado sigue al juego. Los cambios se aplican la próxima vez que se cargue el modelo del jugador.",
     .open_world_drivatars = "Drivatars en el mundo abierto",
@@ -493,6 +505,8 @@ static const VideoOptionsText mexican = {
 
 static const VideoOptionsText italian = {
     .photo_lights = L"Fari",
+    .photo_custom_time = L"Blocca ora",
+    .photo_hour = L"Ora fissa",
     .player_character = "Personaggio del giocatore",
     .player_character_description = "Scegli il modello del giocatore. Predefinito segue il gioco. Le modifiche si applicano al successivo caricamento del modello del giocatore.",
     .open_world_drivatars = "Drivatar nel mondo aperto",
@@ -572,6 +586,8 @@ static const VideoOptionsText italian = {
 
 static const VideoOptionsText japanese = {
     .photo_lights = L"ヘッドライト",
+    .photo_custom_time = L"時刻を固定",
+    .photo_hour = L"固定する時刻",
     .player_character = "プレイヤーキャラクター",
     .player_character_description = "プレイヤーのモデルを選択します。「デフォルト」はゲームの設定に従います。変更はプレイヤーモデルの次回読み込み時に適用されます。",
     .open_world_drivatars = "オープンワールドの Drivatar",
@@ -645,6 +661,8 @@ static const VideoOptionsText japanese = {
 
 static const VideoOptionsText korean = {
     .photo_lights = L"전조등",
+    .photo_custom_time = L"시간 고정",
+    .photo_hour = L"고정 시간",
     .player_character = "플레이어 캐릭터",
     .player_character_description = "플레이어 모델을 선택합니다. 기본값은 게임 설정을 따릅니다. 변경 사항은 플레이어 모델을 다음에 불러올 때 적용됩니다.",
     .open_world_drivatars = "오픈 월드 Drivatar",
@@ -716,6 +734,8 @@ static const VideoOptionsText korean = {
 
 static const VideoOptionsText chinese = {
     .photo_lights = L"頭燈",
+    .photo_custom_time = L"固定時間",
+    .photo_hour = L"固定時刻",
     .player_character = "玩家角色",
     .player_character_description = "選擇玩家模型。「預設」遵循遊戲設定。變更會在下次載入玩家模型時套用。",
     .open_world_drivatars = "開放世界 Drivatar",
@@ -780,6 +800,8 @@ static const VideoOptionsText chinese = {
 
 static const VideoOptionsText czech = {
     .photo_lights = L"Světlomety",
+    .photo_custom_time = L"Uzamknout čas",
+    .photo_hour = L"Nastavený čas",
     .player_character = "Postava hráče",
     .player_character_description = "Vyber model hráče. Výchozí se řídí hrou. Změny se projeví při příštím načtení modelu hráče.",
     .open_world_drivatars = "Drivataři v otevřeném světě",
@@ -852,6 +874,8 @@ static const VideoOptionsText czech = {
 
 static const VideoOptionsText hungarian = {
     .photo_lights = L"Fényszórók",
+    .photo_custom_time = L"Idő rögzítése",
+    .photo_hour = L"Rögzített idő",
     .player_character = "Játékoskarakter",
     .player_character_description = "Válaszd ki a játékos modelljét. Az alapértelmezett a játék beállítását követi. A változtatás a játékosmodell következő betöltésekor lép életbe.",
     .open_world_drivatars = "Drivatarok a nyílt világban",
@@ -928,6 +952,8 @@ static const VideoOptionsText hungarian = {
 
 static const VideoOptionsText polish = {
     .photo_lights = L"Reflektory",
+    .photo_custom_time = L"Zablokuj czas",
+    .photo_hour = L"Ustawiona godzina",
     .player_character = "Postać gracza",
     .player_character_description = "Wybierz model gracza. Ustawienie domyślne jest zgodne z grą. Zmiany zostaną zastosowane przy następnym wczytaniu modelu gracza.",
     .open_world_drivatars = "Drivatary w otwartym świecie",
@@ -1003,6 +1029,8 @@ static const VideoOptionsText polish = {
 
 static const VideoOptionsText russian = {
     .photo_lights = L"Фары",
+    .photo_custom_time = L"Зафиксировать время",
+    .photo_hour = L"Заданное время",
     .player_character = "Персонаж игрока",
     .player_character_description = "Выберите модель игрока. По умолчанию используется выбор игры. Изменения вступят в силу при следующей загрузке модели игрока.",
     .open_world_drivatars = "Дриватары в открытом мире",
@@ -1079,6 +1107,8 @@ static const VideoOptionsText russian = {
 
 static const VideoOptionsText dutch = {
     .photo_lights = L"Koplampen",
+    .photo_custom_time = L"Tijd vastzetten",
+    .photo_hour = L"Vaste tijd",
     .player_character = "Spelerspersonage",
     .player_character_description = "Kies het spelersmodel. Standaard volgt het spel. Wijzigingen gelden zodra het spelersmodel opnieuw wordt geladen.",
     .open_world_drivatars = "Drivatars in de open wereld",

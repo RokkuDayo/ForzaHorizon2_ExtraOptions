@@ -37,6 +37,8 @@ unsigned video_options_page(const char *text, size_t length) {
 }
 
 int video_options_is_xaml(const char *text, size_t length) {
+    // Plugins may reuse a native options class with their own isolated page.
+    if(text_find(text,length,"<!-- EO:StandaloneOptionsPage -->"))return 0;
     return text_find(text, length, "x:Class=\"ForzaUI.Scenes.Anthem.A_AssistOptions\"") != NULL ||
            text_find(text, length, "x:Class=\"ForzaUI.A_VideoOptions\"") != NULL ||
            text_find(text, length, "x:Class=\"ForzaUI.A_HudOptions\"") != NULL ||
@@ -473,6 +475,7 @@ static size_t extend_difficulty(unsigned char *image, const char *text, size_t l
 
 size_t video_options_extend_xaml(unsigned char *game_image, const char *text, size_t length,
                                  char *output, size_t capacity) {
+    if(text_find(text,length,"<!-- EO:StandaloneOptionsPage -->"))return 0;
     unsigned page = video_options_page(text, length);
     if (page == DIFFICULTY_PAGE) {
         return extend_difficulty(game_image, text, length, output, capacity);

@@ -19,7 +19,7 @@ static unsigned char *clock_manager, *weather_manager;
 static unsigned char clock_state[32], weather_state[32];
 static unsigned char weather_controls[60], paused_controls[60];
 static float wetness;
-static int selection[2];
+static int selection[2], hour_quarters;
 static WeatherOption weather_options[8];
 static unsigned weather_indices[8], weather_count=1;
 static int time_changed,weather_changed;
@@ -62,6 +62,8 @@ void photo_environment_begin(void *page) {
     if(current && memory_read_pointer(current+0x480,&clock) &&
        memory_read((unsigned char *)clock+0xc,clock_state,sizeof(clock_state))){
         clock_manager=clock;
+        float seconds=((float (*)(void *,int))(image+0x197a880))(clock,1);
+        hour_quarters=float_is_finite(seconds) && seconds>=0 && seconds<86400?(int)(seconds/900.0f):48;
     }
     if(current && memory_read_pointer(current+0x488,&weather) &&
        memory_read((unsigned char *)weather+8,weather_state,sizeof(weather_state)) &&
@@ -90,8 +92,8 @@ void photo_environment_end(void *page) {
 void photo_environment_invalidate(void *page){
     if(page && page==photo_page)photo_capture_invalidate(page);
 }
-int photo_environment_get(unsigned setting){return setting==2?vehicle_photo_lights_get():setting<2?selection[setting]:0;}
-unsigned photo_environment_count(unsigned setting){return setting==2?3:setting?weather_count:5;}
+int photo_environment_get(unsigned setting){return setting==3?hour_quarters:setting==2?vehicle_photo_lights_get():setting<2?selection[setting]:0;}
+unsigned photo_environment_count(unsigned setting){return setting==3?96:setting==2?3:setting?weather_count:2;}
 static const wchar_t *localized(const char *table,unsigned key,const wchar_t *fallback){
     void *manager=NULL;
     if(!image || !memory_read_pointer(image+0x3662990,&manager))return fallback;
@@ -101,6 +103,8 @@ static const wchar_t *localized(const char *table,unsigned key,const wchar_t *fa
     return text && *text?text:fallback;
 }
 const wchar_t *photo_environment_title(unsigned setting){
+    if(setting==3)return video_options_text(image)->photo_hour;
+    if(!setting)return video_options_text(image)->photo_custom_time;
     if(setting==2)return video_options_text(image)->photo_lights;
     return setting?localized("GameOptions2",29290,L"Weather"):localized("GameOptions2",6883,L"Time of Day");
 }
@@ -111,31 +115,30 @@ const wchar_t *photo_environment_label(unsigned setting,unsigned index){
     }
     // These entries exist in the shipped language tables. The similarly named
     // IDS_Weather_* / IDS_TimeOfDay_* symbols are leftover online code keys.
-    static const unsigned times[]={0,41476,54787,2690,19466};
-    static const wchar_t *const time_fallback[]={L"Default",L"Sunrise",L"Midday",L"Sunset",L"Midnight"};
     static const unsigned weather[]={0,21549,44895,9469,23825,34896,19978,21974};
     static const wchar_t *const weather_fallback[]={L"Default",L"Clear",L"Wet",L"Foggy",L"Heavy Fog",L"Rain",L"Storm",L"Foggy Storm"};
-    if(!setting)return index<5?localized("GameOptions2",times[index],time_fallback[index]):NULL;
+    if(!setting)return index<2?video_options_text(image)->choices[index?0:2]:NULL;
     if(index>=weather_count)return NULL;
     unsigned native=weather_indices[index];
     return localized(native==3 || native==4 || native==7?"TheIsland":"GameOptions2",weather[native],weather_fallback[native]);
 }
+static void apply_hour(void){
+    clock_manager[0x25]=0;clock_manager[0x28]=0;
+    ((void (*)(void *,float,int))(image+0x197aec0))(clock_manager,hour_quarters*900.0f,1);
+    clock_manager[0x24]=1;clock_manager[0x25]=clock_state[0x25-0xc];time_changed=1;
+}
 int photo_environment_set(unsigned setting,int value) {
+    if(setting==3){
+        if(!photo_page || value<0 || value>95 || value==hour_quarters ||
+           !clock_manager || !same_manager(0x480,clock_manager))return 0;
+        hour_quarters=value;if(selection[0])apply_hour();return 1;
+    }
     if(setting==2)return photo_page?vehicle_photo_lights_set(value):0;
     if(!photo_page || setting>1 || value<0 || (unsigned)value>=photo_environment_count(setting) || selection[setting]==value)return 0;
     if(!setting){
         if(!clock_manager || !same_manager(0x480,clock_manager))return 0;
         if(!value)restore_clock(1);
-        else{
-            // The same tweak values and unit conversion used by the game's
-            // native Sunrise/Midday/Sunset/Midnight event options.
-            static const unsigned presets[]={0x3528168,0x35280a8,0x3528198,0x3529058};
-            int seconds=0;
-            if(!memory_read(image+presets[value-1],&seconds,sizeof(seconds)) || seconds<0 || seconds>86400)return 0;
-            clock_manager[0x25]=0;clock_manager[0x28]=0;
-            ((void (*)(void *,float,int))(image+0x197aec0))(clock_manager,(float)seconds,1);
-            clock_manager[0x24]=1;clock_manager[0x25]=clock_state[0x25-0xc];
-        }
+        else apply_hour();
         time_changed=1;
     }else{
         if(!weather_manager || !same_manager(0x488,weather_manager))return 0;

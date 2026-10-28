@@ -4,7 +4,7 @@
 
 typedef struct {
     const char *camera, *driver;
-    const wchar_t *photo_lights;
+    const wchar_t *photo_lights, *photo_custom_time, *photo_hour;
     const char *player_character, *player_character_description;
     const char *open_world_drivatars, *open_world_drivatars_description;
     const char *fov_label;
