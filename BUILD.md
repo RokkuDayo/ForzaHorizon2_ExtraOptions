@@ -38,6 +38,32 @@ Callback resource work and PNG decoding happen on normal game call paths.
 There is no worker thread or startup wait. Callback installation pins the DLL
 before any callback pointer is written.
 
+## Offline tests
+
+Build with `--test` (adds the `Fh2Test*` exports), then run the checks; they
+work in a temporary folder and never start the game:
+
+```text
+python build.py /absolute/path/to/zig.exe --azimuth --test --output out/winmm-test.dll
+python tools/test-custom-language.py out/winmm-test.dll [VoiceSubtitles.str]
+```
+
+The optional `VoiceSubtitles.str` (for example from a real language pack) is
+read as well.
+
+## Voice subtitle hook code
+
+`features/voice_subtitles_code.h` is generated from
+`tools/voice_subtitles/voice_hooks.py` (needs `pip install keystone-engine`):
+
+```text
+python tools/voice_subtitles/gen_voice_code.py
+```
+
+The code is assembled for one address and carries a relocation table, so it
+runs from free memory near the game image (`VOICE: hook code at 0x...` in the
+log).
+
 ## Patch data
 
 Edit `patches.json`, then regenerate the checked-in C tables:

@@ -2,6 +2,7 @@
 #include "features.h"
 #include "support.h"
 #include "features/bindings.h"
+#include "features/custom_language.h"
 
 #define INI_MAX_SIZE 8192
 #define SETTING(section, key, field, type) {section, key, key, offsetof(ModOptions, field), type}
@@ -278,6 +279,14 @@ static int parse_ini(char *text, ModOptions *options) {
             (text_equal_ignore_case(section, "Graphics") &&
              (text_equal_ignore_case(key, "ForceAnisoFiltering") ||
               text_equal_ignore_case(key, "MotionBlurSamples")))) {
+            continue;
+        }
+
+        /* Read by features/custom_language.c: the pack in <game>\Mount\languages\<id>\. */
+        if (text_equal_ignore_case(section, "Language") && text_equal_ignore_case(key, "Custom")) {
+            if (value[0] && !custom_language_valid_id(value)) {
+                goto invalid;
+            }
             continue;
         }
 

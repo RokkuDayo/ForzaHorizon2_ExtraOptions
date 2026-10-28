@@ -18,6 +18,7 @@
 #include "features/presentation_controls.h"
 #include "features/driver_options.h"
 #include "features/audio_volume.h"
+#include "features/custom_language.h"
 #include "features/display_units.h"
 #include "features/pause_menu.h"
 #include "patches_generated.h"
@@ -280,7 +281,8 @@ static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
         case GROUP_BOOT_CAR_MEET:
             return options->skip_car_meet_on_startup;
         case GROUP_MEDIA_OVERRIDES:
-            return options->media_overrides || addons_configured() || plugins_configured();
+            return options->media_overrides || addons_configured() || plugins_configured() ||
+                   custom_language_mount() != NULL;
         case GROUP_MINIMAP:
             return 1;
         case GROUP_FRONTEND_XML:
