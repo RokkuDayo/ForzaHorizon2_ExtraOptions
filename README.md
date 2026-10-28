@@ -25,6 +25,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - VIP status & "Treasure Map" unlocks.
  - Toggle for 4K liveries w/ enhanced sampling.
  - Unrestricted Photo Mode.
+ - Smooth menus: menus, replays and photo mode at up to 60 FPS instead of 30 (optional, off by default).
  - "Return to Garage" button in the pause menu.
  - Aero tuning without equipping Forza Aero parts.
  - New rim style category with all aftermarket rims.
@@ -56,6 +57,14 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 
 ### Autodrive
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
+
+### Smooth Menus
+Off by default. The game's render scenarios run menus, replays and photo mode at 30 FPS, as on the console. This raises them to 60:
+```ini
+[Graphics]
+SmoothMenus=1
+```
+Scenarios that already run at 60 (driving) are unchanged, and the frame rate is still limited by Azimuth's own frame rate setting: at 30 FPS in Azimuth nothing changes. The game reads the scenarios at startup, so restart the game after changing it.
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.

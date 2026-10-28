@@ -2,6 +2,7 @@
 #include "features.h"
 #include "features/addons.h"
 #include "features/plugins.h"
+#include "features/smooth_menus.h"
 #include "features/video_settings.h"
 #include "logging.h"
 #include "patch_engine.h"
@@ -87,6 +88,10 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
 #endif
     if (initialized && options.enabled) {
         log_enabled_features(settings_directory, &options);
+        // Menu render scenarios at up to 60 FPS ([Graphics] SmoothMenus; off by default).
+        if (options.smooth_menus) {
+            smooth_menus_install(game_image);
+        }
     }
     return initialized;
 }

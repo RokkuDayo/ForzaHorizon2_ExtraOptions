@@ -30,6 +30,7 @@ const SettingDefinition setting_definitions[] = {
             SETTING_BOOLEAN),
     SETTING("Profile", "CustomGamerpic", custom_gamerpic, SETTING_BOOLEAN),
     SETTING("PhotoMode", "FreeCamera", free_photo_camera, SETTING_BOOLEAN),
+    SETTING("Graphics", "SmoothMenus", smooth_menus, SETTING_BOOLEAN),
     SETTING("Files", "EnableMediaOverrides", media_overrides, SETTING_BOOLEAN),
     SETTING("Experiments", "UnlockAeroTuning", unlock_aero_tuning, SETTING_BOOLEAN),
     {"Autodrive", "Enabled", "AutodriveEnabled", offsetof(ModOptions, autodrive), SETTING_BOOLEAN},
@@ -95,6 +96,7 @@ void settings_defaults(ModOptions *options) {
         .enable_rivals = 1,
         .photo_mode_samples = 0,
         .unlock_aero_tuning = 0,
+        .smooth_menus = 0,
     };
 }
 
