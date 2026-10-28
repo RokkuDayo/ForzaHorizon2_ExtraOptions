@@ -30,6 +30,7 @@ const SettingDefinition setting_definitions[] = {
             SETTING_BOOLEAN),
     SETTING("Profile", "CustomGamerpic", custom_gamerpic, SETTING_BOOLEAN),
     SETTING("PhotoMode", "FreeCamera", free_photo_camera, SETTING_BOOLEAN),
+    SETTING("PhotoMode", "QuickCarScan", photo_quick_scan, SETTING_BOOLEAN),
     SETTING("Files", "EnableMediaOverrides", media_overrides, SETTING_BOOLEAN),
     SETTING("Experiments", "UnlockAeroTuning", unlock_aero_tuning, SETTING_BOOLEAN),
     {"Autodrive", "Enabled", "AutodriveEnabled", offsetof(ModOptions, autodrive), SETTING_BOOLEAN},

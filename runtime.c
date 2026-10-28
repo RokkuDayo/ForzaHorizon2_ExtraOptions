@@ -2,6 +2,7 @@
 #include "features.h"
 #include "features/addons.h"
 #include "features/plugins.h"
+#include "features/photo_scan.h"
 #include "features/video_settings.h"
 #include "logging.h"
 #include "patch_engine.h"
@@ -87,6 +88,10 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
 #endif
     if (initialized && options.enabled) {
         log_enabled_features(settings_directory, &options);
+        // Photo mode RB car scan ([PhotoMode] QuickCarScan; off by default).
+        if (options.photo_quick_scan) {
+            photo_scan_install(game_image);
+        }
     }
     return initialized;
 }
