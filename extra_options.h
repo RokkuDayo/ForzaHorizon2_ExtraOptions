@@ -99,5 +99,6 @@ typedef struct {
     int max_drivatar_liveries;
     int menu_turbo_interval_ms;
     int all_transmission_swaps;
+    int controller_pause_on_unplug_only;
 } ModOptions;
 #endif

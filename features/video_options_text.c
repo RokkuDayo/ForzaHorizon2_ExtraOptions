@@ -96,7 +96,27 @@ static const VideoOptionsText english = {
     .default_choice = L"Default",
     .minimap_choices = {L"Follow Car", L"Follow Camera"},
     .spawn_choices = {L"Car Meet Entrance", L"Festival Site"},
-    .car_position_choices = {L"Nearest Road", L"Same Location"}};
+    .car_position_choices = {L"Nearest Road", L"Same Location"},
+    .keyboard_mouse = "KEYBOARD & MOUSE",
+    .kbm_names = {"Input Mode", "Mouse Look", "Mouse Look Up/Down", "Invert Mouse Y", "Mouse Sensitivity", "Keyboard Steering Speed", "Menu Pointer", "Cursor Size", "Map Cursor Speed"},
+    .kbm_descriptions =
+        {"Auto switches to whatever you touched last. Keyboard & Mouse or Gamepad keep one source. Applies at once.",
+         "While driving, the mouse turns the camera and the view recenters after a moment. Applies at once.",
+         "In the bumper, hood, cockpit and driver views, moving the mouse forward and back tilts the view up and down; it returns like the side-to-side look. Applies at once.",
+         "Swaps up and down for the mouse: looking up and down while driving, the photo mode camera and dragging the car viewer. The map cursor is not affected. Applies at once.",
+         "How far the view turns per mouse movement. Applies at once.",
+         "How quickly the steering keys turn the wheel and let it return. Applies at once.",
+         "A pointer in the pause menu and map: click to choose, right click to go back, wheel to scroll. Applies at once.",
+         "Size of the menu pointer. Applies at once.",
+         "How fast the mouse moves the world map's cursor. Applies at once."},
+    .kbm_modes = {L"Auto", L"Keyboard & Mouse", L"Gamepad"},
+    .kbm_actions = {"Throttle", "Brake", "Steer Left", "Steer Right", "Handbrake", "Shift Up", "Shift Down", "Clutch", "Change Camera", "Rewind", "Look Back", "Activate", "Photo Mode", "Previous Station", "Next Station", "Map", "Pause", "Menu: Confirm", "Menu: Back", "Menu: Up", "Menu: Down", "Menu: Left", "Menu: Right", "Menu: Previous Tab", "Menu: Next Tab", "Menu: X Button", "Menu: Y Button", "Menu: Left Trigger", "Menu: Right Trigger", "Menu: D-pad Up", "Menu: D-pad Down", "Menu: D-pad Left", "Menu: D-pad Right"},
+    .kbm_key_descriptions =
+        {"Key for this driving action. Press Enter (or Left/Right) on the row, then the new key; Esc cancels, Backspace or Delete clears it. A key another driving action uses is refused. Applies at once.",
+         "Key for this menu action. Press Enter (or Left/Right) on the row, then the new key; Esc cancels, Backspace or Delete clears it. A key another menu action uses is refused. Applies at once."},
+    .kbm_reset = "Reset Key Bindings",
+    .kbm_reset_description = "Returns every key binding to its default. Press Enter or Left/Right. Applies at once.",
+    .kbm_labels = {L"Press a key...", L"None", L"Key not available", L"Keyboard & mouse off", L"Save failed", L"In use", L"Reset", L"Done"}};
 
 static const VideoOptionsText brazilian = {
     .photo_lights = L"Faróis",
@@ -176,7 +196,27 @@ static const VideoOptionsText brazilian = {
     .default_choice = L"Padrão",
     .minimap_choices = {L"Seguir carro", L"Seguir câmera"},
     .spawn_choices = {L"Entrada do encontro de carros", L"Local do festival"},
-    .car_position_choices = {L"Estrada mais próxima", L"Mesmo local"}};
+    .car_position_choices = {L"Estrada mais próxima", L"Mesmo local"},
+    .keyboard_mouse = "TECLADO E MOUSE",
+    .kbm_names = {"Modo de Entrada", "Visão com o Mouse", "Visão com o Mouse Cima/Baixo", "Inverter Eixo Y do Mouse", "Sensibilidade do Mouse", "Velocidade de Esterço no Teclado", "Ponteiro nos Menus", "Tamanho do Cursor", "Velocidade do Cursor no Mapa"},
+    .kbm_descriptions =
+        {"Automático alterna para o que você usou por último. Teclado e mouse ou Controle mantêm uma única fonte. Aplica-se na hora.",
+         "Ao dirigir, o mouse gira a câmera e a visão volta ao centro após um momento. Aplica-se na hora.",
+         "Nas visões de para-choque, capô, cockpit e piloto, mover o mouse para a frente e para trás inclina a visão para cima e para baixo; ela volta como a visão lateral. Aplica-se na hora.",
+         "Inverte cima e baixo no mouse: olhar para cima e para baixo ao dirigir, a câmera do modo foto e arrastar o visualizador do carro. O cursor do mapa não é afetado. Aplica-se na hora.",
+         "Quanto a visão gira a cada movimento do mouse. Aplica-se na hora.",
+         "Com que rapidez as teclas de direção viram o volante e o deixam voltar. Aplica-se na hora.",
+         "Um ponteiro no menu de pausa e no mapa: clique para escolher, botão direito para voltar, roda para rolar. Aplica-se na hora.",
+         "Tamanho do ponteiro dos menus. Aplica-se na hora.",
+         "Com que rapidez o mouse move o cursor do mapa-múndi. Aplica-se na hora."},
+    .kbm_modes = {L"Automático", L"Teclado e mouse", L"Controle"},
+    .kbm_actions = {"Acelerador", "Freio", "Virar à Esquerda", "Virar à Direita", "Freio de Mão", "Subir Marcha", "Reduzir Marcha", "Embreagem", "Mudar Câmera", "Rebobinar", "Olhar para Trás", "Ativar", "Modo Foto", "Estação Anterior", "Próxima Estação", "Mapa", "Pausa", "Menu: Confirmar", "Menu: Voltar", "Menu: Cima", "Menu: Baixo", "Menu: Esquerda", "Menu: Direita", "Menu: Aba Anterior", "Menu: Próxima Aba", "Menu: Botão X", "Menu: Botão Y", "Menu: Gatilho Esquerdo", "Menu: Gatilho Direito", "Menu: Direcional para Cima", "Menu: Direcional para Baixo", "Menu: Direcional para a Esquerda", "Menu: Direcional para a Direita"},
+    .kbm_key_descriptions =
+        {"Tecla desta ação de direção. Pressione Enter (ou Esquerda/Direita) na linha e depois a nova tecla; Esc cancela, Backspace ou Delete a remove. Uma tecla usada por outra ação de direção é recusada. Aplica-se na hora.",
+         "Tecla desta ação de menu. Pressione Enter (ou Esquerda/Direita) na linha e depois a nova tecla; Esc cancela, Backspace ou Delete a remove. Uma tecla usada por outra ação de menu é recusada. Aplica-se na hora."},
+    .kbm_reset = "Redefinir Teclas",
+    .kbm_reset_description = "Retorna todas as teclas ao padrão. Pressione Enter ou Esquerda/Direita. Aplica-se na hora.",
+    .kbm_labels = {L"Pressione uma tecla...", L"Nenhuma", L"Tecla indisponível", L"Teclado e mouse desligados", L"Falha ao salvar", L"Em uso", L"Redefinir", L"Concluído"}};
 
 static const VideoOptionsText german = {
     .photo_lights = L"Scheinwerfer",
@@ -251,7 +291,27 @@ static const VideoOptionsText german = {
     .default_choice = L"Standard",
     .minimap_choices = {L"Auto folgen", L"Kamera folgen"},
     .spawn_choices = {L"Einfahrt zum Autotreffen", L"Festivalgelände"},
-    .car_position_choices = {L"Nächste Straße", L"Gleiche Position"}};
+    .car_position_choices = {L"Nächste Straße", L"Gleiche Position"},
+    .keyboard_mouse = "TASTATUR UND MAUS",
+    .kbm_names = {"Eingabemodus", "Mausblick", "Mausblick hoch/runter", "Maus-Y-Achse umkehren", "Mausempfindlichkeit", "Lenkgeschwindigkeit (Tastatur)", "Menüzeiger", "Zeigergröße", "Kartenzeiger-Geschwindigkeit"},
+    .kbm_descriptions =
+        {"Auto wechselt zu dem, was du zuletzt benutzt hast. Tastatur und Maus oder Controller bleiben bei einer Quelle. Gilt sofort.",
+         "Beim Fahren dreht die Maus die Kamera; die Ansicht zentriert sich nach kurzer Zeit wieder. Gilt sofort.",
+         "In der Stoßstangen-, Motorhauben-, Cockpit- und Fahreransicht neigt das Vor- und Zurückbewegen der Maus die Ansicht nach oben und unten; sie kehrt wie der seitliche Blick zurück. Gilt sofort.",
+         "Vertauscht oben und unten für die Maus: Blick nach oben und unten beim Fahren, die Fotomodus-Kamera und das Drehen im Fahrzeugbetrachter. Der Kartenzeiger ist nicht betroffen. Gilt sofort.",
+         "Wie weit sich die Ansicht pro Mausbewegung dreht. Gilt sofort.",
+         "Wie schnell die Lenktasten das Lenkrad drehen und zurückkehren lassen. Gilt sofort.",
+         "Ein Zeiger im Pausenmenü und auf der Karte: Klick wählt aus, Rechtsklick geht zurück, das Mausrad scrollt. Gilt sofort.",
+         "Größe des Menüzeigers. Gilt sofort.",
+         "Wie schnell die Maus den Zeiger der Weltkarte bewegt. Gilt sofort."},
+    .kbm_modes = {L"Auto", L"Tastatur und Maus", L"Controller"},
+    .kbm_actions = {"Gas", "Bremse", "Links lenken", "Rechts lenken", "Handbremse", "Hochschalten", "Herunterschalten", "Kupplung", "Kamera wechseln", "Zurückspulen", "Nach hinten schauen", "Aktivieren", "Fotomodus", "Vorheriger Sender", "Nächster Sender", "Karte", "Pause", "Menü: Bestätigen", "Menü: Zurück", "Menü: Hoch", "Menü: Runter", "Menü: Links", "Menü: Rechts", "Menü: Vorheriger Tab", "Menü: Nächster Tab", "Menü: X-Taste", "Menü: Y-Taste", "Menü: Linker Trigger", "Menü: Rechter Trigger", "Menü: Steuerkreuz hoch", "Menü: Steuerkreuz runter", "Menü: Steuerkreuz links", "Menü: Steuerkreuz rechts"},
+    .kbm_key_descriptions =
+        {"Taste für diese Fahraktion. Drücke Enter (oder Links/Rechts) in der Zeile, dann die neue Taste; Esc bricht ab, Backspace oder Delete löscht sie. Eine Taste, die eine andere Fahraktion nutzt, wird abgelehnt. Gilt sofort.",
+         "Taste für diese Menüaktion. Drücke Enter (oder Links/Rechts) in der Zeile, dann die neue Taste; Esc bricht ab, Backspace oder Delete löscht sie. Eine Taste, die eine andere Menüaktion nutzt, wird abgelehnt. Gilt sofort."},
+    .kbm_reset = "Tastenbelegung zurücksetzen",
+    .kbm_reset_description = "Setzt alle Tastenbelegungen auf den Standard zurück. Drücke Enter oder Links/Rechts. Gilt sofort.",
+    .kbm_labels = {L"Taste drücken...", L"Keine", L"Taste nicht verfügbar", L"Tastatur und Maus aus", L"Speichern fehlgeschlagen", L"Belegt", L"Zurücksetzen", L"Erledigt"}};
 
 static const VideoOptionsText french = {
     .photo_lights = L"Phares",
@@ -331,7 +391,27 @@ static const VideoOptionsText french = {
     .default_choice = L"Par défaut",
     .minimap_choices = {L"Suivre la voiture", L"Suivre la caméra"},
     .spawn_choices = {L"Entrée du rassemblement", L"Site du festival"},
-    .car_position_choices = {L"Route la plus proche", L"Même emplacement"}};
+    .car_position_choices = {L"Route la plus proche", L"Même emplacement"},
+    .keyboard_mouse = "CLAVIER ET SOURIS",
+    .kbm_names = {"Mode d'entrée", "Vue à la souris", "Vue haut/bas à la souris", "Inverser l'axe Y de la souris", "Sensibilité de la souris", "Vitesse de direction au clavier", "Pointeur dans les menus", "Taille du curseur", "Vitesse du curseur sur la carte"},
+    .kbm_descriptions =
+        {"Auto bascule sur le dernier périphérique utilisé. Clavier et souris ou Manette n'en gardent qu'un. S'applique immédiatement.",
+         "En conduite, la souris tourne la caméra et la vue se recentre après un instant. S'applique immédiatement.",
+         "Dans les vues pare-chocs, capot, cockpit et pilote, avancer et reculer la souris incline la vue vers le haut et le bas ; elle revient comme la vue latérale. S'applique immédiatement.",
+         "Inverse le haut et le bas pour la souris : regarder en haut et en bas en conduite, la caméra du mode photo et la rotation dans la visionneuse de voiture. Le curseur de la carte n'est pas concerné. S'applique immédiatement.",
+         "L'amplitude de rotation de la vue par mouvement de souris. S'applique immédiatement.",
+         "La vitesse à laquelle les touches de direction tournent le volant et le laissent revenir. S'applique immédiatement.",
+         "Un pointeur dans le menu pause et sur la carte : clic pour choisir, clic droit pour revenir, molette pour défiler. S'applique immédiatement.",
+         "Taille du pointeur des menus. S'applique immédiatement.",
+         "La vitesse à laquelle la souris déplace le curseur de la carte du monde. S'applique immédiatement."},
+    .kbm_modes = {L"Auto", L"Clavier et souris", L"Manette"},
+    .kbm_actions = {"Accélérer", "Freiner", "Tourner à gauche", "Tourner à droite", "Frein à main", "Monter un rapport", "Descendre un rapport", "Embrayage", "Changer de caméra", "Rembobiner", "Regarder derrière", "Activer", "Mode photo", "Station précédente", "Station suivante", "Carte", "Pause", "Menu : valider", "Menu : retour", "Menu : haut", "Menu : bas", "Menu : gauche", "Menu : droite", "Menu : onglet précédent", "Menu : onglet suivant", "Menu : bouton X", "Menu : bouton Y", "Menu : gâchette gauche", "Menu : gâchette droite", "Menu : croix haut", "Menu : croix bas", "Menu : croix gauche", "Menu : croix droite"},
+    .kbm_key_descriptions =
+        {"Touche de cette action de conduite. Appuyez sur Enter (ou Gauche/Droite) sur la ligne, puis sur la nouvelle touche ; Esc annule, Backspace ou Delete l'efface. Une touche utilisée par une autre action de conduite est refusée. S'applique immédiatement.",
+         "Touche de cette action de menu. Appuyez sur Enter (ou Gauche/Droite) sur la ligne, puis sur la nouvelle touche ; Esc annule, Backspace ou Delete l'efface. Une touche utilisée par une autre action de menu est refusée. S'applique immédiatement."},
+    .kbm_reset = "Réinitialiser les touches",
+    .kbm_reset_description = "Rétablit toutes les touches par défaut. Appuyez sur Enter ou Gauche/Droite. S'applique immédiatement.",
+    .kbm_labels = {L"Appuyez sur une touche...", L"Aucune", L"Touche indisponible", L"Clavier et souris désactivés", L"Échec de l'enregistrement", L"Utilisée", L"Réinitialiser", L"Terminé"}};
 
 static const VideoOptionsText spanish = {
     .photo_lights = L"Faros",
@@ -410,7 +490,27 @@ static const VideoOptionsText spanish = {
     .default_choice = L"Predeterminado",
     .minimap_choices = {L"Seguir coche", L"Seguir cámara"},
     .spawn_choices = {L"Entrada de la reunión de coches", L"Recinto del festival"},
-    .car_position_choices = {L"Carretera más cercana", L"Misma ubicación"}};
+    .car_position_choices = {L"Carretera más cercana", L"Misma ubicación"},
+    .keyboard_mouse = "TECLADO Y RATÓN",
+    .kbm_names = {"Modo de entrada", "Vista con el ratón", "Vista arriba/abajo con el ratón", "Invertir eje Y del ratón", "Sensibilidad del ratón", "Velocidad de giro con teclado", "Puntero en los menús", "Tamaño del cursor", "Velocidad del cursor en el mapa"},
+    .kbm_descriptions =
+        {"Automático cambia a lo último que hayas usado. Teclado y ratón o Mando mantienen una sola fuente. Se aplica al instante.",
+         "Al conducir, el ratón gira la cámara y la vista se recentra tras un momento. Se aplica al instante.",
+         "En las vistas de parachoques, capó, cabina y piloto, mover el ratón hacia delante y atrás inclina la vista arriba y abajo; vuelve como la vista lateral. Se aplica al instante.",
+         "Invierte arriba y abajo para el ratón: mirar arriba y abajo al conducir, la cámara del modo foto y girar el coche en el visor. No afecta al cursor del mapa. Se aplica al instante.",
+         "Cuánto gira la vista por cada movimiento del ratón. Se aplica al instante.",
+         "Lo rápido que las teclas de dirección giran el volante y lo dejan volver. Se aplica al instante.",
+         "Un puntero en el menú de pausa y en el mapa: clic para elegir, clic derecho para volver, rueda para desplazarse. Se aplica al instante.",
+         "Tamaño del puntero de los menús. Se aplica al instante.",
+         "Lo rápido que el ratón mueve el cursor del mapa del mundo. Se aplica al instante."},
+    .kbm_modes = {L"Automático", L"Teclado y ratón", L"Mando"},
+    .kbm_actions = {"Acelerador", "Freno", "Girar a la izquierda", "Girar a la derecha", "Freno de mano", "Subir marcha", "Bajar marcha", "Embrague", "Cambiar cámara", "Rebobinar", "Mirar atrás", "Activar", "Modo foto", "Emisora anterior", "Emisora siguiente", "Mapa", "Pausa", "Menú: confirmar", "Menú: atrás", "Menú: arriba", "Menú: abajo", "Menú: izquierda", "Menú: derecha", "Menú: pestaña anterior", "Menú: pestaña siguiente", "Menú: botón X", "Menú: botón Y", "Menú: gatillo izquierdo", "Menú: gatillo derecho", "Menú: cruceta arriba", "Menú: cruceta abajo", "Menú: cruceta izquierda", "Menú: cruceta derecha"},
+    .kbm_key_descriptions =
+        {"Tecla de esta acción de conducción. Pulsa Enter (o Izquierda/Derecha) en la fila y luego la nueva tecla; Esc cancela, Backspace o Delete la borra. Se rechaza una tecla que ya usa otra acción de conducción. Se aplica al instante.",
+         "Tecla de esta acción de menú. Pulsa Enter (o Izquierda/Derecha) en la fila y luego la nueva tecla; Esc cancela, Backspace o Delete la borra. Se rechaza una tecla que ya usa otra acción de menú. Se aplica al instante."},
+    .kbm_reset = "Restablecer teclas",
+    .kbm_reset_description = "Devuelve todas las teclas a sus valores predeterminados. Pulsa Enter o Izquierda/Derecha. Se aplica al instante.",
+    .kbm_labels = {L"Pulsa una tecla...", L"Ninguna", L"Tecla no disponible", L"Teclado y ratón desactivados", L"Error al guardar", L"En uso", L"Restablecer", L"Hecho"}};
 
 static const VideoOptionsText mexican = {
     .photo_lights = L"Faros",
@@ -489,7 +589,27 @@ static const VideoOptionsText mexican = {
     .default_choice = L"Predeterminado",
     .minimap_choices = {L"Seguir auto", L"Seguir cámara"},
     .spawn_choices = {L"Entrada de la reunión de autos", L"Recinto del festival"},
-    .car_position_choices = {L"Carretera más cercana", L"Misma ubicación"}};
+    .car_position_choices = {L"Carretera más cercana", L"Misma ubicación"},
+    .keyboard_mouse = "TECLADO Y MOUSE",
+    .kbm_names = {"Modo de entrada", "Vista con el mouse", "Vista arriba/abajo con el mouse", "Invertir eje Y del mouse", "Sensibilidad del mouse", "Velocidad de giro con teclado", "Puntero en los menús", "Tamaño del cursor", "Velocidad del cursor en el mapa"},
+    .kbm_descriptions =
+        {"Automático cambia a lo último que hayas usado. Teclado y mouse o Control mantienen una sola fuente. Se aplica al instante.",
+         "Al conducir, el mouse gira la cámara y la vista se recentra tras un momento. Se aplica al instante.",
+         "En las vistas de parachoques, capó, cabina y piloto, mover el mouse hacia delante y atrás inclina la vista arriba y abajo; vuelve como la vista lateral. Se aplica al instante.",
+         "Invierte arriba y abajo para el mouse: mirar arriba y abajo al conducir, la cámara del modo foto y girar el auto en el visor. No afecta al cursor del mapa. Se aplica al instante.",
+         "Cuánto gira la vista por cada movimiento del mouse. Se aplica al instante.",
+         "Lo rápido que las teclas de dirección giran el volante y lo dejan volver. Se aplica al instante.",
+         "Un puntero en el menú de pausa y en el mapa: clic para elegir, clic derecho para volver, rueda para desplazarse. Se aplica al instante.",
+         "Tamaño del puntero de los menús. Se aplica al instante.",
+         "Lo rápido que el mouse mueve el cursor del mapa del mundo. Se aplica al instante."},
+    .kbm_modes = {L"Automático", L"Teclado y mouse", L"Control"},
+    .kbm_actions = {"Acelerador", "Freno", "Girar a la izquierda", "Girar a la derecha", "Freno de mano", "Subir marcha", "Bajar marcha", "Embrague", "Cambiar cámara", "Rebobinar", "Mirar atrás", "Activar", "Modo foto", "Estación anterior", "Estación siguiente", "Mapa", "Pausa", "Menú: confirmar", "Menú: atrás", "Menú: arriba", "Menú: abajo", "Menú: izquierda", "Menú: derecha", "Menú: pestaña anterior", "Menú: pestaña siguiente", "Menú: botón X", "Menú: botón Y", "Menú: gatillo izquierdo", "Menú: gatillo derecho", "Menú: cruceta arriba", "Menú: cruceta abajo", "Menú: cruceta izquierda", "Menú: cruceta derecha"},
+    .kbm_key_descriptions =
+        {"Tecla de esta acción de conducción. Presiona Enter (o Izquierda/Derecha) en la fila y luego la nueva tecla; Esc cancela, Backspace o Delete la borra. Se rechaza una tecla que ya usa otra acción de conducción. Se aplica al instante.",
+         "Tecla de esta acción de menú. Presiona Enter (o Izquierda/Derecha) en la fila y luego la nueva tecla; Esc cancela, Backspace o Delete la borra. Se rechaza una tecla que ya usa otra acción de menú. Se aplica al instante."},
+    .kbm_reset = "Restablecer teclas",
+    .kbm_reset_description = "Devuelve todas las teclas a sus valores predeterminados. Presiona Enter o Izquierda/Derecha. Se aplica al instante.",
+    .kbm_labels = {L"Presiona una tecla...", L"Ninguna", L"Tecla no disponible", L"Teclado y mouse desactivados", L"Error al guardar", L"En uso", L"Restablecer", L"Listo"}};
 
 static const VideoOptionsText italian = {
     .photo_lights = L"Fari",
@@ -568,7 +688,27 @@ static const VideoOptionsText italian = {
     .default_choice = L"Predefinito",
     .minimap_choices = {L"Segui auto", L"Segui telecamera"},
     .spawn_choices = {L"Ingresso del raduno", L"Area del festival"},
-    .car_position_choices = {L"Strada più vicina", L"Stessa posizione"}};
+    .car_position_choices = {L"Strada più vicina", L"Stessa posizione"},
+    .keyboard_mouse = "TASTIERA E MOUSE",
+    .kbm_names = {"Modalità di input", "Visuale con il mouse", "Visuale su/giù con il mouse", "Inverti asse Y del mouse", "Sensibilità del mouse", "Velocità di sterzata da tastiera", "Puntatore nei menu", "Dimensione del cursore", "Velocità del cursore sulla mappa"},
+    .kbm_descriptions =
+        {"Auto passa all'ultimo dispositivo usato. Tastiera e mouse o Controller mantengono una sola sorgente. Si applica subito.",
+         "Durante la guida il mouse ruota la telecamera e la visuale si ricentra dopo un attimo. Si applica subito.",
+         "Nelle visuali paraurti, cofano, abitacolo e pilota, muovere il mouse avanti e indietro inclina la visuale in alto e in basso; torna come la visuale laterale. Si applica subito.",
+         "Scambia alto e basso per il mouse: guardare in alto e in basso durante la guida, la telecamera della modalità foto e la rotazione nel visualizzatore auto. Il cursore della mappa non cambia. Si applica subito.",
+         "Quanto ruota la visuale per ogni movimento del mouse. Si applica subito.",
+         "Quanto velocemente i tasti di sterzata girano il volante e lo lasciano tornare. Si applica subito.",
+         "Un puntatore nel menu di pausa e sulla mappa: clic per scegliere, clic destro per tornare indietro, rotellina per scorrere. Si applica subito.",
+         "Dimensione del puntatore dei menu. Si applica subito.",
+         "Quanto velocemente il mouse sposta il cursore della mappa del mondo. Si applica subito."},
+    .kbm_modes = {L"Auto", L"Tastiera e mouse", L"Controller"},
+    .kbm_actions = {"Acceleratore", "Freno", "Sterza a sinistra", "Sterza a destra", "Freno a mano", "Marcia su", "Marcia giù", "Frizione", "Cambia telecamera", "Riavvolgi", "Guarda dietro", "Attiva", "Modalità foto", "Stazione precedente", "Stazione successiva", "Mappa", "Pausa", "Menu: conferma", "Menu: indietro", "Menu: su", "Menu: giù", "Menu: sinistra", "Menu: destra", "Menu: scheda precedente", "Menu: scheda successiva", "Menu: tasto X", "Menu: tasto Y", "Menu: grilletto sinistro", "Menu: grilletto destro", "Menu: croce direzionale su", "Menu: croce direzionale giù", "Menu: croce direzionale sinistra", "Menu: croce direzionale destra"},
+    .kbm_key_descriptions =
+        {"Tasto per questa azione di guida. Premi Enter (o Sinistra/Destra) sulla riga, poi il nuovo tasto; Esc annulla, Backspace o Delete lo cancella. Un tasto usato da un'altra azione di guida viene rifiutato. Si applica subito.",
+         "Tasto per questa azione del menu. Premi Enter (o Sinistra/Destra) sulla riga, poi il nuovo tasto; Esc annulla, Backspace o Delete lo cancella. Un tasto usato da un'altra azione del menu viene rifiutato. Si applica subito."},
+    .kbm_reset = "Ripristina tasti",
+    .kbm_reset_description = "Riporta tutti i tasti ai valori predefiniti. Premi Enter o Sinistra/Destra. Si applica subito.",
+    .kbm_labels = {L"Premi un tasto...", L"Nessuno", L"Tasto non disponibile", L"Tastiera e mouse disattivati", L"Salvataggio non riuscito", L"In uso", L"Ripristina", L"Fatto"}};
 
 static const VideoOptionsText japanese = {
     .photo_lights = L"ヘッドライト",
@@ -641,7 +781,27 @@ static const VideoOptionsText japanese = {
     .default_choice = L"デフォルト",
     .minimap_choices = {L"車に合わせる", L"カメラに合わせる"},
     .spawn_choices = {L"カーミーティング入口", L"フェスティバル会場"},
-    .car_position_choices = {L"最寄りの道路", L"同じ位置"}};
+    .car_position_choices = {L"最寄りの道路", L"同じ位置"},
+    .keyboard_mouse = "キーボードとマウス",
+    .kbm_names = {"入力モード", "マウス視点", "マウス視点（上下）", "マウスY軸反転", "マウス感度", "キーボードのステアリング速度", "メニューポインター", "カーソルサイズ", "マップカーソル速度"},
+    .kbm_descriptions =
+        {"自動では最後に使った入力に切り替わります。キーボードとマウス、またはコントローラーでは一方に固定されます。すぐに適用されます。",
+         "運転中、マウスでカメラを回します。少し経つと視点は中央に戻ります。すぐに適用されます。",
+         "バンパー、ボンネット、コックピット、ドライバー視点で、マウスを前後に動かすと視点が上下に傾きます。左右の視点と同様に元に戻ります。すぐに適用されます。",
+         "マウスの上下を反転します：運転中の上下の視点、フォトモードのカメラ、車両ビューアーでのドラッグ。マップカーソルには影響しません。すぐに適用されます。",
+         "マウスの動きに対して視点が回る量です。すぐに適用されます。",
+         "ステアリングキーでハンドルを切る速さと戻る速さです。すぐに適用されます。",
+         "ポーズメニューとマップのポインター：クリックで選択、右クリックで戻る、ホイールでスクロールします。すぐに適用されます。",
+         "メニューポインターの大きさです。すぐに適用されます。",
+         "マウスでワールドマップのカーソルを動かす速さです。すぐに適用されます。"},
+    .kbm_modes = {L"自動", L"キーボードとマウス", L"コントローラー"},
+    .kbm_actions = {"アクセル", "ブレーキ", "左ステア", "右ステア", "ハンドブレーキ", "シフトアップ", "シフトダウン", "クラッチ", "カメラ切り替え", "巻き戻し", "後方確認", "アクティベート", "フォトモード", "前のステーション", "次のステーション", "マップ", "ポーズ", "メニュー：決定", "メニュー：戻る", "メニュー：上", "メニュー：下", "メニュー：左", "メニュー：右", "メニュー：前のタブ", "メニュー：次のタブ", "メニュー：Xボタン", "メニュー：Yボタン", "メニュー：左トリガー", "メニュー：右トリガー", "メニュー：方向パッド上", "メニュー：方向パッド下", "メニュー：方向パッド左", "メニュー：方向パッド右"},
+    .kbm_key_descriptions =
+        {"この運転操作のキーです。行で Enter（または左右キー）を押してから新しいキーを押します。Esc で取り消し、Backspace または Delete で解除します。他の運転操作で使用中のキーは使えません。すぐに適用されます。",
+         "このメニュー操作のキーです。行で Enter（または左右キー）を押してから新しいキーを押します。Esc で取り消し、Backspace または Delete で解除します。他のメニュー操作で使用中のキーは使えません。すぐに適用されます。"},
+    .kbm_reset = "キー割り当てをリセット",
+    .kbm_reset_description = "すべてのキー割り当てを初期設定に戻します。Enter または左右キーを押してください。すぐに適用されます。",
+    .kbm_labels = {L"キーを押してください...", L"なし", L"使用できないキー", L"キーボードとマウスはオフ", L"保存に失敗しました", L"使用中", L"リセット", L"完了"}};
 
 static const VideoOptionsText korean = {
     .photo_lights = L"전조등",
@@ -712,7 +872,27 @@ static const VideoOptionsText korean = {
     .default_choice = L"기본값",
     .minimap_choices = {L"차량 따라가기", L"카메라 따라가기"},
     .spawn_choices = {L"자동차 모임 입구", L"페스티벌 현장"},
-    .car_position_choices = {L"가장 가까운 도로", L"같은 위치"}};
+    .car_position_choices = {L"가장 가까운 도로", L"같은 위치"},
+    .keyboard_mouse = "키보드 및 마우스",
+    .kbm_names = {"입력 모드", "마우스 시점", "마우스 시점 (위/아래)", "마우스 Y축 반전", "마우스 감도", "키보드 조향 속도", "메뉴 포인터", "커서 크기", "지도 커서 속도"},
+    .kbm_descriptions =
+        {"자동은 마지막으로 사용한 입력으로 전환합니다. 키보드 및 마우스 또는 게임패드는 한 가지만 사용합니다. 즉시 적용됩니다.",
+         "주행 중 마우스로 카메라를 돌리며, 잠시 후 시점이 중앙으로 돌아옵니다. 즉시 적용됩니다.",
+         "범퍼, 후드, 콕핏, 운전자 시점에서 마우스를 앞뒤로 움직이면 시점이 위아래로 기울어지며, 좌우 시점처럼 원래대로 돌아옵니다. 즉시 적용됩니다.",
+         "마우스의 위아래를 바꿉니다: 주행 중 위아래 보기, 사진 모드 카메라, 차량 뷰어 드래그. 지도 커서에는 영향을 주지 않습니다. 즉시 적용됩니다.",
+         "마우스 움직임당 시점이 도는 정도입니다. 즉시 적용됩니다.",
+         "조향 키가 핸들을 돌리고 되돌리는 속도입니다. 즉시 적용됩니다.",
+         "일시 정지 메뉴와 지도의 포인터: 클릭으로 선택, 오른쪽 클릭으로 뒤로, 휠로 스크롤합니다. 즉시 적용됩니다.",
+         "메뉴 포인터의 크기입니다. 즉시 적용됩니다.",
+         "마우스로 월드 지도 커서를 움직이는 속도입니다. 즉시 적용됩니다."},
+    .kbm_modes = {L"자동", L"키보드 및 마우스", L"게임패드"},
+    .kbm_actions = {"가속", "브레이크", "왼쪽 조향", "오른쪽 조향", "핸드브레이크", "기어 올림", "기어 내림", "클러치", "카메라 변경", "되감기", "뒤돌아보기", "활성화", "사진 모드", "이전 방송국", "다음 방송국", "지도", "일시 정지", "메뉴: 확인", "메뉴: 뒤로", "메뉴: 위", "메뉴: 아래", "메뉴: 왼쪽", "메뉴: 오른쪽", "메뉴: 이전 탭", "메뉴: 다음 탭", "메뉴: X 버튼", "메뉴: Y 버튼", "메뉴: 왼쪽 트리거", "메뉴: 오른쪽 트리거", "메뉴: 방향 패드 위", "메뉴: 방향 패드 아래", "메뉴: 방향 패드 왼쪽", "메뉴: 방향 패드 오른쪽"},
+    .kbm_key_descriptions =
+        {"이 주행 동작의 키입니다. 해당 줄에서 Enter(또는 왼쪽/오른쪽)를 누른 뒤 새 키를 누르세요. Esc는 취소, Backspace 또는 Delete는 해제합니다. 다른 주행 동작이 사용하는 키는 거부됩니다. 즉시 적용됩니다.",
+         "이 메뉴 동작의 키입니다. 해당 줄에서 Enter(또는 왼쪽/오른쪽)를 누른 뒤 새 키를 누르세요. Esc는 취소, Backspace 또는 Delete는 해제합니다. 다른 메뉴 동작이 사용하는 키는 거부됩니다. 즉시 적용됩니다."},
+    .kbm_reset = "키 설정 초기화",
+    .kbm_reset_description = "모든 키 설정을 기본값으로 되돌립니다. Enter 또는 왼쪽/오른쪽을 누르세요. 즉시 적용됩니다.",
+    .kbm_labels = {L"키를 누르세요...", L"없음", L"사용할 수 없는 키", L"키보드 및 마우스 꺼짐", L"저장 실패", L"사용 중", L"초기화", L"완료"}};
 
 static const VideoOptionsText chinese = {
     .photo_lights = L"頭燈",
@@ -776,7 +956,27 @@ static const VideoOptionsText chinese = {
     .default_choice = L"預設",
     .minimap_choices = {L"跟隨車輛", L"跟隨攝影機"},
     .spawn_choices = {L"車聚入口", L"嘉年華會場"},
-    .car_position_choices = {L"最近的道路", L"相同位置"}};
+    .car_position_choices = {L"最近的道路", L"相同位置"},
+    .keyboard_mouse = "鍵盤與滑鼠",
+    .kbm_names = {"輸入模式", "滑鼠視角", "滑鼠視角（上下）", "反轉滑鼠 Y 軸", "滑鼠靈敏度", "鍵盤轉向速度", "選單指標", "游標大小", "地圖游標速度"},
+    .kbm_descriptions =
+        {"自動會切換到你最後使用的裝置。鍵盤與滑鼠或控制器則固定使用一種。立即套用。",
+         "駕駛時以滑鼠轉動鏡頭，片刻後視角會回正。立即套用。",
+         "在保險桿、引擎蓋、駕駛艙與車手視角中，前後移動滑鼠會讓視角上下傾斜，並會像左右視角一樣回正。立即套用。",
+         "對調滑鼠的上下方向：駕駛時上下觀看、拍照模式鏡頭與拖曳車輛檢視器。不影響地圖游標。立即套用。",
+         "每次移動滑鼠時視角轉動的幅度。立即套用。",
+         "轉向按鍵轉動方向盤與回正的速度。立即套用。",
+         "暫停選單與地圖中的指標：按一下選擇，按右鍵返回，滾輪捲動。立即套用。",
+         "選單指標的大小。立即套用。",
+         "滑鼠移動世界地圖游標的速度。立即套用。"},
+    .kbm_modes = {L"自動", L"鍵盤與滑鼠", L"控制器"},
+    .kbm_actions = {"油門", "煞車", "向左轉", "向右轉", "手煞車", "升檔", "降檔", "離合器", "切換鏡頭", "倒轉", "向後看", "啟動", "拍照模式", "上一個電台", "下一個電台", "地圖", "暫停", "選單：確認", "選單：返回", "選單：上", "選單：下", "選單：左", "選單：右", "選單：上一個分頁", "選單：下一個分頁", "選單：X 按鈕", "選單：Y 按鈕", "選單：左扳機", "選單：右扳機", "選單：方向鍵上", "選單：方向鍵下", "選單：方向鍵左", "選單：方向鍵右"},
+    .kbm_key_descriptions =
+        {"此駕駛動作的按鍵。在該列按 Enter（或左/右），再按新的按鍵；Esc 取消，Backspace 或 Delete 清除。已被其他駕駛動作使用的按鍵會被拒絕。立即套用。",
+         "此選單動作的按鍵。在該列按 Enter（或左/右），再按新的按鍵；Esc 取消，Backspace 或 Delete 清除。已被其他選單動作使用的按鍵會被拒絕。立即套用。"},
+    .kbm_reset = "重設按鍵設定",
+    .kbm_reset_description = "將所有按鍵設定還原為預設值。按 Enter 或左/右。立即套用。",
+    .kbm_labels = {L"請按一個鍵...", L"無", L"無法使用此鍵", L"鍵盤與滑鼠已關閉", L"儲存失敗", L"使用中", L"重設", L"完成"}};
 
 static const VideoOptionsText czech = {
     .photo_lights = L"Světlomety",
@@ -848,7 +1048,27 @@ static const VideoOptionsText czech = {
     .default_choice = L"Výchozí",
     .minimap_choices = {L"Sledovat auto", L"Sledovat kameru"},
     .spawn_choices = {L"Vjezd na sraz aut", L"Areál festivalu"},
-    .car_position_choices = {L"Nejbližší silnice", L"Stejná poloha"}};
+    .car_position_choices = {L"Nejbližší silnice", L"Stejná poloha"},
+    .keyboard_mouse = "KLÁVESNICE A MYŠ",
+    .kbm_names = {"Režim ovládání", "Rozhlížení myší", "Rozhlížení myší nahoru/dolů", "Obrátit osu Y myši", "Citlivost myši", "Rychlost řízení klávesnicí", "Ukazatel v menu", "Velikost kurzoru", "Rychlost kurzoru na mapě"},
+    .kbm_descriptions =
+        {"Auto přepne na to, co jste použili naposledy. Klávesnice a myš nebo Ovladač drží jeden zdroj. Platí okamžitě.",
+         "Při jízdě myš otáčí kamerou a pohled se po chvíli vrátí na střed. Platí okamžitě.",
+         "V pohledu z nárazníku, kapoty, kokpitu a řidiče pohyb myši dopředu a dozadu naklání pohled nahoru a dolů; vrací se jako rozhlížení do stran. Platí okamžitě.",
+         "Prohodí nahoru a dolů pro myš: rozhlížení nahoru a dolů při jízdě, kameru fotorežimu a otáčení v prohlížeči aut. Kurzor mapy se nemění. Platí okamžitě.",
+         "Jak moc se pohled otočí při pohybu myši. Platí okamžitě.",
+         "Jak rychle klávesy řízení točí volantem a nechávají ho vrátit. Platí okamžitě.",
+         "Ukazatel v menu pauzy a na mapě: kliknutí vybírá, pravé tlačítko vrací zpět, kolečko posouvá. Platí okamžitě.",
+         "Velikost ukazatele v menu. Platí okamžitě.",
+         "Jak rychle myš posouvá kurzor na mapě světa. Platí okamžitě."},
+    .kbm_modes = {L"Auto", L"Klávesnice a myš", L"Ovladač"},
+    .kbm_actions = {"Plyn", "Brzda", "Zatočit vlevo", "Zatočit vpravo", "Ruční brzda", "Řadit nahoru", "Řadit dolů", "Spojka", "Změnit kameru", "Přetočit", "Pohled dozadu", "Aktivovat", "Fotorežim", "Předchozí stanice", "Další stanice", "Mapa", "Pauza", "Menu: potvrdit", "Menu: zpět", "Menu: nahoru", "Menu: dolů", "Menu: vlevo", "Menu: vpravo", "Menu: předchozí karta", "Menu: další karta", "Menu: tlačítko X", "Menu: tlačítko Y", "Menu: levá spoušť", "Menu: pravá spoušť", "Menu: směrový ovladač nahoru", "Menu: směrový ovladač dolů", "Menu: směrový ovladač vlevo", "Menu: směrový ovladač vpravo"},
+    .kbm_key_descriptions =
+        {"Klávesa pro tuto akci jízdy. Na řádku stiskněte Enter (nebo vlevo/vpravo) a pak novou klávesu; Esc zruší, Backspace nebo Delete ji vymaže. Klávesa použitá jinou akcí jízdy je odmítnuta. Platí okamžitě.",
+         "Klávesa pro tuto akci menu. Na řádku stiskněte Enter (nebo vlevo/vpravo) a pak novou klávesu; Esc zruší, Backspace nebo Delete ji vymaže. Klávesa použitá jinou akcí menu je odmítnuta. Platí okamžitě."},
+    .kbm_reset = "Obnovit klávesy",
+    .kbm_reset_description = "Vrátí všechna přiřazení kláves na výchozí. Stiskněte Enter nebo vlevo/vpravo. Platí okamžitě.",
+    .kbm_labels = {L"Stiskněte klávesu...", L"Žádná", L"Klávesa není dostupná", L"Klávesnice a myš vyp.", L"Uložení selhalo", L"Používá", L"Obnovit", L"Hotovo"}};
 
 static const VideoOptionsText hungarian = {
     .photo_lights = L"Fényszórók",
@@ -924,7 +1144,27 @@ static const VideoOptionsText hungarian = {
     .default_choice = L"Alapérték",
     .minimap_choices = {L"Autó követése", L"Kamera követése"},
     .spawn_choices = {L"Autóstalálkozó bejárata", L"Fesztivál helyszíne"},
-    .car_position_choices = {L"Legközelebbi út", L"Azonos hely"}};
+    .car_position_choices = {L"Legközelebbi út", L"Azonos hely"},
+    .keyboard_mouse = "BILLENTYŰZET ÉS EGÉR",
+    .kbm_names = {"Bemeneti mód", "Egeres nézelődés", "Egeres nézelődés fel/le", "Egér Y tengelyének megfordítása", "Egér érzékenysége", "Billentyűzetes kormányzás sebessége", "Menümutató", "Kurzor mérete", "Térképkurzor sebessége"},
+    .kbm_descriptions =
+        {"Az Auto arra vált, amit utoljára használtál. A Billentyűzet és egér vagy a Kontroller egy forrást tart meg. Azonnal érvényes.",
+         "Vezetés közben az egér forgatja a kamerát, a nézet rövid idő után visszaáll középre. Azonnal érvényes.",
+         "A lökhárító-, motorháztető-, pilótafülke- és vezetőnézetben az egér előre-hátra mozgatása fel-le dönti a nézetet; az oldalirányú nézelődéshez hasonlóan visszaáll. Azonnal érvényes.",
+         "Felcseréli az egér fel és le irányát: fel-le nézés vezetés közben, a fotómód kamerája és az autónézegető forgatása. A térképkurzort nem érinti. Azonnal érvényes.",
+         "Mennyit fordul a nézet egy egérmozdulatra. Azonnal érvényes.",
+         "Milyen gyorsan fordítják el a kormányzás billentyűi a kormányt, és engedik vissza. Azonnal érvényes.",
+         "Mutató a szünetmenüben és a térképen: kattintás a választáshoz, jobb kattintás a visszalépéshez, görgő a görgetéshez. Azonnal érvényes.",
+         "A menümutató mérete. Azonnal érvényes.",
+         "Milyen gyorsan mozgatja az egér a világtérkép kurzorát. Azonnal érvényes."},
+    .kbm_modes = {L"Auto", L"Billentyűzet és egér", L"Kontroller"},
+    .kbm_actions = {"Gáz", "Fék", "Kormányzás balra", "Kormányzás jobbra", "Kézifék", "Felváltás", "Visszaváltás", "Kuplung", "Kameraváltás", "Visszatekerés", "Hátranézés", "Aktiválás", "Fotómód", "Előző állomás", "Következő állomás", "Térkép", "Szünet", "Menü: jóváhagyás", "Menü: vissza", "Menü: fel", "Menü: le", "Menü: balra", "Menü: jobbra", "Menü: előző lap", "Menü: következő lap", "Menü: X gomb", "Menü: Y gomb", "Menü: bal ravasz", "Menü: jobb ravasz", "Menü: iránygomb fel", "Menü: iránygomb le", "Menü: iránygomb balra", "Menü: iránygomb jobbra"},
+    .kbm_key_descriptions =
+        {"Ennek a vezetési műveletnek a billentyűje. A sorban nyomd meg az Entert (vagy a balra/jobbra gombot), majd az új billentyűt; az Esc megszakítja, a Backspace vagy a Delete törli. Más vezetési művelet által használt billentyűt nem fogad el. Azonnal érvényes.",
+         "Ennek a menüműveletnek a billentyűje. A sorban nyomd meg az Entert (vagy a balra/jobbra gombot), majd az új billentyűt; az Esc megszakítja, a Backspace vagy a Delete törli. Más menüművelet által használt billentyűt nem fogad el. Azonnal érvényes."},
+    .kbm_reset = "Billentyűk visszaállítása",
+    .kbm_reset_description = "Minden billentyű-hozzárendelést visszaállít az alapértékre. Nyomd meg az Entert vagy a balra/jobbra gombot. Azonnal érvényes.",
+    .kbm_labels = {L"Nyomj meg egy billentyűt...", L"Nincs", L"Nem elérhető billentyű", L"Billentyűzet és egér ki", L"Mentés sikertelen", L"Foglalt", L"Visszaállítás", L"Kész"}};
 
 static const VideoOptionsText polish = {
     .photo_lights = L"Reflektory",
@@ -999,7 +1239,27 @@ static const VideoOptionsText polish = {
     .default_choice = L"Domyślne",
     .minimap_choices = {L"Śledź samochód", L"Śledź kamerę"},
     .spawn_choices = {L"Wjazd na zlot", L"Teren festiwalu"},
-    .car_position_choices = {L"Najbliższa droga", L"To samo miejsce"}};
+    .car_position_choices = {L"Najbliższa droga", L"To samo miejsce"},
+    .keyboard_mouse = "KLAWIATURA I MYSZ",
+    .kbm_names = {"Źródło sterowania", "Rozglądanie myszą", "Rozglądanie góra/dół", "Odwróć oś Y myszy", "Czułość myszy", "Szybkość skrętu z klawiatury", "Wskaźnik w menu", "Rozmiar kursora", "Szybkość kursora na mapie"},
+    .kbm_descriptions =
+        {"Auto przełącza na to, czego dotkniesz ostatnio. Klawiatura i mysz albo Pad trzymają jedno źródło. Działa od razu.",
+         "Podczas jazdy mysz obraca kamerę, a widok wraca po chwili. Działa od razu.",
+         "W widoku ze zderzaka, maski, kokpitu i kierowcy ruch myszy w przód i w tył pochyla widok w górę i w dół; wraca jak rozglądanie na boki. Działa od razu.",
+         "Zamienia górę i dół dla myszy: rozglądanie podczas jazdy, kamera trybu zdjęć i obracanie podglądu auta. Nie dotyczy kursora mapy. Działa od razu.",
+         "Jak daleko obraca się widok przy ruchu myszy. Działa od razu.",
+         "Jak szybko klawisze skrętu skręcają koła i jak szybko wracają. Działa od razu.",
+         "Wskaźnik w menu pauzy i na mapie: klik wybiera, prawy przycisk wraca, kółko przewija. Działa od razu.",
+         "Rozmiar wskaźnika w menu. Działa od razu.",
+         "Jak szybko mysz przesuwa kursor na mapie świata. Działa od razu."},
+    .kbm_modes = {L"Auto", L"Klawiatura i mysz", L"Pad"},
+    .kbm_actions = {"Gaz", "Hamulec", "Skręt w lewo", "Skręt w prawo", "Hamulec ręczny", "Bieg w górę", "Bieg w dół", "Sprzęgło", "Zmiana kamery", "Przewijanie czasu", "Patrz do tyłu", "Aktywuj", "Tryb zdjęć", "Poprzednia stacja", "Następna stacja", "Mapa", "Pauza", "Menu: zatwierdź", "Menu: wstecz", "Menu: w górę", "Menu: w dół", "Menu: w lewo", "Menu: w prawo", "Menu: poprzednia karta", "Menu: następna karta", "Menu: przycisk X", "Menu: przycisk Y", "Menu: lewy spust", "Menu: prawy spust", "Menu: krzyżak w górę", "Menu: krzyżak w dół", "Menu: krzyżak w lewo", "Menu: krzyżak w prawo"},
+    .kbm_key_descriptions =
+        {"Klawisz tej akcji jazdy. Naciśnij Enter (lub strzałkę w lewo/prawo) na wierszu, potem nowy klawisz; Esc anuluje, Backspace lub Delete czyści przypisanie. Klawisz zajęty przez inną akcję jazdy jest odrzucany. Działa od razu.",
+         "Klawisz tej akcji menu. Naciśnij Enter (lub strzałkę w lewo/prawo) na wierszu, potem nowy klawisz; Esc anuluje, Backspace lub Delete czyści przypisanie. Klawisz zajęty przez inną akcję menu jest odrzucany. Działa od razu."},
+    .kbm_reset = "Przywróć domyślne klawisze",
+    .kbm_reset_description = "Przywraca domyślne przypisania wszystkich klawiszy. Naciśnij Enter lub strzałkę w lewo/prawo. Działa od razu.",
+    .kbm_labels = {L"Naciśnij klawisz...", L"Brak", L"Klawisz niedostępny", L"Klawiatura i mysz wył.", L"Błąd zapisu", L"Zajęty", L"Przywróć", L"Przywrócono"}};
 
 static const VideoOptionsText russian = {
     .photo_lights = L"Фары",
@@ -1075,7 +1335,27 @@ static const VideoOptionsText russian = {
     .default_choice = L"По умолчанию",
     .minimap_choices = {L"Следовать за автомобилем", L"Следовать за камерой"},
     .spawn_choices = {L"Въезд на автосходку", L"Площадка фестиваля"},
-    .car_position_choices = {L"Ближайшая дорога", L"То же место"}};
+    .car_position_choices = {L"Ближайшая дорога", L"То же место"},
+    .keyboard_mouse = "КЛАВИАТУРА И МЫШЬ",
+    .kbm_names = {"Режим ввода", "Обзор мышью", "Обзор мышью вверх/вниз", "Инвертировать ось Y мыши", "Чувствительность мыши", "Скорость руления с клавиатуры", "Указатель в меню", "Размер курсора", "Скорость курсора на карте"},
+    .kbm_descriptions =
+        {"Авто переключается на то, чем вы пользовались последним. Клавиатура и мышь или Геймпад оставляют один источник. Применяется сразу.",
+         "Во время езды мышь поворачивает камеру, а вид через мгновение возвращается к центру. Применяется сразу.",
+         "В видах с бампера, капота, из кокпита и от водителя движение мыши вперёд и назад наклоняет вид вверх и вниз; он возвращается так же, как обзор по сторонам. Применяется сразу.",
+         "Меняет местами верх и низ для мыши: обзор вверх и вниз во время езды, камера фоторежима и вращение в просмотре автомобиля. Курсор карты не затрагивается. Применяется сразу.",
+         "Насколько поворачивается вид при движении мыши. Применяется сразу.",
+         "Как быстро клавиши руления поворачивают руль и дают ему вернуться. Применяется сразу.",
+         "Указатель в меню паузы и на карте: щелчок — выбор, правый щелчок — назад, колесо — прокрутка. Применяется сразу.",
+         "Размер указателя в меню. Применяется сразу.",
+         "Как быстро мышь двигает курсор на карте мира. Применяется сразу."},
+    .kbm_modes = {L"Авто", L"Клавиатура и мышь", L"Геймпад"},
+    .kbm_actions = {"Газ", "Тормоз", "Руль влево", "Руль вправо", "Ручной тормоз", "Передача вверх", "Передача вниз", "Сцепление", "Сменить камеру", "Перемотка", "Взгляд назад", "Активировать", "Фоторежим", "Предыдущая станция", "Следующая станция", "Карта", "Пауза", "Меню: подтвердить", "Меню: назад", "Меню: вверх", "Меню: вниз", "Меню: влево", "Меню: вправо", "Меню: предыдущая вкладка", "Меню: следующая вкладка", "Меню: кнопка X", "Меню: кнопка Y", "Меню: левый триггер", "Меню: правый триггер", "Меню: крестовина вверх", "Меню: крестовина вниз", "Меню: крестовина влево", "Меню: крестовина вправо"},
+    .kbm_key_descriptions =
+        {"Клавиша для этого действия вождения. Нажмите Enter (или влево/вправо) на строке, затем новую клавишу; Esc отменяет, Backspace или Delete очищает. Клавиша, занятая другим действием вождения, не принимается. Применяется сразу.",
+         "Клавиша для этого действия меню. Нажмите Enter (или влево/вправо) на строке, затем новую клавишу; Esc отменяет, Backspace или Delete очищает. Клавиша, занятая другим действием меню, не принимается. Применяется сразу."},
+    .kbm_reset = "Сбросить назначения клавиш",
+    .kbm_reset_description = "Возвращает все назначения клавиш к стандартным. Нажмите Enter или влево/вправо. Применяется сразу.",
+    .kbm_labels = {L"Нажмите клавишу...", L"Нет", L"Клавиша недоступна", L"Клавиатура и мышь выкл.", L"Ошибка сохранения", L"Занята", L"Сбросить", L"Сброшено"}};
 
 static const VideoOptionsText dutch = {
     .photo_lights = L"Koplampen",
@@ -1151,7 +1431,27 @@ static const VideoOptionsText dutch = {
     .default_choice = L"Standaard",
     .minimap_choices = {L"Auto volgen", L"Camera volgen"},
     .spawn_choices = {L"Ingang autobijeenkomst", L"Festivalterrein"},
-    .car_position_choices = {L"Dichtstbijzijnde weg", L"Dezelfde locatie"}};
+    .car_position_choices = {L"Dichtstbijzijnde weg", L"Dezelfde locatie"},
+    .keyboard_mouse = "TOETSENBORD EN MUIS",
+    .kbm_names = {"Invoermodus", "Rondkijken met muis", "Rondkijken omhoog/omlaag", "Muis-Y-as omkeren", "Muisgevoeligheid", "Stuursnelheid toetsenbord", "Menuaanwijzer", "Cursorgrootte", "Kaartcursorsnelheid"},
+    .kbm_descriptions =
+        {"Auto schakelt naar wat je het laatst hebt gebruikt. Toetsenbord en muis of Controller houden één bron. Direct actief.",
+         "Tijdens het rijden draait de muis de camera en keert het beeld na een moment terug naar het midden. Direct actief.",
+         "In de bumper-, motorkap-, cockpit- en bestuurderscamera kantelt het vooruit en achteruit bewegen van de muis het beeld omhoog en omlaag; het keert terug zoals het zijwaarts rondkijken. Direct actief.",
+         "Draait omhoog en omlaag om voor de muis: omhoog en omlaag kijken tijdens het rijden, de fotomoduscamera en draaien in de autoviewer. De kaartcursor verandert niet. Direct actief.",
+         "Hoe ver het beeld draait per muisbeweging. Direct actief.",
+         "Hoe snel de stuurtoetsen het stuur draaien en laten terugkeren. Direct actief.",
+         "Een aanwijzer in het pauzemenu en op de kaart: klik om te kiezen, rechtsklik om terug te gaan, scrollwiel om te scrollen. Direct actief.",
+         "Grootte van de menuaanwijzer. Direct actief.",
+         "Hoe snel de muis de cursor op de wereldkaart beweegt. Direct actief."},
+    .kbm_modes = {L"Auto", L"Toetsenbord en muis", L"Controller"},
+    .kbm_actions = {"Gas", "Rem", "Links sturen", "Rechts sturen", "Handrem", "Opschakelen", "Terugschakelen", "Koppeling", "Camera wisselen", "Terugspoelen", "Achterom kijken", "Activeren", "Fotomodus", "Vorige zender", "Volgende zender", "Kaart", "Pauze", "Menu: bevestigen", "Menu: terug", "Menu: omhoog", "Menu: omlaag", "Menu: links", "Menu: rechts", "Menu: vorig tabblad", "Menu: volgend tabblad", "Menu: X-knop", "Menu: Y-knop", "Menu: linkertrigger", "Menu: rechtertrigger", "Menu: D-pad omhoog", "Menu: D-pad omlaag", "Menu: D-pad links", "Menu: D-pad rechts"},
+    .kbm_key_descriptions =
+        {"Toets voor deze rijactie. Druk op Enter (of links/rechts) op de regel en daarna op de nieuwe toets; Esc annuleert, Backspace of Delete wist hem. Een toets die een andere rijactie gebruikt, wordt geweigerd. Direct actief.",
+         "Toets voor deze menuactie. Druk op Enter (of links/rechts) op de regel en daarna op de nieuwe toets; Esc annuleert, Backspace of Delete wist hem. Een toets die een andere menuactie gebruikt, wordt geweigerd. Direct actief."},
+    .kbm_reset = "Toetsen herstellen",
+    .kbm_reset_description = "Zet alle toetstoewijzingen terug naar de standaard. Druk op Enter of links/rechts. Direct actief.",
+    .kbm_labels = {L"Druk op een toets...", L"Geen", L"Toets niet beschikbaar", L"Toetsenbord en muis uit", L"Opslaan mislukt", L"In gebruik", L"Herstellen", L"Klaar"}};
 
 static const struct {
     const char *code;
@@ -1181,3 +1481,33 @@ const VideoOptionsText *video_options_text(unsigned char *game_image) {
     }
     return &english;
 }
+
+#ifdef FH2_TWEAKS_TEST
+/* Offline: the index of the first translation missing a keyboard & mouse
+   page text, or the number of translations when none is. */
+__declspec(dllexport) unsigned Fh2TestKeyboardTextComplete(void) {
+    for (unsigned index = 0; index < sizeof(translations) / sizeof(translations[0]); ++index) {
+        const VideoOptionsText *text = translations[index].text;
+        int complete = text->keyboard_mouse && text->kbm_reset && text->kbm_reset_description;
+        for (unsigned i = 0; i < KBM_TEXT_ROWS; ++i) {
+            complete &= text->kbm_names[i] && text->kbm_descriptions[i];
+        }
+        for (unsigned i = 0; i < KBM_TEXT_ACTIONS; ++i) {
+            complete &= text->kbm_actions[i] != NULL;
+        }
+        for (unsigned i = 0; i < 3; ++i) {
+            complete &= text->kbm_modes[i] != NULL;
+        }
+        for (unsigned i = 0; i < 2; ++i) {
+            complete &= text->kbm_key_descriptions[i] != NULL;
+        }
+        for (unsigned i = 0; i < KBM_LABEL_COUNT; ++i) {
+            complete &= text->kbm_labels[i] != NULL;
+        }
+        if (!complete) {
+            return index;
+        }
+    }
+    return sizeof(translations) / sizeof(translations[0]);
+}
+#endif

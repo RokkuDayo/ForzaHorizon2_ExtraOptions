@@ -2,6 +2,7 @@
 #include "features.h"
 #include "features/addons.h"
 #include "features/plugins.h"
+#include "features/controller_pause.h"
 #include "features/video_settings.h"
 #include "logging.h"
 #include "patch_engine.h"
@@ -10,6 +11,9 @@
 
 #ifdef FH2_AZIMUTH
 #include "adapters/azimuth_host.h"
+#include "features/kbm_input.h"
+#include "features/kbm_menu.h"
+#include "features/kbm_pitch.h"
 #endif
 
 static void log_enabled_features(const wchar_t *settings_directory, const ModOptions *options) {
@@ -83,10 +87,21 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
     if (initialized && options.enabled) {
         log_set_directory(settings_directory);
         azimuth_apply_save_compatibility(options.disable_azimuth_save_checksums);
+        // Keyboard & mouse ([KeyboardMouse] Enabled=1; off by default).
+        if (settings_keyboard_mouse()->enabled) {
+            kbm_pitch_install(game_image);
+            kbm_install(game_image, settings_keyboard_mouse());
+            // The KEYBOARD & MOUSE tile and page on the Settings hub.
+            kbm_menu_install(game_image, settings_directory);
+        }
     }
 #endif
     if (initialized && options.enabled) {
         log_enabled_features(settings_directory, &options);
+        // [Frontend] PauseOnlyOnControllerUnplug (off by default; keyboard & mouse installs it too).
+        if (options.controller_pause_on_unplug_only) {
+            controller_pause_install(game_image);
+        }
     }
     return initialized;
 }

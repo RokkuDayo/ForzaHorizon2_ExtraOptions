@@ -2,6 +2,7 @@
 #define FH2_SETTINGS_H
 
 #include "extra_options.h"
+#include "features/kbm_config.h"
 
 typedef enum { SETTING_BOOLEAN, SETTING_MSAA, SETTING_PHOTO_SAMPLES,
                SETTING_LIVERY_COUNT, SETTING_TURBO_INTERVAL } SettingType;
@@ -20,5 +21,7 @@ extern const size_t setting_count;
 void settings_defaults(ModOptions *options);
 int settings_read(const wchar_t *directory, ModOptions *options);
 int settings_value(const ModOptions *options, const SettingDefinition *definition);
+/* [KeyboardMouse], read with the rest of FH2_ExtraOptions.ini. */
+const KbmSettings *settings_keyboard_mouse(void);
 
 #endif

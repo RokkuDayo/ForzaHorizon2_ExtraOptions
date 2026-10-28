@@ -2,8 +2,11 @@
 #include "features.h"
 #include "support.h"
 #include "features/bindings.h"
+#include "features/kbm_config.h"
 
 #define INI_MAX_SIZE 8192
+static KbmSettings keyboard_mouse;
+
 #define SETTING(section, key, field, type) {section, key, key, offsetof(ModOptions, field), type}
 
 const SettingDefinition setting_definitions[] = {
@@ -13,6 +16,8 @@ const SettingDefinition setting_definitions[] = {
     SETTING("Experiments", "LocalDrivatarLiveries", local_drivatar_liveries, SETTING_BOOLEAN),
     SETTING("Experiments", "MaxDrivatarLiveries", max_drivatar_liveries, SETTING_LIVERY_COUNT),
     SETTING("Frontend", "SkipIntro", skip_intro, SETTING_BOOLEAN),
+    SETTING("Frontend", "PauseOnlyOnControllerUnplug", controller_pause_on_unplug_only,
+            SETTING_BOOLEAN),
     SETTING("Frontend", "CarsNextToHome", cars_next_to_home, SETTING_BOOLEAN),
     SETTING("Frontend", "MenuTurboIntervalMs", menu_turbo_interval_ms, SETTING_TURBO_INTERVAL),
     SETTING("Frontend", "AllRimsCategory", all_rims_category, SETTING_BOOLEAN),
@@ -119,7 +124,8 @@ static int known_section(const char *name) {
     if (text_equal_ignore_case(name, "Gameplay") || text_equal_ignore_case(name, "Camera") ||
         text_equal_ignore_case(name, "Graphics") || text_equal_ignore_case(name, "Livery") ||
         text_equal_ignore_case(name, "HUD") || text_equal_ignore_case(name, "Bindings") ||
-        text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language")) {
+        text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language") ||
+        text_equal_ignore_case(name, "KeyboardMouse")) {
         return 1;
     }
     for (size_t index = 0; index < setting_count; ++index) {
@@ -294,6 +300,13 @@ static int parse_ini(char *text, ModOptions *options) {
             }
             continue;
         }
+        // Keyboard & mouse (features/kbm_config.c); off unless Enabled=1.
+        if (text_equal_ignore_case(section, "KeyboardMouse")) {
+            if (!kbm_config_parse(&keyboard_mouse, key, value)) {
+                goto invalid;
+            }
+            continue;
+        }
         const SettingDefinition *definition = find_setting(section, key);
         int parsed;
         if (!definition || !parse_value(definition, value, &parsed)) {
@@ -301,6 +314,11 @@ static int parse_ini(char *text, ModOptions *options) {
         }
         int *field = (int *)((unsigned char *)options + definition->field_offset);
         *field = parsed;
+    }
+    if (!kbm_config_validate(&keyboard_mouse)) {
+        status_set("REFUSED: [KeyboardMouse] binds one key to two actions of the same group "
+                   "(driving or menus).");
+        return 0;
     }
     return 1;
 
@@ -310,9 +328,14 @@ invalid:
     return 0;
 }
 
+const KbmSettings *settings_keyboard_mouse(void) {
+    return &keyboard_mouse;
+}
+
 int settings_read(const wchar_t *directory, ModOptions *options) {
     bindings_reset();
     settings_defaults(options);
+    kbm_config_defaults(&keyboard_mouse);
     if (!path_join(ini_path, directory, MOD_INI_NAME)) {
         status_set("REFUSED: INI path is too long.");
         return 0;

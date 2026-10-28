@@ -75,6 +75,8 @@ COMMON_SOURCES = [
     "features/autodrive.c",
     "features/game_input.c",
     "features/bindings.c",
+    "features/kbm_config.c",
+    "features/controller_pause.c",
     "features/offline_events.c",
     "features/custom_showcases.c",
     "features/offline_event_division.c",
@@ -220,6 +222,11 @@ def build(compiler, output, directory, options):
             "adapters/azimuth_host.c",
             "adapters/azimuth_save.c",
             "adapters/azimuth_markers.c",
+            "features/kbm_input.c",
+            "features/kbm_win32.c",
+            "features/kbm_pitch.c",
+            "features/kbm_menu.c",
+            "features/kbm_rebind.c",
         ]
         if options.azimuth
         else ["adapters/mezcal.c"]

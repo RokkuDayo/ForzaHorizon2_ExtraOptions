@@ -6,4 +6,9 @@ unsigned video_options_page(const char *text, size_t length);
 int video_options_is_xaml(const char *text, size_t length);
 size_t video_options_extend_xaml(unsigned char *game_image, const char *text, size_t length,
                                  char *output, size_t capacity);
+#ifdef FH2_AZIMUTH
+/* The KEYBOARD & MOUSE page (kbm_menu.c), built from the native Video page. */
+size_t video_options_keyboard_xaml(unsigned char *game_image, const char *text, size_t length,
+                                   char *output, size_t capacity);
+#endif
 #endif

@@ -31,12 +31,32 @@ The gamerpic feature lazily loads the system Windows codec on a later UI call.
 Autodrive loads User32 lazily on a native GPS update to read F2 and focus.
 Controller buttons and telemetry visibility are read from native game state;
 the cinematic transition calls the game's existing white-flash routine.
+Keyboard & mouse (off by default) loads User32 and GDI32 lazily when enabled and
+reads Raw Input on its own thread through a message-only window; while its menu
+pointer is shown it sets the game window's class cursor.
 
 Both adapters initialize synchronously in `DllMain`. Startup performs simple
 configuration I/O, hashing, mapped-image validation, and memory patching.
 Callback resource work and PNG decoding happen on normal game call paths.
 There is no worker thread or startup wait. Callback installation pins the DLL
 before any callback pointer is written.
+
+## Offline tests
+
+Build with `--test` (adds the `Fh2Test*` exports), then run the checks; they
+work in a temporary folder and never start the game:
+
+```text
+python build.py /absolute/path/to/zig.exe --azimuth --test --output out/winmm-test.dll
+python tools/test-keyboard-mouse.py out/winmm-test.dll
+python tools/test-controller-pause.py out/winmm-test.dll
+python tools/test-keyboard-mouse-page.py out/winmm-test.dll /path/to/media/UI.zip
+```
+
+The last one builds the Settings hub and the KEYBOARD & MOUSE page from the
+game's own `A_PauseOptions.xaml` and `A_VideoOptions.xaml` (read from the
+game's `media/UI.zip`) and round-trips options and key bindings through
+`[KeyboardMouse]`.
 
 ## Patch data
 
