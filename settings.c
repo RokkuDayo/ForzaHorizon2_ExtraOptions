@@ -13,6 +13,9 @@ const SettingDefinition setting_definitions[] = {
     SETTING("Experiments", "LocalDrivatarLiveries", local_drivatar_liveries, SETTING_BOOLEAN),
     SETTING("Experiments", "MaxDrivatarLiveries", max_drivatar_liveries, SETTING_LIVERY_COUNT),
     SETTING("Frontend", "SkipIntro", skip_intro, SETTING_BOOLEAN),
+    SETTING("Frontend", "WorldMenu", world_menu, SETTING_BOOLEAN),
+    SETTING("World", "TimeOfDay", world_time, SETTING_TIME_OF_DAY),
+    SETTING("World", "Weather", world_weather, SETTING_WEATHER),
     SETTING("Frontend", "CarsNextToHome", cars_next_to_home, SETTING_BOOLEAN),
     SETTING("Frontend", "MenuTurboIntervalMs", menu_turbo_interval_ms, SETTING_TURBO_INTERVAL),
     SETTING("Frontend", "AllRimsCategory", all_rims_category, SETTING_BOOLEAN),
@@ -54,6 +57,10 @@ static const SettingDefinition legacy_settings[] = {
 
 const size_t setting_count = ARRAY_COUNT(setting_definitions);
 static char ini_buffer[INI_MAX_SIZE + 1];
+// [World] values, by choice index (features/time_weather.h).
+static const char *const world_values[2][5] = {
+    {"game", "sunrise", "midday", "sunset", "midnight"},
+    {"game", "sunny", "wet", "rain", "storm"}};
 static wchar_t ini_path[PATH_CAPACITY];
 
 void settings_defaults(ModOptions *options) {
@@ -152,6 +159,16 @@ static const SettingDefinition *find_setting(const char *section, const char *ke
 }
 
 static int parse_value(const SettingDefinition *definition, const char *text, int *value) {
+    if (definition->type == SETTING_TIME_OF_DAY || definition->type == SETTING_WEATHER) {
+        const char *const *names = world_values[definition->type == SETTING_WEATHER];
+        for (int index = 0; index < 5; ++index) {
+            if (text_equal_ignore_case(text, names[index])) {
+                *value = index;
+                return 1;
+            }
+        }
+        return 0;
+    }
     if (definition->type == SETTING_TURBO_INTERVAL) {
         unsigned interval = 0;
         if (!*text) return 0;
@@ -308,6 +325,21 @@ invalid:
     status_set("REFUSED: invalid INI section, option, or value. See the supplied "
                "FH2_ExtraOptions.ini.");
     return 0;
+}
+
+int settings_write_world(unsigned setting, int value) {
+    if (setting > 1 || value < 0 || value >= 5 || !ini_path[0]) {
+        return 0;
+    }
+    wchar_t name[16];
+    const char *text = world_values[setting][value];
+    unsigned length = 0;
+    for (; text[length] && length + 1 < ARRAY_COUNT(name); ++length) {
+        name[length] = (wchar_t)text[length];
+    }
+    name[length] = 0;
+    return WritePrivateProfileStringW(L"World", setting ? L"Weather" : L"TimeOfDay", name,
+                                      ini_path) != 0;
 }
 
 int settings_read(const wchar_t *directory, ModOptions *options) {

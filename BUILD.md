@@ -38,6 +38,18 @@ Callback resource work and PNG decoding happen on normal game call paths.
 There is no worker thread or startup wait. Callback installation pins the DLL
 before any callback pointer is written.
 
+## Offline tests
+
+Build with `--test` (adds the `Fh2Test*` exports), then run the checks; they
+work in a temporary folder and never start the game. Given the game's
+`media/UI.zip`, the time and weather check also rebuilds the shipped Settings
+hub and Video page XAML:
+
+```text
+python build.py /absolute/path/to/zig.exe --azimuth --test --output out/winmm-test.dll
+python tools/test-time-weather.py out/winmm-test.dll /path/to/Mount/media/UI.zip
+```
+
 ## Patch data
 
 Edit `patches.json`, then regenerate the checked-in C tables:

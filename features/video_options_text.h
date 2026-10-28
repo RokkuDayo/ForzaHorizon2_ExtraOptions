@@ -29,6 +29,8 @@ typedef struct {
     const wchar_t *event_labels[4];
     const wchar_t *grid_choices[3];
     const wchar_t *manufacturer_jump;
+    const wchar_t *world;
+    const char *world_descriptions[2];
 } VideoOptionsText;
 
 const VideoOptionsText *video_options_text(unsigned char *game_image);

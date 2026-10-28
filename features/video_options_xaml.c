@@ -1,5 +1,6 @@
 #include "video_options_xaml.h"
 #include "support.h"
+#include "photo_environment.h"
 #include "video_options_text.h"
 #include "video_settings.h"
 
@@ -528,6 +529,133 @@ size_t video_options_extend_xaml(unsigned char *game_image, const char *text, si
         } else if (text + index == height) {
             append_text(&buffer, "Height=\"275\"");
             index += 12;
+        } else {
+            append_bytes(&buffer, text + index, 1);
+            ++index;
+        }
+    }
+    if (!buffer.valid) {
+        return 0;
+    }
+    output[buffer.length] = 0;
+    return buffer.length;
+}
+
+size_t video_options_xml_text(char *output, size_t capacity, const wchar_t *text) {
+    static const char digits[] = "0123456789ABCDEF";
+    size_t used = 0;
+    for (; text && *text; ++text) {
+        unsigned code = (unsigned)*text;
+        if (code >= 0xd800 && code < 0xdc00 && text[1] >= 0xdc00 && text[1] < 0xe000) {
+            code = 0x10000 + ((code - 0xd800) << 10) + ((unsigned)text[1] - 0xdc00);
+            ++text;
+        }
+        char piece[12];
+        size_t count = 0;
+        if (code >= 0x20 && code < 0x7f && code != '"' && code != '&' && code != '<' &&
+            code != '>') {
+            piece[count++] = (char)code;
+        } else {
+            piece[count++] = '&';
+            piece[count++] = '#';
+            piece[count++] = 'x';
+            int started = 0;
+            for (int shift = 20; shift >= 0; shift -= 4) {
+                unsigned digit = (code >> shift) & 15;
+                if (digit || started || !shift) {
+                    piece[count++] = digits[digit];
+                    started = 1;
+                }
+            }
+            piece[count++] = ';';
+        }
+        if (count >= capacity - used) {
+            return 0;
+        }
+        memory_copy(output + used, piece, count);
+        used += count;
+    }
+    if (!capacity) {
+        return 0;
+    }
+    output[used] = 0;
+    return used;
+}
+
+static void append_wide(XamlBuffer *buffer, const wchar_t *text) {
+    char encoded[512];
+    if (!video_options_xml_text(encoded, sizeof(encoded), text)) {
+        buffer->valid = 0;
+        return;
+    }
+    append_text(buffer, encoded);
+}
+
+/* The World page (world_menu.c): the native Video page with its own title, no
+   brightness preview, and only the Time of Day and Weather rows in place of
+   brightness and subtitles. The first row takes the FirstItem name that the
+   page focuses. */
+static const char *const world_properties[] = {"WorldTimeOfDay", "WorldWeather"};
+static const char *const world_collections[] = {"WorldTimeChoices", "WorldWeatherChoices"};
+
+size_t video_options_world_xaml(unsigned char *game_image, const char *text, size_t length,
+                                char *output, size_t capacity) {
+    static const char title[] = "Content=\"{local:Loc ScreenTitles.IDS_VideoOptions}\"";
+    static const char panel[] = "<StackPanel";
+    const char *heading = text_find_unique(text, length, title);
+    const char *preview = text_find(text, length, brightness_preview_tag);
+    const char *resources = text_find(text, length, "</ResourceDictionary>");
+    const char *list = text_find(text, length, "<local:CommonListBox x:Name=\"OptionsList\"");
+    const char *rows =
+        list ? text_find(list, length - (size_t)(list - text), "</local:CommonListBox>") : NULL;
+    const char *opening_end = list && rows ? text_find(list, (size_t)(rows - list), ">") : NULL;
+    if (!capacity || !text_find(text, length, "x:Class=\"ForzaUI.A_VideoOptions\"") || !heading ||
+        !preview || !resources || !opening_end || resources >= heading || heading >= preview ||
+        preview >= list || text_find(text, length, "EO_WorldTimeOfDay")) {
+        return 0;
+    }
+    const char *items = opening_end + 1;
+    const VideoOptionsText *localized = video_options_text(game_image);
+    XamlBuffer buffer = {output, 0, capacity, 1};
+    if (length < 3 || !memory_equal(text, "\xef\xbb\xbf", 3)) {
+        append_bytes(&buffer, "\xef\xbb\xbf", 3);
+    }
+    for (size_t index = 0; index < length && buffer.valid;) {
+        if (text + index == resources) {
+            for (unsigned i = 0; i < ARRAY_COUNT(world_properties); ++i) {
+                append_text(&buffer, "<local:TileMenuDataItem x:Key=\"EO_");
+                append_text(&buffer, world_properties[i]);
+                append_text(&buffer, "\" Heading=\"");
+                append_wide(&buffer, photo_environment_title(i));
+                append_text(&buffer, "\" Description=\"");
+                append_attribute(&buffer, localized->world_descriptions[i]);
+                append_text(&buffer, "\"/>");
+            }
+        }
+        if (text + index == heading) {
+            append_text(&buffer, "Content=\"");
+            append_wide(&buffer, localized->world);
+            append_text(&buffer, "\"");
+            index += sizeof(title) - 1;
+        } else if (text + index == preview) {
+            append_text(&buffer, "<StackPanel Visibility=\"Collapsed\"");
+            index += sizeof(panel) - 1;
+        } else if (text + index == items) {
+            for (unsigned i = 0; i < ARRAY_COUNT(world_properties); ++i) {
+                append_text(&buffer, i ? "<local:SpinnerControl Tag=\"{StaticResource EO_"
+                                       : "<local:SpinnerControl x:Name=\"FirstItem\" "
+                                         "Tag=\"{StaticResource EO_");
+                append_text(&buffer, world_properties[i]);
+                append_text(&buffer, "}\" Style=\"{StaticResource "
+                                     "A_Style_SpinnerControl_Default}\" Label=\"");
+                append_wide(&buffer, photo_environment_title(i));
+                append_text(&buffer, "\" SelectedIndex=\"{Binding ");
+                append_text(&buffer, world_properties[i]);
+                append_text(&buffer, "}\" ItemsSource=\"{Binding ");
+                append_text(&buffer, world_collections[i]);
+                append_text(&buffer, "}\"/>");
+            }
+            index = (size_t)(rows - text);
         } else {
             append_bytes(&buffer, text + index, 1);
             ++index;

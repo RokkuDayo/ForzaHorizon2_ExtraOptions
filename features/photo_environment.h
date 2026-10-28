@@ -10,4 +10,5 @@ int photo_environment_set(unsigned setting, int value);
 unsigned photo_environment_count(unsigned setting);
 const wchar_t *photo_environment_label(unsigned setting, unsigned index);
 const wchar_t *photo_environment_title(unsigned setting);
+const wchar_t *photo_environment_world_label(unsigned setting, unsigned index);
 #endif

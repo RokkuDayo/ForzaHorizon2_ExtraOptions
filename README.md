@@ -26,6 +26,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - Toggle for 4K liveries w/ enhanced sampling.
  - Unrestricted Photo Mode.
  - "Return to Garage" button in the pause menu.
+ - Time of day and weather for the open world from a World tile in the pause menu (optional, off by default).
  - Aero tuning without equipping Forza Aero parts.
  - New rim style category with all aftermarket rims.
  - Toggle for having the minimap follow the orbit camera.
@@ -56,6 +57,22 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 
 ### Autodrive
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
+
+### Time of Day and Weather
+Off by default. With this on, the pause menu's Settings page gets a World tile under Team Credits. It opens a World page with two rows that apply at once in the open world:
+ - Time of Day: Default, Sunrise, Midday, Sunset, Midnight. A chosen time stops the clock there.
+ - Weather: Default, Clear, Wet, Rain, Storm.
+
+Default is the game's own time and weather; nothing is overridden. The choices are kept in the INI and applied again on the next start:
+```ini
+[Frontend]
+WorldMenu=1
+
+[World]
+TimeOfDay=game
+Weather=game
+```
+TimeOfDay takes game, sunrise, midday, sunset or midnight; Weather takes game, sunny, wet, rain or storm. The [World] values are used only while WorldMenu is 1.
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.

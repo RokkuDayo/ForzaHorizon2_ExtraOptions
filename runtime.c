@@ -3,6 +3,7 @@
 #include "features/addons.h"
 #include "features/plugins.h"
 #include "features/video_settings.h"
+#include "features/world_menu.h"
 #include "logging.h"
 #include "patch_engine.h"
 #include "settings.h"
@@ -87,6 +88,11 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
 #endif
     if (initialized && options.enabled) {
         log_enabled_features(settings_directory, &options);
+        // [Frontend] WorldMenu (off by default): the World tile and the time of
+        // day and weather hooks; nothing is hooked while it is off.
+        if (options.world_menu) {
+            world_menu_install(game_image, options.world_time, options.world_weather);
+        }
     }
     return initialized;
 }

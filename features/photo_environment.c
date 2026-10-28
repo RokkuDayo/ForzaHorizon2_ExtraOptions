@@ -120,6 +120,17 @@ const wchar_t *photo_environment_label(unsigned setting,unsigned index){
     unsigned native=weather_indices[index];
     return localized(native==3 || native==4 || native==7?"TheIsland":"GameOptions2",weather[native],weather_fallback[native]);
 }
+// The World page's choices (world_menu.c): the same table entries; its
+// weather choices are Clear, Wet, Rain and Storm. 0 is left to the caller.
+const wchar_t *photo_environment_world_label(unsigned setting,unsigned index){
+    static const unsigned times[]={0,41476,54787,2690,19466};
+    static const wchar_t *const time_fallback[]={NULL,L"Sunrise",L"Midday",L"Sunset",L"Midnight"};
+    static const unsigned weather[]={0,21549,44895,34896,19978};
+    static const wchar_t *const weather_fallback[]={NULL,L"Clear",L"Wet",L"Rain",L"Storm"};
+    if(!index || index>=5 || setting>1)return NULL;
+    return setting?localized("GameOptions2",weather[index],weather_fallback[index])
+                  :localized("GameOptions2",times[index],time_fallback[index]);
+}
 int photo_environment_set(unsigned setting,int value) {
     if(setting==2)return photo_page?vehicle_photo_lights_set(value):0;
     if(!photo_page || setting>1 || value<0 || (unsigned)value>=photo_environment_count(setting) || selection[setting]==value)return 0;

@@ -4,7 +4,8 @@
 #include "extra_options.h"
 
 typedef enum { SETTING_BOOLEAN, SETTING_MSAA, SETTING_PHOTO_SAMPLES,
-               SETTING_LIVERY_COUNT, SETTING_TURBO_INTERVAL } SettingType;
+               SETTING_LIVERY_COUNT, SETTING_TURBO_INTERVAL, SETTING_TIME_OF_DAY,
+               SETTING_WEATHER } SettingType;
 
 typedef struct {
     const char *section;
@@ -20,5 +21,8 @@ extern const size_t setting_count;
 void settings_defaults(ModOptions *options);
 int settings_read(const wchar_t *directory, ModOptions *options);
 int settings_value(const ModOptions *options, const SettingDefinition *definition);
+/* [World] TimeOfDay (0) or Weather (1), as its value name, in
+   FH2_ExtraOptions.ini; 1 when written. */
+int settings_write_world(unsigned setting, int value);
 
 #endif
