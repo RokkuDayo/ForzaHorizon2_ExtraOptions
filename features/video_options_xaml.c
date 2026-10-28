@@ -2,6 +2,9 @@
 #include "support.h"
 #include "video_options_text.h"
 #include "video_settings.h"
+#ifdef FH2_AZIMUTH
+#include "kbm_menu.h"
+#endif
 
 typedef struct {
     const char *property;
@@ -447,6 +450,103 @@ static size_t extend_list_xaml(unsigned page, unsigned char *image, const char *
     buffer.bytes[buffer.length] = 0;
     return buffer.length;
 }
+
+#ifdef FH2_AZIMUTH
+/* The KEYBOARD & MOUSE page: the native Video page with its own title, the
+   brightness preview hidden and its two rows replaced by the [KeyboardMouse]
+   options, the key binding rows and Reset (kbm_menu.c, kbm_rebind.c). The
+   list keeps its native style, which scrolls to the focused row; its
+   SelectedIndex (the focused row) goes OneWayToSource to the list-selection
+   tracker so Enter can tell which key row is focused. */
+static void append_keyboard_row(XamlBuffer *buffer, unsigned char *image, unsigned row,
+                                int resource) {
+    append_text(buffer, resource ? "<local:TileMenuDataItem x:Key=\"EO_"
+                                 : row ? "<local:SpinnerControl Tag=\"{StaticResource EO_"
+                                       : "<local:SpinnerControl x:Name=\"FirstItem\" "
+                                         "Tag=\"{StaticResource EO_");
+    append_text(buffer, kbm_menu_property(row));
+    append_text(buffer, resource ? "\" Heading=\""
+                                 : "}\" Style=\"{StaticResource A_Style_SpinnerControl_Default}\" "
+                                   "Label=\"");
+    append_attribute(buffer, kbm_menu_name(image, row));
+    if (resource) {
+        append_text(buffer, "\" Description=\"");
+        append_attribute(buffer, kbm_menu_description(image, row));
+        append_text(buffer, "\"/>");
+        return;
+    }
+    append_text(buffer, "\" SelectedIndex=\"{Binding ");
+    append_text(buffer, kbm_menu_property(row));
+    append_text(buffer, "}\" ItemsSource=\"{Binding ");
+    append_text(buffer, kbm_menu_collection(row));
+    append_text(buffer, "}\"/>");
+}
+
+size_t video_options_keyboard_xaml(unsigned char *game_image, const char *text, size_t length,
+                                   char *output, size_t capacity) {
+    static const char title[] = "Content=\"{local:Loc ScreenTitles.IDS_VideoOptions}\"";
+    static const char panel[] = "<StackPanel";
+    static const char list_name[] = "<local:CommonListBox x:Name=\"OptionsList\"";
+    static const char native_height[] = "Height=\"110\"";
+    const char *heading = text_find_unique(text, length, title);
+    const char *preview = text_find(text, length, brightness_preview_tag);
+    const char *resources = text_find(text, length, "</ResourceDictionary>");
+    const char *list = text_find(text, length, list_name);
+    const char *rows =
+        list ? text_find(list, length - (size_t)(list - text), "</local:CommonListBox>") : NULL;
+    const char *opening_end = list && rows ? text_find(list, (size_t)(rows - list), ">") : NULL;
+    if (!capacity || !text_find(text, length, "x:Class=\"ForzaUI.A_VideoOptions\"") || !heading ||
+        !preview || !resources || !opening_end || resources >= heading || heading >= preview ||
+        preview >= list || text_find(text, length, "EO_KbmMode")) {
+        return 0;
+    }
+    const char *items = opening_end + 1;
+    const char *height = text_find(list, (size_t)(items - list), native_height);
+    const char *named = list + sizeof(list_name) - 1;
+    const VideoOptionsText *localized = video_options_text(game_image);
+    XamlBuffer buffer = {output, 0, capacity, 1};
+    if (length < 3 || !memory_equal(text, "\xef\xbb\xbf", 3)) {
+        append_bytes(&buffer, "\xef\xbb\xbf", 3);
+    }
+    for (size_t index = 0; index < length && buffer.valid;) {
+        if (text + index == resources) {
+            for (unsigned row = 0; row < KBM_MENU_LIST_ROW; ++row) {
+                append_keyboard_row(&buffer, game_image, row, 1);
+            }
+        }
+        if (text + index == named) {
+            append_text(&buffer, " SelectedIndex=\"{Binding ");
+            append_text(&buffer, kbm_menu_property(KBM_MENU_LIST_ROW));
+            append_text(&buffer, ", Mode=OneWayToSource}\"");
+        }
+        if (height && text + index == height) {
+            append_text(&buffer, "Height=\"440\""); /* eight 55-pixel rows */
+            index += sizeof(native_height) - 1;
+        } else if (text + index == heading) {
+            append_text(&buffer, "Content=\"");
+            append_attribute(&buffer, localized->keyboard_mouse);
+            append_text(&buffer, "\"");
+            index += sizeof(title) - 1;
+        } else if (text + index == preview) {
+            append_text(&buffer, "<StackPanel Visibility=\"Collapsed\"");
+            index += sizeof(panel) - 1;
+        } else if (text + index == items) {
+            for (unsigned row = 0; row < KBM_MENU_LIST_ROW; ++row) {
+                append_keyboard_row(&buffer, game_image, row, 0);
+            }
+            index = (size_t)(rows - text);
+        } else {
+            append_bytes(&buffer, text + index, 1);
+            ++index;
+        }
+    }
+    if (!buffer.valid) {
+        return 0;
+    }
+    output[buffer.length] = 0;
+    return buffer.length;
+}
+#endif
 
 static size_t extend_difficulty(unsigned char *image, const char *text, size_t length, char *output, size_t capacity) {
     const char *row =

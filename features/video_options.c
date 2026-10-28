@@ -10,6 +10,7 @@
 #include "photo_environment.h"
 #include "offline_events.h"
 #include "bindings.h"
+#include "kbm_menu.h"
 
 #define RESOURCE_THUNK_RVA 0x13fe354u
 #define RESET_SLOT_RVA (0x2e60370u + 0x590u)
@@ -101,6 +102,11 @@ enum {
 
 enum { PHOTO_DRIVER_PROPERTY=VIDEO_SETTING_COUNT+CHOICE_COLLECTION_COUNT,
        PHOTO_TIME_PROPERTY,PHOTO_WEATHER_PROPERTY,PHOTO_LIGHTS_PROPERTY };
+// Keyboard & mouse page rows (kbm_menu.c): their values, then one choice
+// collection per row. Registered only while kbm_menu.c is installed.
+enum { KBM_FIRST_PROPERTY = PHOTO_LIGHTS_PROPERTY + 1,
+       KBM_CHOICES_PROPERTY = KBM_FIRST_PROPERTY + KBM_MENU_ROWS,
+       PROPERTY_COUNT = KBM_CHOICES_PROPERTY + KBM_MENU_ROWS };
 
 static unsigned char *image;
 static Allocate allocate;
@@ -110,11 +116,13 @@ static ResetOptions native_reset, native_hud_reset, native_audio_reset, native_d
 static ObjectInitialize object_initialize, object_cleanup;
 static BoxValue box_int, box_float;
 static PropertyChanged property_changed;
-static NativeProperty properties[VIDEO_SETTING_COUNT + CHOICE_COLLECTION_COUNT + 4];
-static NativePropertyLink links[SETTINGS_PAGE_COUNT][VIDEO_SETTING_COUNT + CHOICE_COLLECTION_COUNT + 4];
-static void *choices[CHOICE_COLLECTION_COUNT];
+static NativeProperty properties[PROPERTY_COUNT];
+static NativePropertyLink links[SETTINGS_PAGE_COUNT][PROPERTY_COUNT];
+static void *choices[CHOICE_COLLECTION_COUNT + KBM_MENU_ROWS];
 static const unsigned choice_counts[] = {3, 2, 6, 2, 3, 2, 3, 2, 2, 2, 4, 4, 0, 2, 5, 1};
 static void *registered_image[SETTINGS_PAGE_COUNT], *initialized_image;
+// The open Video page was built as the KEYBOARD & MOUSE page (kbm_menu.c).
+static int keyboard_page;
 static void *resource_vtable[7];
 static unsigned char resource_thunk[12], reset_original[8], reset_callback[8],
     hud_reset_original[8], hud_reset_callback[8], audio_reset_original[8], audio_reset_callback[8],
@@ -195,6 +203,17 @@ static const char *const property_names[] = {"DriftMode",
                                              "PhotoWeather",
                                              "PhotoLights"};
 
+static const char *property_name(unsigned index) {
+    if (index < KBM_FIRST_PROPERTY) {
+        return property_names[index];
+    }
+    if (!kbm_menu_installed() || index >= PROPERTY_COUNT) {
+        return NULL;
+    }
+    return index < KBM_CHOICES_PROPERTY ? kbm_menu_property(index - KBM_FIRST_PROPERTY)
+                                        : kbm_menu_collection(index - KBM_CHOICES_PROPERTY);
+}
+
 static void release_object(void *object) {
     if (object && InterlockedDecrement((volatile LONG *)((unsigned char *)object + 0x10)) == 0) {
         ((void (*)(void *))(image + NATIVE_DELETE_OBJECT))(object);
@@ -214,11 +233,117 @@ static unsigned property_index(const NativeProperty *property) {
 static int make_choices(unsigned collection);
 static unsigned character_revision;
 
+/* Key binding rows (kbm_rebind.c): the KEYBOARD & MOUSE page object, held
+   with a reference so the capture can update it later from the UI tick. */
+static void *rebind_page, *retired_pages[4];
+
+static int rebind_property(unsigned index) {
+    unsigned row = index >= KBM_CHOICES_PROPERTY ? index - KBM_CHOICES_PROPERTY
+                   : index >= KBM_FIRST_PROPERTY ? index - KBM_FIRST_PROPERTY
+                                                 : 0;
+    return index >= KBM_FIRST_PROPERTY && index < PROPERTY_COUNT && row >= KBM_MENU_OPTION_ROWS;
+}
+
+static void track_rebind_page(void *page) {
+    if (!keyboard_page || !page || page == rebind_page) {
+        return;
+    }
+    InterlockedIncrement((volatile LONG *)((unsigned char *)page + 0x10));
+    if (rebind_page) {
+        /* Released by the UI tick, never in the middle of a binding. */
+        release_object(retired_pages[ARRAY_COUNT(retired_pages) - 1]);
+        for (unsigned i = ARRAY_COUNT(retired_pages) - 1; i; --i) {
+            retired_pages[i] = retired_pages[i - 1];
+        }
+        retired_pages[0] = rebind_page;
+    }
+    rebind_page = page;
+}
+
+static int only_reference(void *object) {
+    LONG references = 0;
+    return !memory_read((unsigned char *)object + 0x10, &references, sizeof(references)) ||
+           references <= 1;
+}
+
+/* With `collect` (the UI tick only), first drops the pages the game has let
+   go: only this reference is left. */
+void *video_options_rebind_page(int collect) {
+    for (unsigned i = 0; collect && i < ARRAY_COUNT(retired_pages); ++i) {
+        if (retired_pages[i] && only_reference(retired_pages[i])) {
+            release_object(retired_pages[i]);
+            retired_pages[i] = NULL;
+        }
+    }
+    if (collect && rebind_page && only_reference(rebind_page)) {
+        release_object(rebind_page);
+        rebind_page = NULL;
+    }
+    return rebind_page;
+}
+
+static void notify_rebind_rows(void *page) {
+    if (!page || registered_image[VIDEO_PAGE] != image) {
+        return;
+    }
+    for (unsigned row = KBM_MENU_OPTION_ROWS; row < KBM_MENU_ROWS; ++row) {
+        if (kbm_menu_take_dirty(row)) {
+            property_changed(page, &properties[KBM_FIRST_PROPERTY + row]);
+        }
+    }
+}
+
+void video_options_rebind_tick(void) {
+    notify_rebind_rows(video_options_rebind_page(0));
+}
+
+static void **keyboard_value(void **output, unsigned index, void *page) {
+    unsigned row = (index - KBM_FIRST_PROPERTY) % KBM_MENU_ROWS;
+    if (rebind_property(index)) {
+        track_rebind_page(page);
+        if (index >= KBM_CHOICES_PROPERTY && kbm_menu_labels_stale(row)) {
+            /* A new list: its labels hold the row's keys as they are now. */
+            void *previous = choices[CHOICE_COLLECTION_COUNT + row];
+            if (make_choices(CHOICE_COLLECTION_COUNT + row)) {
+                release_object(previous);
+            }
+        }
+    }
+    if (index < KBM_CHOICES_PROPERTY) {
+        int value = kbm_menu_get(row);
+        return box_int(output, &value);
+    }
+    *output = choices[CHOICE_COLLECTION_COUNT + row];
+    if (*output) {
+        InterlockedIncrement((volatile LONG *)((unsigned char *)*output + 0x10));
+    }
+    return output;
+}
+
+static void set_keyboard_value(NativeProperty *property, unsigned index, void *page, void *boxed) {
+    int value;
+    if (index >= KBM_CHOICES_PROPERTY) {
+        return;
+    }
+    if (rebind_property(index)) {
+        track_rebind_page(page);
+    }
+    if (memory_read((unsigned char *)boxed + 0x28, &value, sizeof(value)) &&
+        kbm_menu_set(index - KBM_FIRST_PROPERTY, value)) {
+        property_changed(page, property);
+        if (rebind_property(index)) {
+            notify_rebind_rows(page); /* Reset changes every key row */
+        }
+    }
+}
+
 static void **get_value(void **output, NativeProperty *property, void *page) {
-    (void)page;
     unsigned index = property_index(property);
     *output = NULL;
-    if(index>=PHOTO_DRIVER_PROPERTY && index<ARRAY_COUNT(properties)){
+    if (index >= KBM_FIRST_PROPERTY && index < PROPERTY_COUNT) {
+        return keyboard_value(output, index, page);
+    }
+    if(index>=PHOTO_DRIVER_PROPERTY && index<KBM_FIRST_PROPERTY){
         int value=index==PHOTO_DRIVER_PROPERTY?driver_photo_get():photo_environment_get(index-PHOTO_TIME_PROPERTY);
         return box_int(output,&value);
     }
@@ -246,7 +371,11 @@ static void **get_value(void **output, NativeProperty *property, void *page) {
 
 static void set_value(NativeProperty *property, void *page, void *boxed) {
     unsigned index = property_index(property);
-    if (!boxed || index>=ARRAY_COUNT(properties) || (index >= VIDEO_SETTING_COUNT && index<PHOTO_DRIVER_PROPERTY)) {
+    if (boxed && index >= KBM_FIRST_PROPERTY && index < PROPERTY_COUNT) {
+        set_keyboard_value(property, index, page, boxed);
+        return;
+    }
+    if (!boxed || index>=KBM_FIRST_PROPERTY || (index >= VIDEO_SETTING_COUNT && index<PHOTO_DRIVER_PROPERTY)) {
         return;
     }
     int value;
@@ -337,11 +466,18 @@ static int make_choices(unsigned collection) {
     for (unsigned i = 0; i < ARRAY_COUNT(vtables); ++i) {
         *(void **)((unsigned char *)items + offsets[i]) = image + vtables[i];
     }
-    unsigned count=collection==CHOICES_CHARACTER?driver_model_count():
+    unsigned keyboard_row = collection - CHOICE_COLLECTION_COUNT;
+    unsigned count=collection>=CHOICE_COLLECTION_COUNT?kbm_menu_choice_count(keyboard_row):
+        collection==CHOICES_CHARACTER?driver_model_count():
         collection>=CHOICES_PHOTO_TIME?photo_environment_count(collection-CHOICES_PHOTO_TIME):choice_counts[collection];
     for (unsigned index = 0; index < count; ++index) {
         void *label = NULL;
-        if(collection>=CHOICES_PHOTO_TIME && index){
+        if (collection >= CHOICE_COLLECTION_COUNT) {
+            const wchar_t *text = kbm_menu_choice(image, keyboard_row, index);
+            if (text) {
+                ((MakeString)(image + NATIVE_MAKE_STRING))(&label, text);
+            }
+        } else if(collection>=CHOICES_PHOTO_TIME && index){
             ((MakeString)(image+NATIVE_MAKE_STRING))(&label,photo_environment_label(collection-CHOICES_PHOTO_TIME,index));
         }else ((MakeString)(image + NATIVE_MAKE_STRING))(&label, choice_text(collection, index));
         if (!label) {
@@ -363,6 +499,10 @@ static int register_properties(unsigned page) {
     ((void (*)(void))(image + native_type_initializers[page]))();
     if (initialized_image != image) {
         for (unsigned i = 0; i < ARRAY_COUNT(choices); ++i) {
+            if (i >= CHOICE_COLLECTION_COUNT &&
+                !property_name(KBM_CHOICES_PROPERTY + i - CHOICE_COLLECTION_COUNT)) {
+                continue; // keyboard & mouse page rows: only while installed
+            }
             if (!make_choices(i)) {
                 for (unsigned j = 0; j < i; ++j) {
                     release_object(choices[j]);
@@ -373,12 +513,15 @@ static int register_properties(unsigned page) {
         }
     }
     for (unsigned index = 0; index < ARRAY_COUNT(properties); ++index) {
-        if (!property_names[index]) {
+        if (!property_name(index)) {
             continue;
         }
+        int collection = index >= KBM_CHOICES_PROPERTY ||
+                         (index >= VIDEO_SETTING_COUNT && index < PHOTO_DRIVER_PROPERTY);
         unsigned factory =
-            index >= VIDEO_SETTING_COUNT && index<PHOTO_DRIVER_PROPERTY ? NATIVE_COLLECTION_PROPERTY
-            : index == DRIFT_MODE || (index >= CAMERA_SETTING_COUNT && index != MASTER_VOLUME)
+            collection ? NATIVE_COLLECTION_PROPERTY
+            : index >= KBM_FIRST_PROPERTY || index == DRIFT_MODE ||
+                    (index >= CAMERA_SETTING_COUNT && index != MASTER_VOLUME)
                 ? NATIVE_INT_PROPERTY
                 : NATIVE_FLOAT_PROPERTY;
         NativeProperty *property = &properties[index];
@@ -387,9 +530,9 @@ static int register_properties(unsigned page) {
             object_initialize(property);
             property->vtable = original->vtable;
             memory_copy((unsigned char *)property + 0x28, (unsigned char *)original + 0x28, 0x30);
-            property->name = property_names[index];
+            property->name = property_name(index);
             property->getter = (void *)get_value;
-            property->setter = index >= VIDEO_SETTING_COUNT && index<PHOTO_DRIVER_PROPERTY ? NULL : (void *)set_value;
+            property->setter = collection ? NULL : (void *)set_value;
         }
         links[page][index].property = property;
         ((void (*)(void *, NativePropertyLink *))(image + NATIVE_REGISTER_PROPERTY))(
@@ -408,6 +551,15 @@ static int register_properties(unsigned page) {
 }
 
 static void reset_page(void *page, unsigned kind) {
+    if (kind == VIDEO_PAGE && keyboard_page) {
+        // The KEYBOARD & MOUSE page's reset returns its options to the mod's
+        // defaults; the key rows have their own Reset row.
+        kbm_menu_reset();
+        for (unsigned row = 0; registered_image[kind] == image && row < KBM_MENU_OPTION_ROWS; ++row) {
+            property_changed(page, &properties[KBM_FIRST_PROPERTY + row]);
+        }
+        return;
+    }
     (kind == DIFFICULTY_PAGE ? native_difficulty_reset
      : kind == AUDIO_PAGE    ? native_audio_reset
      : kind == HUD_PAGE      ? native_hud_reset
@@ -427,7 +579,7 @@ void video_options_photo_refresh(void *page) {
         void *old=choices[CHOICES_PHOTO_WEATHER];
         if(make_choices(CHOICES_PHOTO_WEATHER))release_object(old);
         property_changed(page,&properties[VIDEO_SETTING_COUNT+CHOICES_PHOTO_WEATHER]);
-        for(unsigned i=PHOTO_DRIVER_PROPERTY;i<ARRAY_COUNT(properties);++i)property_changed(page,&properties[i]);
+        for(unsigned i=PHOTO_DRIVER_PROPERTY;i<KBM_FIRST_PROPERTY;++i)property_changed(page,&properties[i]);
     }
 }
 
@@ -481,10 +633,12 @@ static void **get_resource(void *reader, void **output) {
                 : NULL;
     int make_grid = original && original->bytes && original->length > 0 &&
                     manufacturer_jump_is_xaml(original->bytes, original->length);
+    int hub = !logo && original->length <= (int)(XAML_LIMIT / 2) &&
+              kbm_menu_is_hub_xaml(original->bytes, (size_t)original->length);
     if (!original || original->length <= 0 ||
         (original->length > (int)(XAML_LIMIT / 2) && !pause_layout && !results_layout) || !original->bytes ||
         (!results_layout && !photo_layout && !pause_layout && !make_grid && !logo && !footer &&
-         !video_options_is_xaml(original->bytes, original->length))) {
+         !hub && !video_options_is_xaml(original->bytes, original->length))) {
         return output;
     }
     size_t capacity = pause_layout ? (size_t)original->length + 1 : XAML_LIMIT;
@@ -528,13 +682,37 @@ static void **get_resource(void *reader, void **output) {
         memory_copy(bytes + at + sizeof(uniform) - 1, original->bytes + at, original->length - at);
         length = original->length + sizeof(uniform) - 1;
         bytes[length] = 0;
+    } else if (hub) {
+        length = kbm_menu_hub_xaml(image, original->bytes, (size_t)original->length, bytes,
+                                   XAML_LIMIT);
     } else {
-        length =
-            video_options_extend_xaml(image, original->bytes, original->length, bytes, XAML_LIMIT);
+        length = 0;
+        if (video_options_page(original->bytes, original->length) == VIDEO_PAGE) {
+            // The KEYBOARD & MOUSE tile opens the Video page; it is built with
+            // the keyboard & mouse rows instead.
+            keyboard_page = kbm_menu_take_request();
+#ifdef FH2_AZIMUTH
+            if (keyboard_page) {
+                length = video_options_keyboard_xaml(image, original->bytes, original->length,
+                                                     bytes, XAML_LIMIT);
+                keyboard_page = length != 0;
+                kbm_menu_page_built();
+                log_append(keyboard_page ? "KBM MENU: KEYBOARD & MOUSE page built from the Video "
+                                           "page.\r\n"
+                                         : "KBM MENU: Video page layout did not match; Video page "
+                                           "shown instead.\r\n");
+            }
+#endif
+        }
+        if (!length) {
+            length = video_options_extend_xaml(image, original->bytes, original->length, bytes,
+                                               XAML_LIMIT);
+        }
     }
     unsigned page = photo_layout?PHOTO_PAGE:video_options_page(original->bytes, original->length);
     if (!length ||
-        ((photo_layout || (!results_layout && !pause_layout && !make_grid && !logo && !footer)) && !register_properties(page))) {
+        ((photo_layout || (!results_layout && !pause_layout && !make_grid && !logo && !footer && !hub)) &&
+         !register_properties(page))) {
         free_object(replacement);
         log_append("SETTINGS: menu layout did not match; original menu retained.\r\n");
         return output;
@@ -618,8 +796,15 @@ __declspec(dllexport) size_t Fh2TestVideoXaml(const char *text, size_t length, c
 }
 
 __declspec(dllexport) void *Fh2TestVideoProperty(unsigned index) {
-    return index < ARRAY_COUNT(properties) && property_names[index] ? &properties[index] : NULL;
+    return index < ARRAY_COUNT(properties) && property_name(index) ? &properties[index] : NULL;
 }
+
+#ifdef FH2_AZIMUTH
+__declspec(dllexport) size_t Fh2TestKeyboardXaml(const char *text, size_t length, char *out,
+                                                 size_t capacity) {
+    return video_options_keyboard_xaml(image, text, length, out, capacity);
+}
+#endif
 
 __declspec(dllexport) const wchar_t *Fh2TestVideoChoiceText(unsigned index) {
     return index < 3 ? choice_text(0, index) : NULL;

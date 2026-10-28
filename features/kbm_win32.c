@@ -416,6 +416,91 @@ void kbm_win32_take_mouse(long *dx, long *dy) {
     *dy = InterlockedExchange(&mouse_dy, 0);
 }
 
+/* In-game rebinding (kbm_rebind.c). While armed, the next key or mouse
+   button press goes to the capture slot instead of the game, and so does its
+   release. Alt and the Windows keys, and presses in the first 150 ms after
+   arming, are not taken (they reach the game as usual). While activation keys
+   are set (the settings page has a key binding row focused), a press of one
+   of them (Confirm, Enter by default) is held back from the game with its
+   release and reported to the page instead. */
+enum { CAPTURE_KEY = 0x10000, CAPTURE_MOUSE = 0x20000, CAPTURE_GRACE_MS = 150 };
+static volatile LONG capture_armed, capture_result, capture_ignored, activation_keys, activation;
+static volatile LONG64 capture_armed_at;
+static unsigned char capture_swallow[256]; /* input thread only */
+
+static int system_key(unsigned code) {
+    return code == 0x38 || code == 0xb8 || code == 0xdb || code == 0xdc || code == 0xdd;
+}
+
+static int capture_press(unsigned code, LONG result) {
+    if (!capture_armed) {
+        return 0;
+    }
+    if (system_key(code) || GetTickCount64() - (uint64_t)capture_armed_at < CAPTURE_GRACE_MS) {
+        InterlockedExchange(&capture_ignored, (LONG)code | 0x100);
+        return 0;
+    }
+    if (InterlockedCompareExchange(&capture_armed, 0, 1) != 1) {
+        return 0;
+    }
+    capture_swallow[code & 0xff] = 1;
+    InterlockedExchange(&capture_result, result);
+    return 1;
+}
+
+static int activation_press(unsigned code) {
+    LONG keys = activation_keys;
+    if (!keys || capture_armed || !code ||
+        (code != (keys & 0xff) && code != ((keys >> 8) & 0xff) && code != ((keys >> 16) & 0xff))) {
+        return 0;
+    }
+    capture_swallow[code & 0xff] = 1;
+    InterlockedExchange(&activation, (LONG)code);
+    return 1;
+}
+
+int kbm_win32_capture_arm(void) {
+    if (state != KBM_WIN32_RAW_INPUT) {
+        return 0;
+    }
+    InterlockedExchange(&capture_result, 0);
+    InterlockedExchange(&capture_ignored, 0);
+    InterlockedExchange64(&capture_armed_at, (LONG64)GetTickCount64());
+    InterlockedExchange(&capture_armed, 1);
+    return 1;
+}
+
+void kbm_win32_capture_disarm(void) {
+    InterlockedExchange(&capture_armed, 0);
+    InterlockedExchange(&capture_result, 0);
+}
+
+int kbm_win32_capture_take(unsigned *code) {
+    LONG result = InterlockedExchange(&capture_result, 0);
+    *code = (unsigned)result & 0xffu;
+    return result & CAPTURE_KEY ? 1 : result & CAPTURE_MOUSE ? 2 : 0;
+}
+
+unsigned kbm_win32_capture_ignored(void) {
+    LONG code = InterlockedExchange(&capture_ignored, 0);
+    return code ? (unsigned)code & 0xffu : 0u;
+}
+
+void kbm_win32_set_activation_keys(const unsigned short *codes, unsigned count) {
+    LONG keys = 0;
+    for (unsigned i = 0; i < count && i < 3; ++i) {
+        keys |= (LONG)(codes[i] & 0xff) << (8 * i);
+    }
+    if (state != KBM_WIN32_RAW_INPUT) {
+        keys = 0;
+    }
+    InterlockedExchange(&activation_keys, keys);
+}
+
+unsigned kbm_win32_take_activation(void) {
+    return (unsigned)InterlockedExchange(&activation, 0);
+}
+
 static int modifier_held(void) {
     return raw_down[0x38] || raw_down[0xb8] || raw_down[0xdb] || raw_down[0xdc];
 }
@@ -441,6 +526,10 @@ static void keyboard_packet(const RAWKEYBOARD *keyboard) {
     int down = !(flags & RI_KEY_BREAK);
     if (!down) {
         raw_down[code] = 0;
+        if (capture_swallow[code]) {
+            capture_swallow[code] = 0; /* the release of a captured press */
+            return;
+        }
         push_event(code, 0); /* releases are always delivered */
         return;
     }
@@ -449,7 +538,11 @@ static void keyboard_packet(const RAWKEYBOARD *keyboard) {
     }
     int blocked = modifier_held();
     raw_down[code] = 1;
-    if (!blocked && kbm_win32_focused()) {
+    int focused = kbm_win32_focused();
+    if (focused && (capture_press(code, CAPTURE_KEY | (LONG)code) || activation_press(code))) {
+        return;
+    }
+    if (!blocked && focused) {
         push_event(code, 1);
     }
 }
@@ -466,13 +559,17 @@ static void mouse_buttons(unsigned flags, int focused) {
         unsigned code = KBM_MOUSE_LEFT + i;
         if (flags & masks[i][0] && !raw_down[code]) {
             raw_down[code] = 1;
-            if (focused) {
+            if (focused && !capture_press(code, CAPTURE_MOUSE | (LONG)code)) {
                 push_event(code, 1);
             }
         }
         if (flags & masks[i][1]) {
             raw_down[code] = 0;
-            push_event(code, 0);
+            if (capture_swallow[code]) {
+                capture_swallow[code] = 0;
+            } else {
+                push_event(code, 0);
+            }
         }
     }
 }

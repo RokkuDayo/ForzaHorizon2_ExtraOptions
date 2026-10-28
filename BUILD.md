@@ -50,7 +50,13 @@ work in a temporary folder and never start the game:
 python build.py /absolute/path/to/zig.exe --azimuth --test --output out/winmm-test.dll
 python tools/test-keyboard-mouse.py out/winmm-test.dll
 python tools/test-controller-pause.py out/winmm-test.dll
+python tools/test-keyboard-mouse-page.py out/winmm-test.dll /path/to/media/UI.zip
 ```
+
+The last one builds the Settings hub and the KEYBOARD & MOUSE page from the
+game's own `A_PauseOptions.xaml` and `A_VideoOptions.xaml` (read from the
+game's `media/UI.zip`) and round-trips options and key bindings through
+`[KeyboardMouse]`.
 
 ## Patch data
 

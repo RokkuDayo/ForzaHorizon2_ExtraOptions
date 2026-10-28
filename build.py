@@ -225,6 +225,8 @@ def build(compiler, output, directory, options):
             "features/kbm_input.c",
             "features/kbm_win32.c",
             "features/kbm_pitch.c",
+            "features/kbm_menu.c",
+            "features/kbm_rebind.c",
         ]
         if options.azimuth
         else ["adapters/mezcal.c"]

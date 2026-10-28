@@ -91,6 +91,8 @@ Every action above can be rebound with its name (`Throttle`, `Brake`, `SteerLeft
 
 With keyboard & mouse on and no pad attached, the game never pauses for a missing controller (see Controller-Missing Pause).
 
+With keyboard & mouse on, the pause menu's Settings page also gets a **KEYBOARD & MOUSE** tile next to Controls. It opens its own page with the main options (input mode, mouse look, mouse look up/down, invert mouse Y, mouse sensitivity, keyboard steering speed, menu pointer, cursor size, map cursor speed) and one row per action. To rebind an action, choose its row (Enter, or Left/Right), then press the new key: Esc cancels, Backspace or Delete clears it, and a key already used by another action of the same group is refused. The Reset Key Bindings row restores the default keys, and the page's Reset to Default restores the options. Every change is written to `[KeyboardMouse]` in `FH2_ExtraOptions.ini` and applies at once.
+
 ### Controller-Missing Pause
 Off by default. Without a paired pad (for example playing with a keyboard, or with a pad the game never paired to your profile), the game's "controller lost" rule pauses again every time the pause menu is closed. With this on, it pauses only when a pad that was connected is actually unplugged:
 ```ini

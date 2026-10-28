@@ -12,6 +12,7 @@
 #ifdef FH2_AZIMUTH
 #include "adapters/azimuth_host.h"
 #include "features/kbm_input.h"
+#include "features/kbm_menu.h"
 #include "features/kbm_pitch.h"
 #endif
 
@@ -90,6 +91,8 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
         if (settings_keyboard_mouse()->enabled) {
             kbm_pitch_install(game_image);
             kbm_install(game_image, settings_keyboard_mouse());
+            // The KEYBOARD & MOUSE tile and page on the Settings hub.
+            kbm_menu_install(game_image, settings_directory);
         }
     }
 #endif

@@ -81,4 +81,9 @@ int kbm_config_parse(KbmSettings *settings, const char *key, const char *value);
 int kbm_config_validate(const KbmSettings *settings);
 const char *kbm_config_binding_name(unsigned binding);
 const char *kbm_config_key_name(unsigned code);
+/* The bindable keys in table order (in-game rebinding, kbm_rebind.c). */
+unsigned kbm_config_key_count(void);
+unsigned kbm_config_key_code(unsigned index);
+/* "W", "Down,B" or "None": the [KeyboardMouse] value for a binding's keys. */
+void kbm_config_format_keys(const unsigned short keys[KBM_KEYS_PER_BINDING], char *out, size_t capacity);
 #endif

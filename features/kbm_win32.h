@@ -44,6 +44,19 @@ int kbm_win32_host_prompt(void);
 /* Physical state for polling and stuck-key repair: 1 down, 0 up, -1 unknown. */
 int kbm_win32_key_down(unsigned code);
 void kbm_win32_set_capture(int capture);
+/* In-game rebinding: arm makes the next key or mouse button press (and its
+   release) skip the game; take returns 1 with its code, 2 for a mouse button,
+   0 while nothing came. Alt, Win and presses within 150 ms of arming are not
+   taken; ignored returns such a code once (0 if none). Arm fails (0) unless
+   Raw Input is running. */
+int kbm_win32_capture_arm(void);
+void kbm_win32_capture_disarm(void);
+int kbm_win32_capture_take(unsigned *code);
+unsigned kbm_win32_capture_ignored(void);
+/* While set (count > 0), a press of one of these keys and its release are
+   held back from the game; take_activation returns its code once. */
+void kbm_win32_set_activation_keys(const unsigned short *codes, unsigned count);
+unsigned kbm_win32_take_activation(void);
 /* Zeroes Azimuth gamepad vibration (motors and impulse triggers) while
    `muted` returns nonzero. Patches one verified host vtable slot. */
 int kbm_win32_gate_rumble(int (*muted)(void));

@@ -7,6 +7,7 @@
 #include "game_addresses.h"
 #include "kbm_win32.h"
 #include "kbm_pitch.h"
+#include "kbm_menu.h"
 #include "logging.h"
 #include "support.h"
 
@@ -3139,6 +3140,7 @@ static void *volatile native_box;
 
 static void world_prompts_tick(void);
 static void ui_update_hook(void *ui, float dt) {
+    kbm_menu_ui_tick(); /* in-game key rebinding (kbm_rebind.c) */
     native_box_tick();
     prompts_tick();
     world_prompts_tick();
@@ -6501,6 +6503,34 @@ static int rumble_muted(void) {
     return kbm_active;
 }
 
+void kbm_menu_option(const wchar_t *key, const wchar_t *value) {
+    char narrow_key[32], narrow_value[16];
+    unsigned i = 0;
+    for (; key[i] && i < sizeof(narrow_key) - 1; ++i) {
+        narrow_key[i] = (char)key[i];
+    }
+    narrow_key[i] = 0;
+    for (i = 0; value[i] && i < sizeof(narrow_value) - 1; ++i) {
+        narrow_value[i] = (char)value[i];
+    }
+    narrow_value[i] = 0;
+    KbmSettings updated;
+    memory_copy(&updated, &config, sizeof(updated));
+    if (!kbm_config_parse(&updated, narrow_key, narrow_value)) {
+        return;
+    }
+    memory_copy(&config, &updated, sizeof(config));
+    kbm_win32_set_cursor_size(config.cursor_size);
+    pointer_installed = prompts_installed && config.menu_cursor;
+    begin_line();
+    text("KBM: setting changed in the menu: ");
+    text(narrow_key);
+    text("=");
+    text(narrow_value);
+    text(installed || !config.enabled ? "." : " (takes effect after a restart).");
+    flush_line();
+}
+
 int kbm_driving_input_active(void) {
     return installed && kbm_active &&
            (binding_down(KBM_THROTTLE) || binding_down(KBM_BRAKE) ||
@@ -7057,3 +7087,28 @@ __declspec(dllexport) void *Fh2TestKbmOriginal(unsigned index) {
     return index < HOOKS ? hooks[index].original : NULL;
 }
 #endif
+
+/* ---------- key changes while running ---------- */
+
+/* New keys (for an in-game binding page), on the UI thread: the binding
+   tables are rebuilt in place, as at install. */
+void kbm_set_keys(const unsigned short keys[][KBM_KEYS_PER_BINDING]) {
+    for (unsigned binding = 0; binding < KBM_BINDING_COUNT; ++binding) {
+        for (unsigned k = 0; k < KBM_KEYS_PER_BINDING; ++k) {
+            config.keys[binding][k] = keys[binding][k];
+        }
+    }
+    if (!installed) {
+        log_append("KBM: key bindings saved; they apply when keyboard & mouse is on.\r\n");
+        return;
+    }
+    for (unsigned code = 0; code < 256; ++code) {
+        key_contexts[code] = 0;
+    }
+    build_bindings();
+    log_bindings();
+}
+
+void *kbm_input_top_page(void) {
+    return installed && prompts_installed ? top_page() : NULL;
+}
