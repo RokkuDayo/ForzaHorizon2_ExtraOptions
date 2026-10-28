@@ -2,6 +2,8 @@
 #include "features.h"
 #include "features/addons.h"
 #include "features/plugins.h"
+#include "features/car_preview_rebuild.h"
+#include "features/car_previews.h"
 #include "features/video_settings.h"
 #include "logging.h"
 #include "patch_engine.h"
@@ -87,6 +89,11 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
 #endif
     if (initialized && options.enabled) {
         log_enabled_features(settings_directory, &options);
+        // Bigger garage thumbnails ([Graphics] CarPreviewScale 2-4; 1, the default, is off).
+        if (options.car_preview_scale > 1 &&
+            car_previews_install(game_image, (unsigned)options.car_preview_scale)) {
+            car_preview_rebuild_install(game_image);
+        }
     }
     return initialized;
 }

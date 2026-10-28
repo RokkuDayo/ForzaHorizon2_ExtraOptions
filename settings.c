@@ -30,6 +30,7 @@ const SettingDefinition setting_definitions[] = {
             SETTING_BOOLEAN),
     SETTING("Profile", "CustomGamerpic", custom_gamerpic, SETTING_BOOLEAN),
     SETTING("PhotoMode", "FreeCamera", free_photo_camera, SETTING_BOOLEAN),
+    SETTING("Graphics", "CarPreviewScale", car_preview_scale, SETTING_PREVIEW_SCALE),
     SETTING("Files", "EnableMediaOverrides", media_overrides, SETTING_BOOLEAN),
     SETTING("Experiments", "UnlockAeroTuning", unlock_aero_tuning, SETTING_BOOLEAN),
     {"Autodrive", "Enabled", "AutodriveEnabled", offsetof(ModOptions, autodrive), SETTING_BOOLEAN},
@@ -59,6 +60,7 @@ static wchar_t ini_path[PATH_CAPACITY];
 void settings_defaults(ModOptions *options) {
     *options = (ModOptions){
         .enabled = 1,
+        .car_preview_scale = 1,
         .unlock_dlc = 1,
         .offline_vip = 1,
         .skip_intro = 1,
@@ -152,6 +154,11 @@ static const SettingDefinition *find_setting(const char *section, const char *ke
 }
 
 static int parse_value(const SettingDefinition *definition, const char *text, int *value) {
+    if (definition->type == SETTING_PREVIEW_SCALE) {
+        if (text[0] < '1' || text[0] > '4' || text[1]) return 0;
+        *value = text[0] - '0';
+        return 1;
+    }
     if (definition->type == SETTING_TURBO_INTERVAL) {
         unsigned interval = 0;
         if (!*text) return 0;
