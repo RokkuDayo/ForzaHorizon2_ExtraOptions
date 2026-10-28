@@ -155,10 +155,12 @@ def version_resource(filename):
             data = padded(data) + children
         return struct.pack("<H", len(data)) + data[2:]
 
-    strings = {"FileDescription": "Forza Horizon 2 Extra Options",
+    strings = {"FileDescription": "Forza Horizon 2 Extra Options - " + ("Azimuth adapter" if filename == "winmm.dll" else "Mezcal adapter"),
                "FileVersion": version, "InternalName": "FH2_ExtraOptions",
                "OriginalFilename": filename, "ProductName": "Forza Horizon 2 Extra Options",
-               "ProductVersion": version, "LegalCopyright": "Arthur (RokkuDayo)"}
+               "ProductVersion": version, "LegalCopyright": "Arthur (RokkuDayo)",
+               "CompanyName": "Arthur (RokkuDayo)",
+               "Comments": "Unofficial Forza Horizon 2 mod. In-process game hooks; title ID 1A96545B."}
     entries = b"".join(padded(block(key, wide(value), text=True)) for key, value in strings.items())
     string_info = block("StringFileInfo", children=block("040904b0", children=entries))
     variable_info = block("VarFileInfo", children=block("Translation", struct.pack("<HH", 0x409, 1200)))

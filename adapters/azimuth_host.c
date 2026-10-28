@@ -23,6 +23,7 @@ static const struct {
 } supported_hosts[] = {
     {AZIMUTH_101, 0x6adff280u, 0x9a6000u},
     {AZIMUTH_102, 0x6ae05dd1u, 0x9af000u},
+    {AZIMUTH_103, 0x6ae0f17au, 0x9d8000u},
 };
 
 static unsigned host_image_size(AzimuthBuild build) {
