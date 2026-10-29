@@ -1,0 +1,65 @@
+LIBRARY KERNEL32.dll
+EXPORTS
+    CloseHandle
+    CreateFileW
+    FlushInstructionCache
+    GetCurrentProcess
+    GetFileSizeEx
+    GetLastError
+    GetModuleFileNameW
+    GetModuleHandleW
+    GetModuleHandleExW
+    GetSystemInfo
+    ReadFile
+    SetLastError
+    VirtualProtect
+    WriteFile
+    ReadProcessMemory
+    VirtualQuery
+    GetCurrentThreadId
+    GetCurrentProcessId
+    GetFullPathNameW
+    GetPrivateProfileStringW
+    ExitProcess
+    GetProcessHeap
+    HeapAlloc
+    HeapFree
+    LoadLibraryExW
+    GetProcAddress
+    WideCharToMultiByte
+    FreeLibrary
+    GetFileAttributesW
+    FindFirstFileW
+    FindNextFileW
+    FindClose
+    FlushFileBuffers
+    MoveFileExW
+    DeleteFileW
+    GetTickCount64
+    MultiByteToWideChar
+    lstrcmpiW
+    lstrcpyW
+    DisableThreadLibraryCalls
+    InitOnceExecuteOnce
+    GetSystemDirectoryW
+    RaiseException
+    AcquireSRWLockShared
+    ReleaseSRWLockShared
+    AcquireSRWLockExclusive
+    ReleaseSRWLockExclusive
+    lstrlenW
+    CreateEventW
+    CreateThread
+    GetOverlappedResult
+    EnterCriticalSection
+    LeaveCriticalSection
+
+InitializeCriticalSection
+
+InitializeCriticalSectionAndSpinCount
+
+DeleteCriticalSection
+
+    CompareStringOrdinal
+    Sleep
+

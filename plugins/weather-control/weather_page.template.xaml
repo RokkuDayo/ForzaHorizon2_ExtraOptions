@@ -1,0 +1,94 @@
+<!-- EO:StandaloneOptionsPage -->
+<Page xmlns:local="clr-namespace:ForzaUI" xmlns:System="clr-namespace:System;assembly=mscorlib" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="ForzaUI.A_VideoOptions" Grid.IsSharedSizeScope="True" Style="{DynamicResource A_Style_Page_Generic}" DataContext="{Binding RelativeSource={RelativeSource Self}}">
+<local:UIPageTransitionManager.TransitionManager><local:UIPageTransitionManager DurationSpread="{StaticResource A_Duration_Transition_Spread}" TransitionDelay="{StaticResource A_Duration_Transition_Delay}"/></local:UIPageTransitionManager.TransitionManager>
+<Page.Resources><ResourceDictionary>    <local:TileMenuDataItem x:Key="TimeLock_Item_Enabled" Heading="@LOCK@" Description="@LOCK_DESC@"/>
+
+            <local:TileMenuDataItem x:Key="TimeLock_Item_Hour" Heading="@HOUR@" Description="@HOUR_DESC@"/>
+
+            <local:TileMenuDataItem x:Key="TimeLock_Item_Weather" Heading="@WEATHER@" Description="@WEATHER_DESC@"/>
+
+            <local:NumUnitConverter x:Key="TimeLock_HourFormat" FractionDigits="2" ShowUnit="False"/>
+
+            <Style x:Key="TimeLock_HourSlider" TargetType="Slider" BasedOn="{StaticResource A_Style_Slider_Options}">
+
+                <Setter Property="Minimum" Value="0"/>
+
+                <Setter Property="Maximum" Value="23.75"/>
+
+                <Setter Property="SmallChange" Value="0.25"/>
+
+                <Setter Property="LargeChange" Value="0"/>
+
+                <Setter Property="Template">
+
+                    <Setter.Value>
+
+                        <ControlTemplate TargetType="Slider">
+
+                            <Grid FocusManager.IsFocusScope="True">
+
+                                <Grid.ColumnDefinitions>
+
+                                    <ColumnDefinition />
+
+                                    <ColumnDefinition />
+
+                                </Grid.ColumnDefinitions>
+
+                                <local:FZTextBlock x:Name="PART_Label" Text="{Binding Tag.Heading, RelativeSource={RelativeSource TemplatedParent}}" Style="{StaticResource A_Style_SliderControlText}" HorizontalAlignment="Left" />
+
+                                <DockPanel Grid.Column="1">
+
+                                    <local:FZTextBlock DockPanel.Dock="Right" Width="60" TextAlignment="Right" HorizontalAlignment="Right" Text="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource TimeLock_HourFormat}}" Style="{StaticResource A_Style_SliderControlText}" />
+
+                                    <Grid Margin="32, 0, 8, 0" Height="22">
+
+                                        <local:FZMaterial x:Name="PART_SliderMaterial" Color="{StaticResource A_Color_MediumGreyText}" />
+
+                                        <Track x:Name="PART_Track">
+
+                                            <Track.DecreaseRepeatButton>
+
+                                                <RepeatButton x:Name="Left" Style="{StaticResource A_Style_RepeatButton_Left_Unfocused}"/>
+
+                                            </Track.DecreaseRepeatButton>
+
+                                        </Track>
+
+                                    </Grid>
+
+                                </DockPanel>
+
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+
+                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource Mode=FindAncestor, AncestorType=ListBoxItem}, Path=IsKeyboardFocusWithin}" Value="True">
+
+                                    <Setter TargetName="PART_SliderMaterial" Property="Color" Value="{StaticResource A_Color_Header_Background}"/>
+
+                                    <Setter TargetName="Left" Property="Style" Value="{StaticResource A_Style_RepeatButton_Left_Focused}"/>
+
+                                </DataTrigger>
+
+                            </ControlTemplate.Triggers>
+
+                        </ControlTemplate>
+
+                    </Setter.Value>
+
+                </Setter>
+
+            </Style>
+
+        </ResourceDictionary></Page.Resources>
+<Grid><ContentControl x:Name="TopBar" Style="{StaticResource A_Style_PlayerBar}"/>
+<ContentControl x:Name="BottomBar" Style="{StaticResource A_Style_ButtonBar}"><ContentControl x:Name="DefaultHelpPanel" local:ControllerButtonPanel.ADescription="{local:Loc HelpButtons.IDS_Select}" local:ControllerButtonPanel.BDescription="{local:Loc HelpButtons.IDS_Back}" local:ControllerButtonPanel.YDescription="{local:Loc HelpButtons.IDS_ResetDefault}" Style="{StaticResource A_Style_ContentControl_DefaultButtonBar}"/></ContentControl>
+<Border Style="{StaticResource A_Style_Border_ScenePadding}" SnapsToDevicePixels="True" UseLayoutRounding="True"><Grid x:Name="LayoutRoot">
+<ContentControl Style="{StaticResource A_Style_ContentControl_ScreenTilt}" Margin="0,-60,0,0" Focusable="False"><StackPanel Name="BasicOptions" VerticalAlignment="Center" HorizontalAlignment="Center">
+<StackPanel Orientation="Horizontal" Margin="0,0,0,6" Style="{StaticResource A_Style_FrameworkElement_DefaultTransition_0}"><ContentControl Tag="{x:Null}" Content="@TITLE@" Style="{StaticResource A_Style_ContentControl_ScreenTitleBlock}" Focusable="False"/></StackPanel>
+<StackPanel Width="806" Style="{StaticResource A_Style_FrameworkElement_DefaultTransition_0}"><Grid local:UIPageTransitionManager.TransitionIndex="0"><local:FZMaterial Color="{StaticResource A_Color_TileSelected_Text}"><local:CommonListBox x:Name="OptionsList" Style="{StaticResource A_Style_ListBox_List_Default}" ItemContainerStyle="{StaticResource A_Style_ListBoxItem_List_Default}" Width="806" Height="165"><local:SpinnerControl x:Name="FirstItem" Label="@LOCK@" Tag="{StaticResource TimeLock_Item_Enabled}" SelectedIndex="{Binding TimeLockEnabled}" ItemsSource="{Binding OnOffOptions}" Style="{StaticResource A_Style_SpinnerControl_Default}"/>
+<Slider Value="{Binding TimeLockHour, Mode=TwoWay}" Tag="{StaticResource TimeLock_Item_Hour}" Style="{StaticResource TimeLock_HourSlider}"/>
+<local:SpinnerControl Label="@WEATHER@" Tag="{StaticResource TimeLock_Item_Weather}" SelectedIndex="{Binding TimeLockWeather}" ItemsSource="{Binding TimeLockWeatherOptions}" Style="{StaticResource A_Style_SpinnerControl_Default}"/></local:CommonListBox></local:FZMaterial></Grid><local:FZMaterialGlassCapture/>
+<ContentControl Content="{Binding Tag.Description}" DataContext="{Binding SelectedItem, ElementName=OptionsList}" Height="130" Width="806" Template="{StaticResource A_ControlTemplate_DescriptionPanelContent}"/>
+</StackPanel></StackPanel></ContentControl></Grid></Border><local:FZMaterial x:Name="Fader" Color="Black" Opacity="0"/></Grid></Page>

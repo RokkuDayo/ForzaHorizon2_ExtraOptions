@@ -1,0 +1,4 @@
+LIBRARY user32.dll
+EXPORTS
+GetForegroundWindow
+GetWindowThreadProcessId
