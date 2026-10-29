@@ -13,6 +13,7 @@
 #include "features/ui_controls.h"
 #include "features/roof_fade.h"
 #include "features/roof_aero.h"
+#include "features/headlight_beams.h"
 #include "features/speed_zone.h"
 #include "features/manufacturer_jump.h"
 #include "features/presentation_controls.h"
@@ -82,6 +83,7 @@ static const PatchDefinition *const callback_patches[] = {&local_liveries_hook_p
     &presentation_controls_hook_patches[31],
     &presentation_controls_hook_patches[32],
     &presentation_controls_hook_patches[33],
+    &presentation_controls_hook_patches[34],
     &driver_options_patches[0],
     &driver_options_patches[1],
     &driver_options_patches[2],
@@ -142,6 +144,10 @@ static const PatchDefinition *const callback_patches[] = {&local_liveries_hook_p
                                                           &gamerpic_hook_patch,
                                                           &treasure_map_hook_patch,
                                                           &vehicle_controls_hook_patch,
+                                                          &headlight_beam_patches[0],
+                                                          &headlight_beam_patches[1],
+                                                          &headlight_beam_patches[2],
+                                                          &headlight_beam_patches[3],
                                                           &blinkers_radio_hook_patch,
                                                           &hazards_photo_hook_patch,
                                                           &hazards_photo_ready_hook_patch,

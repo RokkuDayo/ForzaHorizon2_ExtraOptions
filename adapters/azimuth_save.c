@@ -2,7 +2,7 @@
 #include "azimuth_markers.h"
 #include "logging.h"
 
-/* v1.0.1, v1.0.2 and v1.0.3 use the same blob validator for revision selection and actual reads.
+/* v1.0.1 through v1.0.4 use the same blob validator for revision selection and actual reads.
    Keep parsing, SHA calculation, buffer sizes, cleanup and save writes native;
    bypass only the final size/hash rejection branches when requested. */
 static const unsigned char skip_rejection[] = {0x90,0x90,0x90,0x90,0x90,0x90};
@@ -35,11 +35,22 @@ static const HostPatchSet validation_103_patch_set = {
     0x60403b, 0x3c1, reader_103_original_hash, reader_103_patched_hash,
     reader_patches, ARRAY_COUNT(reader_patches)};
 
+static const unsigned char reader_104_original_hash[32] = {
+    0x67,0xc0,0x70,0x3a,0xe8,0xa7,0x06,0x63,0x03,0xc3,0xe3,0x78,0x91,0x9d,0xfc,0x7b,
+    0x3c,0x26,0xd4,0x6c,0x1a,0x3e,0xcc,0x3d,0x51,0xb7,0x1c,0x05,0x03,0xf9,0xab,0x61};
+static const unsigned char reader_104_patched_hash[32] = {
+    0xf8,0xe3,0x13,0x3a,0x96,0xb6,0x48,0x58,0xd2,0x6b,0x11,0x7b,0x04,0x8a,0x15,0x1a,
+    0x80,0x99,0xe9,0x02,0x3a,0x2d,0x85,0x72,0x36,0xd2,0x31,0x47,0xee,0xaf,0x9d,0xbe};
+static const HostPatchSet validation_104_patch_set = {
+    0x4de82b, 0x3c1, reader_104_original_hash, reader_104_patched_hash,
+    reader_patches, ARRAY_COUNT(reader_patches)};
+
 static int apply_save(unsigned char *base) {
     AzimuthBuild build = azimuth_host_build(base);
     const HostPatchSet *set = build == AZIMUTH_101 ? &validation_patch_set
                              : build == AZIMUTH_102 ? &validation_102_patch_set
-                             : build == AZIMUTH_103 ? &validation_103_patch_set : NULL;
+                             : build == AZIMUTH_103 ? &validation_103_patch_set
+                             : build == AZIMUTH_104 ? &validation_104_patch_set : NULL;
     return set ? azimuth_patch_host_code(base, set) : 0;
 }
 

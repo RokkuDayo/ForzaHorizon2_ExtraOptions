@@ -292,10 +292,33 @@ static void repair_root(const wchar_t *root) {
     scan_directories(root, 0);
 }
 
-void azimuth_repair_missing_markers(unsigned char *host) {
-    if (azimuth_host_build(host) == AZIMUTH_UNKNOWN) {
-        return;
+static void repair_title(const wchar_t *directory, unsigned title_id,
+                         void (*write_log)(const char *)) {
+    const wchar_t *relative = title_id == 0x1a96545bu ? L"data\\titles\\1A96545B\\saves" : NULL;
+#ifdef FH2_ENABLE_FM5
+    if (title_id == 0x7b35d917u) relative = L"data\\titles\\7B35D917\\saves";
+#endif
+    if (!relative) return;
+    wchar_t *root = HeapAlloc(GetProcessHeap(), 0, PATH_CAPACITY * sizeof(wchar_t));
+    if (!root) return;
+    if (path_join(root, directory, relative)) {
+        repair_root(root);
+        if (write_log) {
+            write_log(marker_count ? "AZIMUTH: missing save commit markers rebuilt from actual blob "
+                                    "sizes and SHA-256 hashes.\r\n"
+                                   : "AZIMUTH: no missing save commit markers required repair.\r\n");
+            if (marker_failures)
+                write_log("AZIMUTH: some missing markers could not be published; original save folders retained.\r\n");
+        }
     }
+    HeapFree(GetProcessHeap(), 0, root);
+}
+
+void azimuth_repair_title_markers(unsigned char *host, unsigned title_id,
+                                 void (*write_log)(const char *)) {
+    AzimuthBuild build = azimuth_host_build(host);
+    if (build != AZIMUTH_101 && build != AZIMUTH_102 &&
+        build != AZIMUTH_103 && build != AZIMUTH_104) return;
     DirectoryScan *scan = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*scan));
     if (!scan) {
         return;
@@ -311,33 +334,24 @@ void azimuth_repair_missing_markers(unsigned char *host) {
         goto done;
     }
     scan->child[length - 1] = 0;
-    if (!path_join(scan->search, scan->child,
-                   (azimuth_host_build(host) == AZIMUTH_101 ||
-                    azimuth_host_build(host) == AZIMUTH_102 ||
-                    azimuth_host_build(host) == AZIMUTH_103) ? L"data\\titles\\1A96545B\\saves"
-                                                            : L"data\\saves")) {
-        goto done;
-    }
-    repair_root(scan->search);
-    if (marker_count) {
-        log_append("AZIMUTH: missing save commit markers rebuilt from actual blob "
-                   "sizes and "
-                   "SHA-256 hashes.\r\n");
-    } else {
-        log_append("AZIMUTH: no missing save commit markers required repair.\r\n");
-    }
-    if (marker_failures) {
-        log_append("AZIMUTH: some missing markers could not be published; original "
-                   "save folders "
-                   "retained.\r\n");
-    }
+    repair_title(scan->child, title_id, write_log);
 done:
     HeapFree(GetProcessHeap(), 0, scan);
+}
+
+void azimuth_repair_missing_markers(unsigned char *host) {
+    azimuth_repair_title_markers(host, 0x1a96545bu, log_append);
 }
 
 #ifdef FH2_TWEAKS_TEST
 __declspec(dllexport) unsigned Fh2TestAzimuthMarkerRepair(const wchar_t *root) {
     repair_root(root);
+    return marker_count;
+}
+__declspec(dllexport) unsigned Fh2TestAzimuthTitleMarkerRepair(const wchar_t *directory,
+                                                             unsigned title_id) {
+    marker_count = marker_failures = 0;
+    repair_title(directory, title_id, NULL);
     return marker_count;
 }
 #endif

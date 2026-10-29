@@ -5,6 +5,9 @@
 #include "settings.h"
 #include "sha256.h"
 #include "support.h"
+#ifdef FH2_ENABLE_FM5
+#include "features/fm5.h"
+#endif
 
 #define FH2_TITLE_ID 0x1a96545bu
 
@@ -26,6 +29,10 @@ static const HostProfile host_profiles[] = {
     {AZIMUTH_103, 9887232u, 0x3fd50u, 0xa697bu, 0xa0454u, 0xa5150u,
      {0xeb,0xfd,0x5d,0x43,0xa1,0x65,0xdc,0xec,0x5d,0x40,0x07,0xb9,0xd4,0x1e,0xd5,0xb2,0xed,0x12,0x2f,0xcd,0x02,0xec,0xfe,0xf7,0xe4,0xed,0x35,0xb4,0x08,0x26,0x82,0x1f},
      "AZIMUTH: 1.0.3 initialized for FH2 (1A96545B); native game loader and TLS retained.\r\n"},
+    {AZIMUTH_104, 8613376u, 0x3f2c0u, 0xa684bu, 0xa1384u, 0xa4e09u,
+     {0x56,0xd2,0xc9,0xcb,0x6c,0xcf,0x3a,0xe1,0x83,0x6d,0xee,0x96,0x76,0xb6,0x42,0x85,
+      0xf3,0xa2,0x47,0xef,0xa2,0xd1,0x2c,0xf0,0x2c,0x6c,0x74,0x26,0x96,0xb3,0xb0,0x92},
+     "AZIMUTH: 1.0.4 initialized for FH2 (1A96545B); native game loader and TLS retained.\r\n"},
 };
 static const HostProfile *host_profile;
 #define MAP_GAME (host_profile->map_game)
@@ -126,7 +133,7 @@ static int package_text(const void *package, unsigned offset, wchar_t *out, size
     return 1;
 }
 
-static int package_is_fh2(const void *package) {
+static unsigned package_title(const void *package) {
     wchar_t title[9];
     if (!package_text(package, 0x28, title, ARRAY_COUNT(title)) || lstrlenW(title) != 8) return 0;
     unsigned id = 0;
@@ -138,7 +145,15 @@ static int package_is_fh2(const void *package) {
         else return 0;
         id = (id << 4) | ch;
     }
-    return id == FH2_TITLE_ID;
+    return id;
+}
+
+static int supported_title(unsigned title) {
+    if (title == FH2_TITLE_ID) return 1;
+#ifdef FH2_ENABLE_FM5
+    if (title == FM5_TITLE_ID) return 1;
+#endif
+    return 0;
 }
 
 static int resolve_game_path(const void *package) {
@@ -201,18 +216,32 @@ static void *on_map_game(void *output, const void *folder, const void *package, 
     void *result = ((MapGame)(host_image + MAP_GAME))(output, folder, package, options);
     DWORD error = GetLastError();
     if (!first) { SetLastError(error); return result; }
+    unsigned title = package_title(package);
     if (!restored) {
         refuse("REFUSED: could not restore Azimuth's game-loading call. No game patches applied.");
-    } else if (!package_is_fh2(package)) {
-        status_set("INACTIVE: the loaded title is not Forza Horizon 2 (1A96545B).");
+    } else if (!supported_title(title)) {
+#ifdef FH2_ENABLE_FM5
+        status_set("INACTIVE: the loaded title is neither FH2 (1A96545B) nor FM5 (7B35D917).");
+#else
+        status_set("INACTIVE: this release supports only FH2 (1A96545B). No game or save patches applied.");
+#endif
     } else if (!resolve_game_path(package)) {
-        refuse("REFUSED: cannot resolve the loaded FH2 executable path. No game patches applied.");
+        refuse("REFUSED: cannot resolve the loaded executable path. No game patches applied.");
     } else {
         unsigned char *context = NULL, *game = NULL;
         IMAGE_DOS_HEADER dos;
         IMAGE_NT_HEADERS64 nt;
-        if (!memory_read_pointer(result, (void **)&context) ||
-            !memory_read_pointer(context, (void **)&game) ||
+        int mapped = memory_read_pointer(result, (void **)&context) &&
+                     memory_read_pointer(context, (void **)&game);
+#ifdef FH2_ENABLE_FM5
+        if (title == FM5_TITLE_ID) {
+            /* Never enter FH2's runtime, settings, save adapter or DLL loader.
+               FM5 owns its verification, INI and diagnostic log. */
+            if (!fm5_initialize(title, mapped ? game : NULL, game_path, mod_directory))
+                notify_refusal();
+        } else
+#endif
+        if (!mapped ||
             !memory_read(game, &dos, sizeof(dos)) || dos.e_magic != IMAGE_DOS_SIGNATURE ||
             dos.e_lfanew < 64 || dos.e_lfanew > 4096 ||
             !memory_read(game + dos.e_lfanew, &nt, sizeof(nt)) || nt.Signature != IMAGE_NT_SIGNATURE ||
@@ -269,7 +298,7 @@ static int verify_host(unsigned char *host, const wchar_t *path) {
         }
     }
     return refuse("REFUSED: unsupported Azimuth build. Extra Options " MOD_VERSION
-                  " supports the inspected Azimuth 1.0.1, 1.0.2 and 1.0.3 executables only. "
+                  " supports the inspected Azimuth 1.0.1, 1.0.2, 1.0.3 and 1.0.4 executables only. "
                   "No game or save compatibility patches applied.");
 }
 
@@ -308,7 +337,8 @@ __declspec(dllexport) int Fh2TestArmAzimuth(void *host, const wchar_t *path,
 }
 __declspec(dllexport) int Fh2TestAzimuthNotifications(void) { return notifications; }
 __declspec(dllexport) int Fh2TestAzimuthPackage(const void *package, wchar_t *output) {
-    if (!package_is_fh2(package)) return -1;
+    unsigned title = package_title(package);
+    if (!supported_title(title)) return -1;
     if (!resolve_game_path(package)) return 0;
     lstrcpyW(output, game_path);
     return 1;
