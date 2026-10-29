@@ -38,6 +38,32 @@ Callback resource work and PNG decoding happen on normal game call paths.
 There is no worker thread or startup wait. Callback installation pins the DLL
 before any callback pointer is written.
 
+## FPS counter
+
+The counter is a separate DLL, loaded by the mod only when `[Monitor]` asks
+for it:
+
+```text
+python monitor/build-monitor.py /absolute/path/to/zig.exe --output out/monitor
+```
+
+Install `out/monitor/fh2-monitor.dll` as `<game>/monitor/fh2-monitor.dll`.
+The mod arms one hook in `DllMain` on Azimuth's D3D12CreateDevice import (or
+its GetProcAddress), and loads the monitor right after the first device is
+created, outside the loader lock. The monitor hooks the swap chain's Present,
+Present1 and SetColorSpace1 and the queue's ExecuteCommandLists, and reads GPU
+load and video memory through PDH on one worker thread.
+
+## Offline tests
+
+Build with `--test` (adds the `Fh2Test*` exports), then run the checks; they
+work in a temporary folder and never start the game:
+
+```text
+python build.py /absolute/path/to/zig.exe --azimuth --test --output out/winmm-test.dll
+python tools/test-fps-meter.py out/winmm-test.dll
+```
+
 ## Patch data
 
 Edit `patches.json`, then regenerate the checked-in C tables:
