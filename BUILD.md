@@ -31,12 +31,25 @@ The gamerpic feature lazily loads the system Windows codec on a later UI call.
 Autodrive loads User32 lazily on a native GPS update to read F2 and focus.
 Controller buttons and telemetry visibility are read from native game state;
 the cinematic transition calls the game's existing white-flash routine.
+The custom radio station (off by default) loads User32 (for its keys) and the
+system MP3 codec (msacm32) lazily when enabled; with PcmDecode=1 one worker
+thread decodes the next tracks ahead.
 
 Both adapters initialize synchronously in `DllMain`. Startup performs simple
 configuration I/O, hashing, mapped-image validation, and memory patching.
 Callback resource work and PNG decoding happen on normal game call paths.
 There is no worker thread or startup wait. Callback installation pins the DLL
 before any callback pointer is written.
+
+## Offline tests
+
+Build with `--test` (adds the `Fh2Test*` exports), then run the checks; they
+work in a temporary folder and never start the game:
+
+```text
+python build.py /absolute/path/to/zig.exe --azimuth --test --output out/winmm-test.dll
+python tools/test-custom-radio.py out/winmm-test.dll
+```
 
 ## Patch data
 

@@ -1,4 +1,5 @@
 #include "vehicle_controls.h"
+#include "radio_station.h"
 #include "blinkers.h"
 #include "autodrive_game.h"
 #include "features.h"
@@ -604,6 +605,7 @@ static void vehicle_update(void *self, float dt, float frame_dt, unsigned frame)
     if (owned) {
         plugins_vehicle_update(local_car, dt);
         offline_events_tick();
+        radio_station_game_tick();
         autodrive_event_tick(local_car, dt);
         blinkers_tick(local_car, autodrive_game_window_focused(), clock_milliseconds());
         close_roof_for_car_meet(local_car);

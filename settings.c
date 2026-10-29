@@ -119,7 +119,8 @@ static int known_section(const char *name) {
     if (text_equal_ignore_case(name, "Gameplay") || text_equal_ignore_case(name, "Camera") ||
         text_equal_ignore_case(name, "Graphics") || text_equal_ignore_case(name, "Livery") ||
         text_equal_ignore_case(name, "HUD") || text_equal_ignore_case(name, "Bindings") ||
-        text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language")) {
+        text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language") ||
+        text_equal_ignore_case(name, "CustomRadio")) {
         return 1;
     }
     for (size_t index = 0; index < setting_count; ++index) {
@@ -209,6 +210,29 @@ static int parse_value(const SettingDefinition *definition, const char *text, in
     return 0;
 }
 
+/* [CustomRadio] (features/radio_station.c reads the values; off by default). */
+static int custom_radio_valid(const char *key, const char *value) {
+    if (text_equal_ignore_case(key, "Enabled") || text_equal_ignore_case(key, "UnlockAllStations") ||
+        text_equal_ignore_case(key, "PcmDecode")) {
+        return text_equal_ignore_case(value, "0") || text_equal_ignore_case(value, "1");
+    }
+    if (text_equal_ignore_case(key, "Volume")) {
+        unsigned volume = 0;
+        if (!*value) {
+            return 0;
+        }
+        for (; *value; ++value) {
+            if (*value < '0' || *value > '9' || volume > 400) {
+                return 0;
+            }
+            volume = volume * 10 + (unsigned)(*value - '0');
+        }
+        return volume <= 400;
+    }
+    // Folder (default Music, beside the mod) and Name (default MY MUSIC).
+    return text_equal_ignore_case(key, "Folder") || text_equal_ignore_case(key, "Name");
+}
+
 static int parse_ini(char *text, ModOptions *options) {
     char section[32] = {0};
     if ((unsigned char)text[0] == 0xef && (unsigned char)text[1] == 0xbb &&
@@ -290,6 +314,12 @@ static int parse_ini(char *text, ModOptions *options) {
 
         if (text_equal_ignore_case(section, "Bindings")) {
             if (bindings_parse(key, value) != 1) {
+                goto invalid;
+            }
+            continue;
+        }
+        if (text_equal_ignore_case(section, "CustomRadio")) {
+            if (!custom_radio_valid(key, value)) {
                 goto invalid;
             }
             continue;
