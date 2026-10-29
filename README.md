@@ -8,6 +8,8 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - Built-in mod loader with addon and hooking support.
  - Change your car anywhere.
  - "Jump to Manufacturer" on car and rim menus.
+ - "Return to garage" button in the pause menu.
+ - Weather control.
  - All one-off races from online available offline.
  - Autodrive (as seen in Forza Horizon 6).
  - Drift Camera (as seen in Forza Horizon 4/5/6).
@@ -23,9 +25,8 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - Skip developer opening videos.
  - All DLC packs properly unlocked.
  - VIP status & "Treasure Map" unlocks.
- - Toggle for 4K liveries w/ enhanced sampling.
- - Unrestricted Photo Mode.
- - "Return to Garage" button in the pause menu.
+ - Overides for 4K liveries w/ enhanced sampling.
+ - Unrestricted photo mode.
  - Aero tuning without equipping Forza Aero parts.
  - New rim style category with all aftermarket rims.
  - Toggle for having the minimap follow the orbit camera.
