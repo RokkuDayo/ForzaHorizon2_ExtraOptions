@@ -25,7 +25,7 @@ that the car's binary model data is compatible with the game.
 
 ## Drag-and-drop database comparison
 
-Keep `mod_diff.py` and `Mod Diff.cmd` together. Drop the vanilla and edited
+Keep `mod_diff.py` and `Addon JSON Generator.cmd` together. Drop the vanilla and edited
 SQLite databases onto the batch file, confirm their order, and select the
 prompted export options. The same tool detects and compares carbin files.
 See `MOD_DIFF.md` for output naming and advanced commands.
