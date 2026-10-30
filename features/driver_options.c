@@ -200,13 +200,30 @@ static int photo_title_xml(unsigned setting,char *out,size_t cap){
     out[used]=0;return 1;
 }
 
+// Preserve the shipped control templates; change only their keys/bindings and
+// the space needed for an hour readout rather than a two-digit percentage.
+static void copy_photo_style(char *out,size_t *used,const char *start,size_t length,
+                             const char *const *from,const char *const *to,unsigned count){
+    for(size_t i=0;i<length;){
+        unsigned j;
+        for(j=0;j<count;++j){
+            size_t n=text_length(from[j]);
+            if(n<=length-i && memory_equal(start+i,from[j],n)){
+                size_t m=text_length(to[j]);memory_copy(out+*used,to[j],m);*used+=m;i+=n;break;
+            }
+        }
+        if(j==count)out[(*used)++]=start[i++];
+    }
+}
+
 int driver_photo_is_xaml(const char *text,size_t length){return text_find(text,length,"x:Class=\"ForzaUI.A_PhotoMode\"")!=NULL;}
 size_t driver_photo_xaml(const char *text,size_t length,char *out,size_t capacity){
     static const char style_marker[]="<Style x:Key=\"A_Style_ContentControl_EffectsSpinner\"";
     const char *style=text_find_unique(text,length,style_marker);
     const char *end=style?text_find_unique(style,(text+length)-style,"<!-- Base Content Style -->"):NULL;
     const char *last=text_find_unique(text,length,"DataContext=\"{Binding CurrentSettings.Vignette}\"/>");
-    if(!style || !end || !last || text_find(text,length,"PhotoDriver"))return 0;
+    const char *hour_resources=text_find_unique(text,length,"</ResourceDictionary>");
+    if(!style || !end || !last || !hour_resources || text_find(text,length,"PhotoDriver"))return 0;
     size_t style_len=(size_t)(end-style),row_at=(size_t)(last-text)+text_length("DataContext=\"{Binding CurrentSettings.Vignette}\"/>");
     static const char row[]=
         "<local:FZMaterial Style=\"{StaticResource A_Style_FZMaterial_PhotomodeDivider}\"/>"
@@ -216,24 +233,56 @@ size_t driver_photo_xaml(const char *text,size_t length,char *out,size_t capacit
         "<local:FZMaterial Style=\"{StaticResource A_Style_FZMaterial_PhotomodeDivider}\"/>"
         "<local:SpinnerControl ItemsSource=\"{Binding PhotoTimeChoices}\" SelectedIndex=\"{Binding PhotoTimeOfDay}\" Style=\"{StaticResource EO_PhotoTimeSpinner}\"/>"
         "<local:FZMaterial Style=\"{StaticResource A_Style_FZMaterial_PhotomodeDivider}\"/>"
+        "<ContentControl Style=\"{StaticResource EO_PhotoHour}\"/>"
+        "<local:FZMaterial Style=\"{StaticResource A_Style_FZMaterial_PhotomodeDivider}\"/>"
         "<local:SpinnerControl ItemsSource=\"{Binding PhotoWeatherChoices}\" SelectedIndex=\"{Binding PhotoWeather}\" Style=\"{StaticResource EO_PhotoWeatherSpinner}\"/>";
-    if(length+style_len*4+sizeof(row)+1024>=capacity)return 0;
+    if(length+style_len*4+sizeof(row)+4096>=capacity)return 0;
     // Copy the native spinner style with its title changed, rather than add a
     // second control implementation or change the existing preset binding.
     const char *effect_style=text_find_unique(text,length,"<Style x:Key=\"A_Style_ContentControl_PhotoEffects\"");
     const char *effect_height=effect_style?text_find(effect_style,(text+length)-effect_style,"<Setter Property=\"Height\" Value=\"{StaticResource A_Double_EffectsItem_Height}\"/>"):NULL;
-    if(!effect_height)return 0;
+    const char *effect_end=effect_style?text_find(effect_style,(text+length)-effect_style,"</Style>"):NULL;
+    const char *fill_style=text_find_unique(text,length,"<Style x:Key=\"A_Style_Slider_PhotoEffects\"");
+    const char *fill_end=fill_style?text_find(fill_style,(text+length)-fill_style,"</Style>"):NULL;
+    if(!effect_height || !effect_end || !fill_end)return 0;
+    size_t effect_len=(size_t)(effect_end-effect_style)+8,fill_len=(size_t)(fill_end-fill_style)+8;
+    if(length+style_len*4+effect_len+fill_len+sizeof(row)+4096>=capacity)return 0;
     const char *heading=text_find_unique(text,length,"Content=\"{local:Loc InGame.IDS_Label_EffectsMode}\"");
     const char *heading_end=heading?text_find(heading,(text+length)-heading,"/>"):NULL;
     const char *panel_end=text_find(text+row_at,length-row_at,"</StackPanel>");
     if(!heading_end || !panel_end)return 0;
     size_t scroll_at=(size_t)(heading_end-text)+2;
-    char time_title[512],weather_title[512],lights_title[512];
+    char time_title[512],weather_title[512],lights_title[512],hour_title[512];
+    if(!photo_title_xml(3,hour_title,sizeof(hour_title)))return 0;
     if(!photo_title_xml(2,lights_title,sizeof(lights_title)))return 0;
     if(!photo_title_xml(0,time_title,sizeof(time_title)) || !photo_title_xml(1,weather_title,sizeof(weather_title)))return 0;
     size_t used=0;
     if(length<3 || !memory_equal(text,"\xef\xbb\xbf",3)){memory_copy(out,"\xef\xbb\xbf",3);used=3;}
     for(size_t i=0;i<length;){
+        if(text+i==hour_resources){
+            static const char format[]="<local:NumUnitConverter x:Key=\"EO_PhotoHourFormat\" FractionDigits=\"2\" ShowUnit=\"False\"/>";
+            memory_copy(out+used,format,sizeof(format)-1);used+=sizeof(format)-1;
+            const char *fill_from[]={"A_Style_Slider_PhotoEffects","{Binding Value}"};
+            const char *fill_to[]={"EO_PhotoHourSlider","{Binding PhotoHourPosition}"};
+            copy_photo_style(out,&used,fill_style,fill_len,fill_from,fill_to,2);
+            const char *hour_from[]={
+                "A_Style_ContentControl_PhotoEffects","A_Style_Slider_PhotoEffects",
+                "{Binding Value}","SmallChange=\"0.01\"",
+                "{TemplateBinding Content}",
+                "{Binding Value, ConverterParameter=fracpercentage, Converter={StaticResource A_NumUnitConverter_EffectSettingScaleUp}}",
+                "Style=\"{StaticResource A_Style_FZTextBlock_EffectValue}\"",
+                "<Setter Property=\"Height\" Value=\"{StaticResource A_Double_EffectsItem_Height}\"/>",
+                "Margin=\"20,0,64,16\"","Margin=\"20,10,20,0\"","Margin=\"20,16,20,8\""};
+            const char *hour_to[]={
+                "EO_PhotoHour","EO_PhotoHourSlider",
+                "{Binding PhotoHourPosition, Mode=TwoWay}","SmallChange=\"0.010526315789473684\"",
+                hour_title,
+                "{Binding PhotoHour, Converter={StaticResource EO_PhotoHourFormat}}",
+                "MaxWidth=\"80\" Style=\"{StaticResource A_Style_FZTextBlock_EffectValue}\"",
+                "<Setter Property=\"Height\" Value=\"72\"/>",
+                "Margin=\"20,0,104,12\"","Margin=\"20,6,20,0\"","Margin=\"20,16,20,4\""};
+            copy_photo_style(out,&used,effect_style,effect_len,hour_from,hour_to,11);
+        }
         if(text+i==end){
             for(unsigned variant=0;variant<4;++variant){
             static const char *const styles[]={"EO_PhotoDriverSpinner","EO_PhotoTimeSpinner","EO_PhotoWeatherSpinner","EO_PhotoLightsSpinner"};

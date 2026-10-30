@@ -6,6 +6,7 @@ enum { SQL_CAPACITY = 2 * 1024 * 1024, SQLITE_ROW = 100, SQLITE_DONE = 101 };
 
 static AddonSqlite sql;
 static const char *applying_addon;
+static int applying_shared_ids;
 
 typedef struct {
     char *text;
@@ -319,6 +320,20 @@ static int table_columns(void *database, Query *query, const char *table) {
 
 #include "addon_ids_plan.h"
 
+static int shared_insert(const JsonValue *table,const JsonValue *row) {
+    if(applying_shared_ids)return 1;
+    for(unsigned i=0;i<ID_MODS;++i){
+        if(!id_equal(id_labels[i],applying_addon))continue;
+        if(id_policy[i]==2)return 1;
+        for(IdSlot *p=id_slots;p;p=p->next){
+            unsigned value;
+            if(p->mod==i && p->shared && id_equal(p->table,table->name) &&
+               id_number(id_field(row,p->column),&value) && value==p->assigned)return 1;
+        }
+    }
+    return 0;
+}
+
 static int insert(void *database, Query *query, const JsonValue *table, const JsonValue *row,
                   const JsonValue *keys, int columns) {
     if (row->kind != JSON_OBJECT || row->length != (unsigned)columns) {
@@ -362,6 +377,27 @@ static int insert(void *database, Query *query, const JsonValue *table, const Js
             return 0;
         }
         if (existing > 0) {
+            if(existing==1 && shared_insert(table,row)){
+                // UPDATE preserves the existing identity and foreign-key dependents;
+                // SQLite REPLACE would delete the row and could cascade deletions.
+                reset(query);append(query,"UPDATE ");name(query,table->name);append(query," SET ");
+                for(JsonValue *field=row->child;field;field=field->next){
+                    if(field!=row->child)append(query,",");
+                    name(query,field->name);append(query,"=");literal(query,field);
+                }
+                append(query," WHERE ");
+                size_t key_offset=query->length;
+                for(JsonValue *key=keys->child;key;key=key->next){
+                    if(key!=keys->child)append(query," AND ");
+                    name(query,key->text);append(query," IS ");literal(query,id_field(row,key->text));
+                }
+                log_append("MODS: ");log_append(applying_addon);
+                log_append(": shared ID override in ");log_append(table->name);
+                log_append("; key: ");
+                log_append(query->text+key_offset);
+                log_append("; higher-priority row replaces earlier data.\r\n");
+                return execute(database,query);
+            }
             log_append("MODS: ");
             log_append(applying_addon ? applying_addon : "[database]");
             log_append(": ID conflict in ");
@@ -770,6 +806,7 @@ int addon_database_apply(void *database, const JsonValue *document, const char *
                          const char *addon_id, char error[256]) {
     error[0] = 0;
     applying_addon = addon_id;
+    applying_shared_ids=0;
     unsigned version;
     if (!document || document->kind != JSON_OBJECT ||
         !addon_json_uint(addon_json_get(document, "format_version"), &version) ||
@@ -797,6 +834,9 @@ int addon_database_apply(void *database, const JsonValue *document, const char *
     }
     JsonValue *policy = addon_json_get(document, "policy"),
               *conflicts = addon_json_get(policy, "update_conflicts");
+    JsonValue *id_conflicts=addon_json_get(policy,"id_conflicts");
+    if(!id_conflicts)id_conflicts=addon_json_get(document,"id_conflicts");
+    applying_shared_ids=addon_json_is(id_conflicts,"last_wins");
     if ((policy && policy->kind != JSON_OBJECT) ||
         (conflicts && !addon_json_is(conflicts, "error") &&
          !addon_json_is(conflicts, "last_wins"))) {

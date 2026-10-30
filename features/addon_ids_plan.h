@@ -17,6 +17,7 @@ typedef struct IdSlot {
     const char *table, *column;
     unsigned mod, old, assigned;
     struct IdSlot *leader;
+    int shared;
 } IdSlot;
 
 typedef struct IdLink {
@@ -36,6 +37,7 @@ static IdSlot *id_slots;
 static IdLink *id_links;
 static IdDomain *id_domains;
 static unsigned char id_blocked[ID_MODS];
+static unsigned char id_policy[ID_MODS]; // 0 error, 1 nearest, 2 shared/last_wins
 static const char *id_labels[ID_MODS];
 static unsigned id_nodes;
 static int id_failed;
@@ -73,6 +75,7 @@ void addon_ids_reset(void) {
     id_domains = NULL;
     for (unsigned i = 0; i < ID_MODS; ++i) {
         id_blocked[i] = 0;
+        id_policy[i] = 0;
         id_labels[i] = NULL;
     }
     id_nodes = 0;
@@ -525,12 +528,14 @@ int addon_ids_plan(void *database, JsonValue *documents[128], const char *labels
             continue;
         }
         if (!policy) policy = legacy; // Backward compatibility with older addons.
-        if (policy && !addon_json_is(policy, "error") && !addon_json_is(policy, "nearest")) {
+        if (policy && !addon_json_is(policy, "error") && !addon_json_is(policy, "nearest") &&
+            !addon_json_is(policy, "last_wins")) {
             id_blocked[i] = 1;
-            log_append("MODS IDS: invalid policy.id_conflicts; expected error or nearest.\r\n");
+            log_append("MODS IDS: invalid policy.id_conflicts; expected error, nearest or last_wins.\r\n");
             continue;
         }
         automatic[i] = addon_json_is(policy, "nearest");
+        id_policy[i] = addon_json_is(policy,"last_wins")?2:automatic[i];
         JsonValue *tables = addon_json_get(documents[i], "tables");
         if (!tables || tables->kind != JSON_OBJECT) {
             continue;
@@ -563,7 +568,7 @@ int addon_ids_plan(void *database, JsonValue *documents[128], const char *labels
                     valid = 0;
                     break;
                 }
-                *p = (IdSlot){id_slots, t->name, key, i, value, value, p};
+                *p = (IdSlot){id_slots, t->name, key, i, value, value, p, 0};
                 id_slots = p;
             }
         }
@@ -621,6 +626,16 @@ int addon_ids_plan(void *database, JsonValue *documents[128], const char *labels
             }
         }
     }
+    // Resolve sharing before nearest allocation. A higher-priority contributor
+    // may otherwise move away from a base ID before the lower contributor's
+    // explicit sharing policy is visited.
+    for(IdSlot *p=id_slots;p;p=p->next){
+        if(id_policy[p->mod]!=2 || id_blocked[p->mod] || excluded[p->mod])continue;
+        p->shared=1;
+        for(IdSlot *other=id_slots;other;other=other->next)
+            if(!id_blocked[other->mod] && !excluded[other->mod] && other->old==p->old &&
+               id_equal(other->table,p->table) && id_equal(other->column,p->column))other->shared=1;
+    }
     for (unsigned priority = total; priority && valid; --priority) {
         unsigned i = priority - 1;
         if (excluded[i] || id_blocked[i]) {
@@ -632,9 +647,11 @@ int addon_ids_plan(void *database, JsonValue *documents[128], const char *labels
             }
             const char *winner = NULL;
             int vanilla = 0;
+            int shared = id_policy[i]==2 || p->shared;
             IdSlot *conflict = p;
             for (IdSlot *member = id_slots; member; member = member->next) {
                 if (id_root(member) == p) {
+                    shared |= member->shared;
                     if (id_exists(database, &q, member->table, member->column, member->old)) {
                         vanilla = 1;
                         conflict = member;
@@ -643,9 +660,9 @@ int addon_ids_plan(void *database, JsonValue *documents[128], const char *labels
                         if (later->mod > i && !id_blocked[later->mod] && !excluded[later->mod] &&
                             later->old == member->old && id_equal(member->table, later->table) &&
                             id_equal(member->column, later->column)) {
-                            winner = labels[later->mod];
+                            if(!winner)winner = labels[later->mod];
+                            shared |= id_policy[later->mod]==2 || later->shared;
                             conflict = member;
-                            break;
                         }
                     }
                 }
@@ -661,6 +678,22 @@ int addon_ids_plan(void *database, JsonValue *documents[128], const char *labels
                 log_append("MODS IDS: higher-priority owner: ");
                 log_append(winner);
                 log_append("\r\n");
+            }
+            if(shared){
+                // Either contributor may explicitly opt into a common identity.
+                // Do not remap references; the ascending transaction order makes
+                // the highest successful contributor supply the final row.
+                for(IdSlot *member=id_slots;member;member=member->next){
+                    if(id_root(member)!=p)continue;
+                    member->shared=1;
+                    for(IdSlot *later=id_slots;later;later=later->next)
+                        if(later->mod>i && !id_blocked[later->mod] && !excluded[later->mod] &&
+                           later->old==member->old && id_equal(later->table,member->table) &&
+                           id_equal(later->column,member->column))later->shared=1;
+                }
+                id_log(labels[i],conflict->table,conflict->column,conflict->old,
+                       "shared ID; highest-priority successful row wins",0);
+                continue;
             }
             if (!automatic[i]) {
                 id_blocked[i] = 1;

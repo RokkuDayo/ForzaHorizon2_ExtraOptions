@@ -279,6 +279,18 @@ static void append_skill_counter_shake(XamlBuffer *buffer, const VideoOptionsTex
     if (!row) {append_attribute(buffer, description);append_text(buffer,"\"/>");}
 }
 
+static void append_vignette_effect(XamlBuffer *buffer, const VideoOptionsText *text, int row) {
+    const char *label = text->vignette_effect ? text->vignette_effect : "Vignette Effect";
+    const char *description = text->vignette_effect_description ? text->vignette_effect_description
+        : "Enable the main vignette effect that darkens the edges of the screen.";
+    append_text(buffer, row ? "<local:SpinnerControl Tag=\"{StaticResource EO_VignetteEffect}\" Style=\"{StaticResource A_Style_SpinnerControl_Default}\" Label=\""
+                            : "<local:TileMenuDataItem x:Key=\"EO_VignetteEffect\" Heading=\"");
+    append_attribute(buffer, label);
+    append_text(buffer, row ? "\" SelectedIndex=\"{Binding VignetteEffect}\" ItemsSource=\"{Binding ToggleChoices}\"/>"
+                            : "\" Description=\"");
+    if (!row) {append_attribute(buffer, description);append_text(buffer,"\"/>");}
+}
+
 static void append_speed_zone_vignette(XamlBuffer *buffer, const VideoOptionsText *text, int row) {
     const char *label = text->speed_zone_vignette ? text->speed_zone_vignette : "Speed Zone Vignette";
     const char *description = text->speed_zone_vignette_description ? text->speed_zone_vignette_description
@@ -384,6 +396,7 @@ static size_t extend_list_xaml(unsigned page, unsigned char *image, const char *
                 append_settings_resources(&buffer, localized, 17, 18);
                 append_skill_notification(&buffer, localized, 0);
                 append_skill_counter_shake(&buffer, localized, 0);
+                append_vignette_effect(&buffer, localized, 0);
                 append_speed_zone_vignette(&buffer, localized, 0);
                 append_player_character(&buffer, localized, 0);
                 append_unit_selectors(&buffer, localized, 0);
@@ -423,6 +436,7 @@ static size_t extend_list_xaml(unsigned page, unsigned char *image, const char *
                 append_settings_rows(&buffer, localized, 17, 18);
                 append_skill_notification(&buffer, localized, 1);
                 append_skill_counter_shake(&buffer, localized, 1);
+                append_vignette_effect(&buffer, localized, 1);
                 append_speed_zone_vignette(&buffer, localized, 1);
                 append_player_character(&buffer, localized, 1);
             } else {

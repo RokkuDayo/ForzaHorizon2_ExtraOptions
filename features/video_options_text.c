@@ -3,6 +3,8 @@
 #include "support.h"
 
 static const VideoOptionsText english = {
+    .vignette_effect = "Vignette Effect",
+    .vignette_effect_description = "Enable the main vignette effect that darkens the edges of the screen.",
     .photo_lights = L"Headlights",
     .photo_custom_time = L"Time of Day Lock",
     .photo_hour = L"Locked Hour",
@@ -101,6 +103,8 @@ static const VideoOptionsText english = {
     .car_position_choices = {L"Nearest Road", L"Same Location"}};
 
 static const VideoOptionsText brazilian = {
+    .vignette_effect = "Efeito de vinheta",
+    .vignette_effect_description = "Ativar o efeito principal de vinheta que escurece as bordas da tela.",
     .photo_lights = L"Faróis",
     .photo_custom_time = L"Fixar horário",
     .photo_hour = L"Horário fixo",
@@ -183,6 +187,8 @@ static const VideoOptionsText brazilian = {
     .car_position_choices = {L"Estrada mais próxima", L"Mesmo local"}};
 
 static const VideoOptionsText german = {
+    .vignette_effect = "Vignetteneffekt",
+    .vignette_effect_description = "Aktiviert den Haupt-Vignetteneffekt, der die Bildschirmränder abdunkelt.",
     .photo_lights = L"Scheinwerfer",
     .photo_custom_time = L"Tageszeit fixieren",
     .photo_hour = L"Feste Uhrzeit",
@@ -260,6 +266,8 @@ static const VideoOptionsText german = {
     .car_position_choices = {L"Nächste Straße", L"Gleiche Position"}};
 
 static const VideoOptionsText french = {
+    .vignette_effect = "Effet de vignette",
+    .vignette_effect_description = "Active la vignette principale qui assombrit les bords de l’écran.",
     .photo_lights = L"Phares",
     .photo_custom_time = L"Bloquer l’heure",
     .photo_hour = L"Heure fixe",
@@ -342,6 +350,8 @@ static const VideoOptionsText french = {
     .car_position_choices = {L"Route la plus proche", L"Même emplacement"}};
 
 static const VideoOptionsText spanish = {
+    .vignette_effect = "Efecto de viñeta",
+    .vignette_effect_description = "Activa la viñeta principal que oscurece los bordes de la pantalla.",
     .photo_lights = L"Faros",
     .photo_custom_time = L"Fijar hora del día",
     .photo_hour = L"Hora fija",
@@ -423,6 +433,8 @@ static const VideoOptionsText spanish = {
     .car_position_choices = {L"Carretera más cercana", L"Misma ubicación"}};
 
 static const VideoOptionsText mexican = {
+    .vignette_effect = "Efecto de viñeta",
+    .vignette_effect_description = "Activa la viñeta principal que oscurece los bordes de la pantalla.",
     .photo_lights = L"Faros",
     .photo_custom_time = L"Fijar hora del día",
     .photo_hour = L"Hora fija",
@@ -504,6 +516,8 @@ static const VideoOptionsText mexican = {
     .car_position_choices = {L"Carretera más cercana", L"Misma ubicación"}};
 
 static const VideoOptionsText italian = {
+    .vignette_effect = "Effetto vignettatura",
+    .vignette_effect_description = "Attiva la vignettatura principale che scurisce i bordi dello schermo.",
     .photo_lights = L"Fari",
     .photo_custom_time = L"Blocca ora",
     .photo_hour = L"Ora fissa",
@@ -585,6 +599,8 @@ static const VideoOptionsText italian = {
     .car_position_choices = {L"Strada più vicina", L"Stessa posizione"}};
 
 static const VideoOptionsText japanese = {
+    .vignette_effect = "ビネット効果",
+    .vignette_effect_description = "画面の端を暗くするメインのビネット効果を有効にします。",
     .photo_lights = L"ヘッドライト",
     .photo_custom_time = L"時刻を固定",
     .photo_hour = L"固定する時刻",
@@ -660,6 +676,8 @@ static const VideoOptionsText japanese = {
     .car_position_choices = {L"最寄りの道路", L"同じ位置"}};
 
 static const VideoOptionsText korean = {
+    .vignette_effect = "비네트 효과",
+    .vignette_effect_description = "화면 가장자리를 어둡게 하는 기본 비네트 효과를 활성화합니다.",
     .photo_lights = L"전조등",
     .photo_custom_time = L"시간 고정",
     .photo_hour = L"고정 시간",
@@ -733,6 +751,8 @@ static const VideoOptionsText korean = {
     .car_position_choices = {L"가장 가까운 도로", L"같은 위치"}};
 
 static const VideoOptionsText chinese = {
+    .vignette_effect = "暗角效果",
+    .vignette_effect_description = "啟用使畫面邊緣變暗的主要暗角效果。",
     .photo_lights = L"頭燈",
     .photo_custom_time = L"固定時間",
     .photo_hour = L"固定時刻",
@@ -799,6 +819,8 @@ static const VideoOptionsText chinese = {
     .car_position_choices = {L"最近的道路", L"相同位置"}};
 
 static const VideoOptionsText czech = {
+    .vignette_effect = "Efekt vinětace",
+    .vignette_effect_description = "Zapne hlavní efekt vinětace, který ztmavuje okraje obrazovky.",
     .photo_lights = L"Světlomety",
     .photo_custom_time = L"Uzamknout čas",
     .photo_hour = L"Nastavený čas",
@@ -873,6 +895,8 @@ static const VideoOptionsText czech = {
     .car_position_choices = {L"Nejbližší silnice", L"Stejná poloha"}};
 
 static const VideoOptionsText hungarian = {
+    .vignette_effect = "Vignettahatás",
+    .vignette_effect_description = "Bekapcsolja a képernyő széleit sötétítő fő vignettahatást.",
     .photo_lights = L"Fényszórók",
     .photo_custom_time = L"Idő rögzítése",
     .photo_hour = L"Rögzített idő",
@@ -951,6 +975,8 @@ static const VideoOptionsText hungarian = {
     .car_position_choices = {L"Legközelebbi út", L"Azonos hely"}};
 
 static const VideoOptionsText polish = {
+    .vignette_effect = "Efekt winiety",
+    .vignette_effect_description = "Włącza główny efekt winiety przyciemniający krawędzie ekranu.",
     .photo_lights = L"Reflektory",
     .photo_custom_time = L"Zablokuj czas",
     .photo_hour = L"Ustawiona godzina",
@@ -1028,6 +1054,8 @@ static const VideoOptionsText polish = {
     .car_position_choices = {L"Najbliższa droga", L"To samo miejsce"}};
 
 static const VideoOptionsText russian = {
+    .vignette_effect = "Эффект виньетки",
+    .vignette_effect_description = "Включает основной эффект виньетки, затемняющий края экрана.",
     .photo_lights = L"Фары",
     .photo_custom_time = L"Зафиксировать время",
     .photo_hour = L"Заданное время",
@@ -1106,6 +1134,8 @@ static const VideoOptionsText russian = {
     .car_position_choices = {L"Ближайшая дорога", L"То же место"}};
 
 static const VideoOptionsText dutch = {
+    .vignette_effect = "Vigneteffect",
+    .vignette_effect_description = "Schakelt het hoofdvignet in dat de schermranden donkerder maakt.",
     .photo_lights = L"Koplampen",
     .photo_custom_time = L"Tijd vastzetten",
     .photo_hour = L"Vaste tijd",

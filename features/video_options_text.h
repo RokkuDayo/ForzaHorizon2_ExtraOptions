@@ -12,6 +12,7 @@ typedef struct {
     const char *skill_point_notification, *skill_point_description;
     const char *skill_counter_shake, *skill_counter_shake_description;
     const char *speed_zone_vignette, *speed_zone_vignette_description;
+    const char *vignette_effect, *vignette_effect_description;
     const char *unit_names[2], *unit_descriptions[2];
     const wchar_t *garage_label, *garage_question;
     const char *parameters[3];

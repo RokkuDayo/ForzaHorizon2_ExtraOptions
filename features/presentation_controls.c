@@ -84,9 +84,27 @@ static void speed_zone_vignette(void *manager, const void *name, float weight) {
         manager, name, video_setting_get(SPEED_ZONE_VIGNETTE) ? weight : 0.0f);
 }
 
-PatchDefinition presentation_controls_hook_patches[34];
-static unsigned char originals[34][13], replacements[34][13];
-static const unsigned char *accepted[34][2];
+// This typed constant-buffer upload contains the world's main vignette, not the
+// UI button-bar gradient. Its upper/lower alpha values interpolate vertically.
+// Preserve authored parameters: only the GPU upload sees zero strength when Off.
+static void vignette_upload(void *buffer,void *graphics,void *parameters) {
+    typedef void (*Upload)(void *,void *,void *);
+    Upload native=(Upload)(image+0x18b7c50);
+    if(video_setting_get(VIGNETTE_EFFECT)){native(buffer,graphics,parameters);return;}
+    unsigned char *data=parameters;float upper,lower;
+    if(!data || !memory_read(data+0xac,&upper,4) || !memory_read(data+0xdc,&lower,4) ||
+       !memory_is_writable(data+0xac,4) || !memory_is_writable(data+0xdc,4)){
+        native(buffer,graphics,parameters);return;
+    }
+    const float zero=0;
+    memory_copy(data+0xac,&zero,4);memory_copy(data+0xdc,&zero,4);
+    native(buffer,graphics,parameters);
+    memory_copy(data+0xac,&upper,4);memory_copy(data+0xdc,&lower,4);
+}
+
+PatchDefinition presentation_controls_hook_patches[35];
+static unsigned char originals[35][13], replacements[35][13];
+static const unsigned char *accepted[35][2];
 
 void presentation_controls_prepare_hooks(unsigned char *base) {
     image = base;
@@ -266,4 +284,9 @@ void presentation_controls_prepare_hooks(unsigned char *base) {
             "speed_zone_vignette",originals[i],replacements[i],replacements[i],accepted[i],2};
     }
 
+    uintptr_t before=(uintptr_t)(image+0x18b7c50),after=(uintptr_t)vignette_upload;
+    memory_copy(originals[34],&before,8);memory_copy(replacements[34],&after,8);
+    accepted[34][0]=originals[34];accepted[34][1]=replacements[34];
+    presentation_controls_hook_patches[34]=(PatchDefinition){0x2e7f410,0,8,GROUP_VIDEO_OPTIONS,
+        "main_vignette_upload",originals[34],replacements[34],replacements[34],accepted[34],2};
 }
