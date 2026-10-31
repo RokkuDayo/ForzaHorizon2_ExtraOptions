@@ -323,7 +323,7 @@ static void carbin_prepare(void *filesystem, const BorrowedGameString *path) {
     }
     if (applied && carbin_save(entry, data, bytes)) {
         if (!carbin_volume &&
-            mount_folder(filesystem, "game:\\__fh2_carbin_cache__\\", 0x7ffffffc, -2)) {
+            mount_folder(filesystem, "game:\\__fh2_carbin_cache__\\", 0x7ffffffb, -2)) {
             ((SortVolumes)(*(void ***)filesystem)[0x1f8 / 8])(filesystem);
         }
         if (carbin_volume) {

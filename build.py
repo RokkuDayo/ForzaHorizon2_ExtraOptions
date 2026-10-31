@@ -86,6 +86,8 @@ COMMON_SOURCES = [
     "features/ui_controls.c",
     "features/png_validation.c",
     "features/png_decode.c",
+    "features/custom_language.c",
+    "features/voice_subtitles.c",
 ]
 FM5_SOURCES = ["features/fm5.c", "features/fm5_rims.c"]
 

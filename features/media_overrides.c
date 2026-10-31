@@ -4,6 +4,7 @@
 #include "logging.h"
 #include "support.h"
 #include "carbin_patch.h"
+#include "custom_language.h"
 #include "addon_database.h"
 #include "sha256.h"
 #include "media_files.h"
@@ -454,7 +455,7 @@ static int mount_folder(void *filesystem, const char *folder, unsigned priority,
     if (mounted && priority == 0x7ffffffe) {
         priority_volumes[0] = volume;
     }
-    if (mounted && priority == 0x7ffffffd) {
+    if (mounted && priority == 0x7ffffffc) {
         priority_volumes[1] = volume;
     }
     ((Reference)methods[0x18 / 8])(volume);
@@ -483,17 +484,28 @@ static void ensure_folders_mounted(void *filesystem) {
     }
     InterlockedExchange(&mount_thread, thread);
     unsigned mods = addons_count();
-    if (!overrides_enabled && !mods) {
+    const char *language_pack = custom_language_mount();
+    if (!overrides_enabled && !mods && !language_pack) {
         archive_revision = addons_media_revision();
         InterlockedExchange(&mount_thread, 0);
         InterlockedExchange(&mount_state, 2);
         ReleaseSRWLockExclusive(&mount_lock);
         return;
     }
-    int override = 1, pc = 1;
+    /* mediaoverride > custom language pack (custom_language.c) > mediapc >
+       carbin cache > mods > original assets. */
+    int override = 1, pc = 1, folders = overrides_enabled || mods;
     if (!state) {
-        override = mount_folder(filesystem, "game:\\mediaoverride\\", 0x7ffffffe, -1);
-        pc = mount_folder(filesystem, "game:\\mediapc\\", 0x7ffffffd, -1);
+        if (folders) {
+            override = mount_folder(filesystem, "game:\\mediaoverride\\", 0x7ffffffe, -1);
+            pc = mount_folder(filesystem, "game:\\mediapc\\", 0x7ffffffc, -1);
+        }
+        if (language_pack) {
+            log_append(mount_folder(filesystem, language_pack, 0x7ffffffd, -1)
+                           ? "FILES: custom language pack mounted below mediaoverride.\r\n"
+                           : "FILES: the custom language pack mount failed; original assets "
+                             "remain available.\r\n");
+        }
         for (unsigned i = 0; i < mods; ++i) {
             const wchar_t *folder = addons_media_folder(i);
             if (!folder) {
@@ -516,10 +528,12 @@ static void ensure_folders_mounted(void *filesystem) {
     InterlockedExchange(&mount_thread, 0);
     InterlockedExchange(&mount_state, 2);
     ReleaseSRWLockExclusive(&mount_lock);
-    log_append(override && pc ? "FILES: mediaoverride > mediapc > mods (last first) > original "
-                                "assets; native folder mounts ready.\r\n"
-                              : "FILES: an override mount failed; original asset "
-                                "lookup remains available.\r\n");
+    if (folders) {
+        log_append(override && pc ? "FILES: mediaoverride > mediapc > mods (last first) > original "
+                                    "assets; native folder mounts ready.\r\n"
+                                  : "FILES: an override mount failed; original asset "
+                                    "lookup remains available.\r\n");
+    }
 }
 
 static unsigned char resolve_file(void *filesystem, void **volume, void *relative_path,
