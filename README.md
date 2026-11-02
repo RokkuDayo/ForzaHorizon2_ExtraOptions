@@ -19,6 +19,7 @@ An individual or group of people is trying to use Forza Horizon 2 and the mod's 
  - Lights, hazards, and turn-signal toggles for all cars.
  - New rim style category with all stock rims.
  - Custom spawn locations.
+ - Customizable pause map zoom (optional, off by default).
  - "mediapc" modding folder support.
  
 # Enhancements
@@ -57,6 +58,17 @@ The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap
 
 ### Autodrive
 Autodrive is engaged by pressing D-Pad Down on a controller or F2 on a keyboard.
+
+### Map Zoom
+Off by default. The pause map always opens at its farthest zoom-out (2500 m on the mainland, 1100 m on Storm Island). These set where it opens and how far it can zoom out, in percent of the game's own distances:
+```ini
+[Frontend]
+MapStartZoom=150        ; opens at 150% of the game's distance (25-400, default 100)
+MapMaxZoomOut=225       ; can zoom out to 225% (100-400, default 100)
+MapIslandStartZoom=100  ; the same for Storm Island
+MapIslandMaxZoomOut=175
+```
+Zooming keeps the game's speed in metres per second, and panning keeps its speed at a given distance. The island has its own values because its map texture ends close to the island. With all four at 100 nothing is changed.
 
 ### Drift Camera
 The drift camera can be toggled and tweaked in the HUD settings inside the game.

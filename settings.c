@@ -2,6 +2,7 @@
 #include "features.h"
 #include "support.h"
 #include "features/bindings.h"
+#include "features/map_zoom.h"
 
 #define INI_MAX_SIZE 8192
 #define SETTING(section, key, field, type) {section, key, key, offsetof(ModOptions, field), type}
@@ -294,6 +295,16 @@ static int parse_ini(char *text, ModOptions *options) {
             }
             continue;
         }
+        // Pause map zoom ([Frontend] Map*Zoom*, features/map_zoom.c).
+        if (text_equal_ignore_case(section, "Frontend")) {
+            int map_zoom = map_zoom_parse(key, value);
+            if (!map_zoom) {
+                goto invalid;
+            }
+            if (map_zoom > 0) {
+                continue;
+            }
+        }
         const SettingDefinition *definition = find_setting(section, key);
         int parsed;
         if (!definition || !parse_value(definition, value, &parsed)) {
@@ -313,6 +324,7 @@ invalid:
 int settings_read(const wchar_t *directory, ModOptions *options) {
     bindings_reset();
     settings_defaults(options);
+    map_zoom_config_defaults();
     if (!path_join(ini_path, directory, MOD_INI_NAME)) {
         status_set("REFUSED: INI path is too long.");
         return 0;
