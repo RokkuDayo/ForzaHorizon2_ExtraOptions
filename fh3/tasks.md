@@ -1,4 +1,6 @@
-- [x] Headlight toggle for all cars (hazards and turn signals dropped: FH3 car models never draw them).
+- [x] Headlight toggle for all cars.
+- [x] Hazard lights and indicators (ANNA Lights page; hold D-pad Left/Right), with indicator materials repaired in memory.
+- [x] Horn Accelerator add-on unlocked.
 - [x] Built-in mod loader with addon and hooking support.
 - [x] "Jump to Manufacturer" on my cars and autoshow.
 - [x] Separate FH2 files & FH3 files into 2 separate folders, unless the files are sharing

@@ -77,6 +77,8 @@ SkipIntro=1
 ManufacturerJump=1
 ; Keep the Social, Clubs, Rivals and Marketplace pause menu tabs enabled offline.
 OnlineTabs=1
+; The pause menu's X button (Help) becomes Return to Garage: enter the nearest festival site's hub (garage, upgrades, paint) from anywhere.
+ReturnToGarage=1
 [Content]
 ; VIP license refresh and Main/IsVip reads report VIP.
 OfflineVIP=1
@@ -90,6 +92,8 @@ UnlockForzathonHorizonEditionCarsInAutoshow=0
 UnlockForzathonHorns=1
 ; Wheelspins' Horizon Edition prizes can award any of the 33 Horizon Edition cars (the game: 17 of them).
 HorizonEditionWheelspins=1
+; Horn Accelerator add-on (DLC) owned and shown as purchased in Extras.
+UnlockHornAccelerator=1
 [Vehicle]
 ; AI drives the car along the GPS route. Throttle, brake or steering cancels.
 Autodrive=1
@@ -97,10 +101,12 @@ Autodrive=1
 AutodriveKey=F2
 ; Controller toggle, buttons joined by +: A B X Y LB RB L3 R3 View Menu Up Down Left Right.
 AutodriveButtons=L3+R3
-; Also list "Autodrive" in the ANNA menu (D-pad Down).
+; List "Autodrive" in the ANNA menu's Car submenu (D-pad Down, Car).
 AutodriveInAnna=1
-; ANNA "Car" submenu: open and close the roof, hood, trunk and doors the car animates (as in ForzaVista), or all at once. Parts open only while stationary; the throttle closes them.
+; ANNA "Car" submenu: Lights (headlights, hazard lights, left/right indicators) and Doors (open and close the roof, hood, trunk and doors the car animates, or all at once). Parts open only while stationary; the throttle closes them.
 CarPartsInAnna=1
+; Hold D-pad Left/Right for 1 s to turn that indicator on or off (a tap still changes the radio station). Indicators turn off once a turn is made and the steering is centred.
+IndicatorsOnDpad=1
 ; Switch to slow orbiting cinematic shots (HUD hidden) after 3 s of Autodrive; camera and HUD return when you take over.
 AutodriveCinematic=1
 [HUD]
@@ -145,6 +151,8 @@ MediaOverrides=1
 ; Load mods from the mods folder next to azimuth.exe (mods\<ModName>\). Disable one with <ModName>=0.
 Enabled=1
 [Compatibility]
+; Ignore Xbox Live parental/privacy restrictions on multiplayer and user-created content (as in FH2).
+DisableParentalLocks=1
 ; Accept edited or hand-copied Azimuth saves (rebuilds missing commit files).
 DisableAzimuthSaveChecksums=1
 ```

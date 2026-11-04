@@ -87,7 +87,9 @@ A separate build of the mod for the Xbox One version of Forza Horizon 3, running
  - Built-in mod loader with plugin support.
  - "Jump to Manufacturer" grid on every car list (Autoshow, My Cars, Marketplace car packs...), opened with View or Backspace.
  - Social, Clubs, Rivals and Marketplace pause menu tabs available offline.
+ - "Return to Garage" on the pause menu's X button: enter the nearest festival site's hub (garage, upgrades, paint) from anywhere.
  - Autodrive (as seen in Forza Horizon 6), with an optional cinematic camera.
+ - Headlights, hazard lights and indicators for every car, from the ANNA menu or by holding D-Pad Left/Right.
  - Open and close the roof, hood, trunk and doors from the ANNA menu.
  - Drift Camera (as seen in Forza Horizon 4/5/6).
  - FOV sliders for every camera type.
@@ -100,9 +102,11 @@ A separate build of the mod for the Xbox One version of Forza Horizon 3, running
  - VIP status & "Treasure Map" unlocks.
  - Every car hidden from the Autoshow can be bought, including Forzathon prizes (Horizon Editions optional).
  - All Forzathon horns unlocked.
+ - Horn Accelerator add-on unlocked.
  - Every Horizon Edition car can be won in Wheelspins.
  - Overides for 4K liveries w/ enhanced sampling.
  - Unrestricted photo mode.
+ - Xbox Live parental controls no longer block multiplayer and user-created content.
  - Bypass for Azimuth's save data checks.
 
 ### Plugins
@@ -120,16 +124,33 @@ These come as mods and are optional:
 Most of the features can be toggled and tweaked inside the game through the HUD and Video settings, or in "FH3_ExtraOptions.ini".
 
 #### Autodrive
-Autodrive is engaged by pressing L3+R3 on a controller or F2 on a keyboard, or from the ANNA menu (D-Pad Down). Throttle, brake or steering hands the car back to you.
+Autodrive is engaged by pressing L3+R3 on a controller or F2 on a keyboard, or from the ANNA menu (D-Pad Down, then "Car"). Throttle, brake or steering hands the car back to you.
 
-#### Car parts
-Open the ANNA menu (D-Pad Down) and choose "Car" to open the roof, hood, trunk or doors. Parts only open while the car is stationary and close again once it moves.
+#### ANNA "Car" menu
+Open the ANNA menu (D-Pad Down); "Car" is first in the list. Select with D-Pad Right:
+ - "Autodrive" starts or stops Autodrive.
+ - "Lights" toggles the headlights, hazard lights and left/right indicators.
+ - "Doors" opens and closes the roof, hood, trunk or doors (or all at once). Parts only open while the car is stationary and close again once it moves.
+
+D-Pad Left goes back from "Lights" or "Doors" to the "Car" menu.
+
+#### Indicators
+Hold D-Pad Left/Right for 1 second to turn that indicator on or off; a short tap still changes the radio station. Indicators turn off once a turn is made and the steering is centered.
+
+#### Return to Garage
+The pause menu's X button (which used to open Help) reads "Return to Garage". It closes the pause menu and enters the nearest festival site the same way the game does when you join an online session: a loading screen, then the festival's menus (Autoshow, Garage, upgrades, paint...). When you leave, you drive out at that festival. Set "ReturnToGarage" to 0 in the INI to keep the Help button.
 
 #### FPS counter
 The FPS counter is off by default. Turn it on in Settings > HUD and Gameplay, where you can also add GPU usage and frame time and remove its background.
 
 #### Forzathon cars
 The hidden cars, Forzathon horns and Wheelspin changes are made in memory when the game starts; the game files are never changed. Horizon Edition cars are only won in Wheelspins by default. Set "UnlockForzathonHorizonEditionCarsInAutoshow" to 1 in the INI to also sell them in the Autoshow.
+
+#### Horn Accelerator
+The Horn Accelerator add-on is reported as owned and shown as purchased in Extras. Set "UnlockHornAccelerator" to 0 in the INI to turn this off.
+
+#### Parental controls
+"DisableParentalLocks" (on by default) stops the game's Xbox Live privilege checks from blocking multiplayer and user-created content. It does not bring back online content: "Find New Designs", Storefront and other shared designs still need the Forza Horizon 3 servers and a real Xbox Live sign-in, so on Azimuth they show "The Forza Horizon 3 server is not available at this time".
 
 #### Treasure Map
 The treasure map is disabled by default. Open the INI and set "UnlockTreasureMap" to 1 if you wish to have it.
