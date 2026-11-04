@@ -49,7 +49,8 @@ jobs:
       - name: Package
         run: |
           set -euo pipefail
-          version="$(sed -n 's/^#define MOD_VERSION "\(.*\)"/\1/p' extra_options.h)"
+          # extra_options.h has CRLF line endings; keep the \r out of the zip names.
+          version="$(tr -d '\r' < extra_options.h | sed -n 's/^#define MOD_VERSION "\(.*\)"/\1/p')"
           echo "VERSION=$version" >> "$GITHUB_ENV"
           cp fh2/fh2_plugin.h dist/fh2-mezcal/
           cp fh2/fh2_plugin.h dist/fh2-azimuth/
