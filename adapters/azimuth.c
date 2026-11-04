@@ -8,6 +8,9 @@
 #ifdef FH2_ENABLE_FM5
 #include "features/fm5.h"
 #endif
+#ifdef FH2_BUILD_FH3
+#include "fh3.h"
+#endif
 
 #define FH2_TITLE_ID 0x1a96545bu
 
@@ -63,7 +66,7 @@ static void notify_refusal(void) {
         int length =
             MultiByteToWideChar(CP_UTF8, 0, status_get(), -1, message, ARRAY_COUNT(message));
         if (length) {
-            show(NULL, message, L"Forza Horizon 2 Extra Options", MB_OK | MB_ICONWARNING);
+            show(NULL, message, L"" MOD_NAME, MB_OK | MB_ICONWARNING);
         }
     }
     if (user32) {
@@ -74,9 +77,13 @@ static void notify_refusal(void) {
 
 static int refuse(const char *reason) {
     status_set(reason);
+#ifdef FH2_BUILD_FH3
+    fh3_log_status(mod_directory);
+#else
     ModOptions options;
     settings_defaults(&options);
     log_start(mod_directory, &options);
+#endif
     notify_refusal();
     return 0;
 }
@@ -149,11 +156,15 @@ static unsigned package_title(const void *package) {
 }
 
 static int supported_title(unsigned title) {
+#ifdef FH2_BUILD_FH3
+    return title == FH3_TITLE_ID;
+#else
     if (title == FH2_TITLE_ID) return 1;
 #ifdef FH2_ENABLE_FM5
     if (title == FM5_TITLE_ID) return 1;
 #endif
     return 0;
+#endif
 }
 
 static int resolve_game_path(const void *package) {
@@ -165,6 +176,7 @@ static int resolve_game_path(const void *package) {
     return size && size < PATH_CAPACITY;
 }
 
+#ifndef FH2_BUILD_FH3
 static int game_image_is_readable(unsigned char *base) {
     uintptr_t cursor = (uintptr_t)base, end = cursor + GAME_IMAGE_SIZE;
     if (end < cursor) {
@@ -191,6 +203,7 @@ static int game_image_is_readable(unsigned char *base) {
     }
     return 1;
 }
+#endif
 
 static int change_loader(int install) {
     const unsigned rvas[] = {MAP_GAME_THUNK, MAP_GAME_CALL};
@@ -220,7 +233,9 @@ static void *on_map_game(void *output, const void *folder, const void *package, 
     if (!restored) {
         refuse("REFUSED: could not restore Azimuth's game-loading call. No game patches applied.");
     } else if (!supported_title(title)) {
-#ifdef FH2_ENABLE_FM5
+#if defined(FH2_BUILD_FH3)
+        status_set("INACTIVE: this release supports only FH3 (4CE1DFAB). No game patches applied.");
+#elif defined(FH2_ENABLE_FM5)
         status_set("INACTIVE: the loaded title is neither FH2 (1A96545B) nor FM5 (7B35D917).");
 #else
         status_set("INACTIVE: this release supports only FH2 (1A96545B). No game or save patches applied.");
@@ -228,6 +243,15 @@ static void *on_map_game(void *output, const void *folder, const void *package, 
     } else if (!resolve_game_path(package)) {
         refuse("REFUSED: cannot resolve the loaded executable path. No game patches applied.");
     } else {
+#ifdef FH2_BUILD_FH3
+        /* FH3 owns its verification, INI and diagnostic log; the FH2 runtime,
+           settings, plugins and save adapter are not part of this build. */
+        unsigned char *context = NULL, *game = NULL;
+        int mapped = memory_read_pointer(result, (void **)&context) &&
+                     memory_read_pointer(context, (void **)&game);
+        if (!fh3_initialize(title, mapped ? game : NULL, game_path, mod_directory))
+            notify_refusal();
+#else
         unsigned char *context = NULL, *game = NULL;
         IMAGE_DOS_HEADER dos;
         IMAGE_NT_HEADERS64 nt;
@@ -255,6 +279,7 @@ static void *on_map_game(void *output, const void *folder, const void *package, 
         } else {
             notify_refusal();
         }
+#endif
     }
     SetLastError(error);
     return result;

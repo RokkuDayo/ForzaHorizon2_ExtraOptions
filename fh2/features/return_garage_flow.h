@@ -1,0 +1,16 @@
+static const char return_garage_flow_xml[] =
+    "<state id=\"_fh2_return_island\">"
+    "<behavior id=\"GameControlWrapper\" force_take_control=\"false\" allow_failure=\"true\">"
+    "<transition id=\"onFailedToTakeControl\" /></behavior>"
+    "<behavior id=\"SystemSpeechEventWrapper\" context=\"GenericUIMenu\" />"
+    "<behavior id=\"NetworkForceLocalCarToPrivateUniverseWrapper\" />"
+    "<node state=\"in_game_ui.enter_keep_ai\" "
+    "fade_out_state=\"ui_screens.show_micro_loading_screen_and_continue\" "
+    "show_empty_scene_and_continue=\"false\" />"
+    "<node state=\"global.enable_mixer_snapshot\" snapshot=\"FLOW_DestinationHub\" />"
+    "<node state=\"destination_hub.pre_functional_location\" />"
+    "<node state=\"destination_hub.garage_flow\" />"
+    "<node state=\"destination_hub.post_functional_location\" />"
+    "<node state=\"in_game_ui.online_exit_helper\" fade=\"true\" allow_panama_upsell=\"true\" />"
+    "<node state=\"global.disable_mixer_snapshot\" snapshot=\"FLOW_DestinationHub\" />"
+    "</state>\n";

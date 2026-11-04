@@ -22,4 +22,6 @@ AzimuthBuild azimuth_host_build(const unsigned char *base);
 int azimuth_patch_host_code(unsigned char *base, const HostPatchSet *set);
 int azimuth_patch_host_codes(unsigned char *base, const HostPatchSet *sets, unsigned count);
 void azimuth_apply_save_compatibility(int disable_checksums);
+/* Same result codes as azimuth_patch_host_code; nothing is logged. */
+int azimuth_disable_save_checks(void);
 #endif

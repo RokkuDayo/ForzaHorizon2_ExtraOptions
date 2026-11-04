@@ -1,0 +1,14 @@
+#ifndef FH2_CAMERA_VIEWS_H
+#define FH2_CAMERA_VIEWS_H
+
+typedef enum {
+    CAMERA_UNKNOWN,
+    CAMERA_CHASE,
+    CAMERA_CHASE_NEAR,
+    CAMERA_CHASE_FAR,
+    CAMERA_DRIVER,
+    CAMERA_HOOD,
+    CAMERA_BUMPER
+} CameraView;
+
+#endif

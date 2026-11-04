@@ -1,5 +1,5 @@
 """Build the native mod with Zig 0.15.2, including cross-compilation on Linux.
-Usage: python build.py /path/to/zig [--azimuth] [--test] [--output PATH]
+Usage: python build.py /path/to/zig [--azimuth [--fh3]] [--test] [--output PATH]
 """
 
 import argparse
@@ -12,82 +12,90 @@ import subprocess
 import re
 import struct
 import time
-from generate_data import generate
-
 SOURCE = Path(__file__).resolve().parent
+# Shared sources live at the top level; title-specific ones in fh2/ and fh3/.
+INCLUDE_DIRS = ["", "fh2", "fh3"]
+import sys
+sys.path.insert(0, str(SOURCE / "fh2"))
+from generate_data import generate  # noqa: E402
 COMMON_SOURCES = [
     "dllmain.c",
-    "runtime.c",
-    "settings.c",
+    "fh2/runtime.c",
+    "fh2/settings.c",
     "support.c",
-    "logging.c",
-    "patch_engine.c",
-    "verification.c",
+    "fh2/logging.c",
+    "fh2/patch_engine.c",
+    "fh2/verification.c",
     "sha256.c",
-    "patches_generated.c",
-    "features/garage.c",
-    "features/road_placement.c",
-    "features/gamerpic.c",
-    "features/treasure_map.c",
-    "features/minimap.c",
-    "features/rims.c",
-    "features/engine_swaps.c",
-    "features/transmission_swaps.c",
-    "features/return_garage.c",
-    "features/stock_wheels.c",
-    "features/wheel_variants.c",
-    "features/world_drivatars.c",
-    "features/local_liveries.c",
-    "features/plugins.c",
-    "features/display_units.c",
-    "features/drift_camera.c",
-    "features/video_settings.c",
-    "features/camera_fov.c",
-    "features/video_options.c",
-    "features/video_options_text.c",
-    "features/video_options_xaml.c",
-    "features/photo_sampling.c",
-    "features/sun_shadows.c",
-    "features/livery.c",
-    "features/media_overrides.c",
-    "features/media_files.c",
-    "features/video_redirect.c",
-    "features/showroom_photo.c",
-    "features/manufacturer_jump.c",
-    "features/presentation_controls.c",
-    "features/driver_options.c",
-    "features/photo_environment.c",
-    "features/audio_volume.c",
-    "features/pause_menu.c",
-    "features/addon_json.c",
-    "features/carbin_patch.c",
-    "features/addon_database.c",
-    "features/addons.c",
-    "features/addon_archives.c",
-    "features/addon_strings.c",
-    "features/addon_wheels.c",
-    "features/vehicle_controls.c",
-    "features/headlight_beams.c",
-    "features/blinkers.c",
-    "features/aero_tuning.c",
-    "features/roof_fade.c",
-    "features/roof_aero.c",
-    "features/speed_zone.c",
-    "features/autodrive.c",
-    "features/game_input.c",
-    "features/bindings.c",
-    "features/offline_events.c",
-    "features/custom_showcases.c",
-    "features/offline_event_division.c",
-    "features/offline_event_setup.c",
-    "features/autodrive_game.c",
-    "features/autodrive_notice.c",
-    "features/autodrive_ui.c",
-    "features/ui_controls.c",
-    "features/png_validation.c",
-    "features/png_decode.c",
+    "fh2/patches_generated.c",
+    "fh2/features/garage.c",
+    "fh2/features/road_placement.c",
+    "fh2/features/gamerpic.c",
+    "fh2/features/treasure_map.c",
+    "fh2/features/minimap.c",
+    "fh2/features/rims.c",
+    "fh2/features/engine_swaps.c",
+    "fh2/features/transmission_swaps.c",
+    "fh2/features/return_garage.c",
+    "fh2/features/stock_wheels.c",
+    "fh2/features/wheel_variants.c",
+    "fh2/features/world_drivatars.c",
+    "fh2/features/local_liveries.c",
+    "fh2/features/plugins.c",
+    "fh2/features/display_units.c",
+    "fh2/features/drift_camera.c",
+    "fh2/features/video_settings.c",
+    "fh2/features/camera_fov.c",
+    "fh2/features/video_options.c",
+    "fh2/features/video_options_text.c",
+    "fh2/features/video_options_xaml.c",
+    "fh2/features/photo_sampling.c",
+    "fh2/features/sun_shadows.c",
+    "fh2/features/livery.c",
+    "fh2/features/media_overrides.c",
+    "fh2/features/media_files.c",
+    "fh2/features/video_redirect.c",
+    "fh2/features/showroom_photo.c",
+    "fh2/features/manufacturer_jump.c",
+    "fh2/features/presentation_controls.c",
+    "fh2/features/driver_options.c",
+    "fh2/features/photo_environment.c",
+    "fh2/features/audio_volume.c",
+    "fh2/features/pause_menu.c",
+    "fh2/features/addon_json.c",
+    "fh2/features/carbin_patch.c",
+    "fh2/features/addon_database.c",
+    "fh2/features/addons.c",
+    "fh2/features/addon_archives.c",
+    "fh2/features/addon_strings.c",
+    "fh2/features/addon_wheels.c",
+    "fh2/features/vehicle_controls.c",
+    "fh2/features/headlight_beams.c",
+    "fh2/features/blinkers.c",
+    "fh2/features/aero_tuning.c",
+    "fh2/features/roof_fade.c",
+    "fh2/features/roof_aero.c",
+    "fh2/features/speed_zone.c",
+    "fh2/features/autodrive.c",
+    "fh2/features/game_input.c",
+    "fh2/features/bindings.c",
+    "fh2/features/offline_events.c",
+    "fh2/features/custom_showcases.c",
+    "fh2/features/offline_event_division.c",
+    "fh2/features/offline_event_setup.c",
+    "fh2/features/autodrive_game.c",
+    "fh2/features/autodrive_notice.c",
+    "fh2/features/autodrive_ui.c",
+    "fh2/features/ui_controls.c",
+    "fh2/features/png_validation.c",
+    "fh2/features/png_decode.c",
 ]
-FM5_SOURCES = ["features/fm5.c", "features/fm5_rims.c"]
+FM5_SOURCES = ["fh2/features/fm5.c", "fh2/features/fm5_rims.c"]
+# The FH3 build is a separate, self-contained title profile: none of the FH2
+# runtime, settings, plugins or save compatibility modules are linked.
+FH3_SOURCES = ["dllmain.c", "support.c", "sha256.c", "fh3/fh3.c", "fh3/fh3_mods.c"]
+AZIMUTH_SOURCES = ["adapters/azimuth.c", "adapters/winmm.c", "adapters/winmm_exports.s",
+                   "adapters/azimuth_host.c"]
 
 
 def parse_arguments():
@@ -96,6 +104,7 @@ def parse_arguments():
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--azimuth", action="store_true", help="Build the Azimuth winmm proxy")
     parser.add_argument("--fm5", action="store_true", help="Opt into the unfinished FM5 title profile (Azimuth only)")
+    parser.add_argument("--fh3", action="store_true", help="Build the separate Forza Horizon 3 DLL (Azimuth only)")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--build-dir", type=Path)
     parser.add_argument("--jobs", type=int, default=min(8, os.cpu_count() or 1))
@@ -105,6 +114,10 @@ def parse_arguments():
         parser.error("--jobs must be positive")
     if arguments.fm5 and not arguments.azimuth:
         parser.error("--fm5 requires --azimuth")
+    if arguments.fh3 and not arguments.azimuth:
+        parser.error("--fh3 requires --azimuth")
+    if arguments.fh3 and arguments.fm5:
+        parser.error("--fh3 cannot be combined with --fm5")
     return arguments
 
 
@@ -124,8 +137,7 @@ def compiler_arguments(compiler, options):
         "-Wall",
         "-Wextra",
         "-Werror",
-        "-I",
-        str(SOURCE),
+        *[item for folder in INCLUDE_DIRS for item in ("-I", str(SOURCE / folder))],
         "-isystem",
         str(compiler.parent / "lib/include"),
         "-isystem",
@@ -137,13 +149,15 @@ def compiler_arguments(compiler, options):
         arguments.append("-DFH2_AZIMUTH=1")
     if options.fm5:
         arguments.append("-DFH2_ENABLE_FM5=1")
+    if options.fh3:
+        arguments.append("-DFH2_BUILD_FH3=1")
     return arguments
 
 
-def version_resource(filename, fm5=False):
+def version_resource(filename, fm5=False, fh3=False):
     version = re.search(r'#define MOD_VERSION "([\d.]+)"',
                         (SOURCE / "extra_options.h").read_text()).group(1)
-    manifest_version = json.loads((SOURCE / "patches.json").read_text())["version"]
+    manifest_version = json.loads((SOURCE / "fh2" / "patches.json").read_text())["version"]
     if version != manifest_version:
         raise ValueError("Version mismatch between extra_options.h and patches.json")
     numbers = [int(part) for part in version.split(".")]
@@ -162,14 +176,17 @@ def version_resource(filename, fm5=False):
             data = padded(data) + children
         return struct.pack("<H", len(data)) + data[2:]
 
-    title = "Forza Horizon 2 / Motorsport 5 Extra Options" if fm5 else "Forza Horizon 2 Extra Options"
+    title = ("Forza Horizon 3 Extra Options" if fh3 else
+             "Forza Horizon 2 / Motorsport 5 Extra Options" if fm5 else "Forza Horizon 2 Extra Options")
+    comments = ("Unofficial in-process game mod. Forza Horizon 3 only: 4CE1DFAB." if fh3 else
+                "Unofficial in-process game mod. FH2: 1A96545B. FM5: 7B35D917 (Azimuth only)." if fm5 else
+                "Unofficial in-process game mod. Forza Horizon 2 only: 1A96545B.")
     strings = {"FileDescription": title + " - " + ("Azimuth adapter" if filename == "winmm.dll" else "Mezcal adapter"),
-               "FileVersion": version, "InternalName": "FH2_ExtraOptions",
+               "FileVersion": version, "InternalName": "FH3_ExtraOptions" if fh3 else "FH2_ExtraOptions",
                "OriginalFilename": filename, "ProductName": title,
                "ProductVersion": version, "LegalCopyright": "Arthur (RokkuDayo)",
                "CompanyName": "Arthur (RokkuDayo)",
-               "Comments": ("Unofficial in-process game mod. FH2: 1A96545B. FM5: 7B35D917 (Azimuth only)."
-                            if fm5 else "Unofficial in-process game mod. Forza Horizon 2 only: 1A96545B.")}
+               "Comments": comments}
     entries = b"".join(padded(block(key, wide(value), text=True)) for key, value in strings.items())
     string_info = block("StringFileInfo", children=block("040904b0", children=entries))
     variable_info = block("VarFileInfo", children=block("Translation", struct.pack("<HH", 0x409, 1200)))
@@ -199,10 +216,10 @@ def project_dependencies(path, seen=None):
         return seen
     seen.add(path)
     for name in re.findall(r'^\s*#\s*include\s*"([^"]+)"', path.read_text(encoding="utf-8"), re.M):
-        included = path.parent / name
-        if not included.is_file():
-            included = SOURCE / name
-        project_dependencies(included.resolve(), seen)
+        candidates = [path.parent / name, *(SOURCE / folder / name for folder in INCLUDE_DIRS)]
+        included = next((c for c in candidates if c.is_file()), None)
+        if included:
+            project_dependencies(included.resolve(), seen)
     return seen
 
 
@@ -222,21 +239,18 @@ def build(compiler, output, directory, options):
     directory.mkdir(parents=True, exist_ok=True)
     output.parent.mkdir(parents=True, exist_ok=True)
     objects = []
-    sources = [*COMMON_SOURCES]
-    if options.fm5:
-        sources.extend(FM5_SOURCES)
-    sources.extend(
-        [
-            "adapters/azimuth.c",
-            "adapters/winmm.c",
-            "adapters/winmm_exports.s",
-            "adapters/azimuth_host.c",
-            "adapters/azimuth_save.c",
-            "adapters/azimuth_markers.c",
-        ]
-        if options.azimuth
-        else ["adapters/mezcal.c"]
-    )
+    if options.fh3:
+        sources = [*FH3_SOURCES, *AZIMUTH_SOURCES, "adapters/azimuth_save.c",
+                   "adapters/azimuth_markers.c"]
+    else:
+        sources = [*COMMON_SOURCES]
+        if options.fm5:
+            sources.extend(FM5_SOURCES)
+        sources.extend(
+            [*AZIMUTH_SOURCES, "adapters/azimuth_save.c", "adapters/azimuth_markers.c"]
+            if options.azimuth
+            else ["fh2/adapters/mezcal.c"]
+        )
     arguments = compiler_arguments(compiler, options)
     def compile_source(filename):
         object_file = directory / (Path(filename).stem + ".obj")
@@ -269,7 +283,8 @@ def build(compiler, output, directory, options):
                     str(SOURCE / "ntdll.def"), "-l", str(exception_library)],
                    [SOURCE / "ntdll.def"], exception_library, compiler, options.rebuild)
     resource = directory / "version.res"
-    resource.write_bytes(version_resource("winmm.dll" if options.azimuth else "xg.dll", options.fm5))
+    resource.write_bytes(version_resource("winmm.dll" if options.azimuth else "xg.dll", options.fm5,
+                                          options.fh3))
     link_arguments = [
         str(compiler),
         "lld-link",
@@ -303,8 +318,12 @@ def main():
         if options.test
         else "winmm.dll" if options.azimuth else "xg.dll"
     )
-    output = (options.output or SOURCE.parent / filename).resolve()
-    variant = ("azimuth" if options.azimuth else "mezcal") + ("-test" if options.test else "")
+    # FH3 also ships as Azimuth's winmm.dll; keep it in its own folder so it
+    # never overwrites the FH2 build.
+    default_output = SOURCE.parent / "FH3" / filename if options.fh3 else SOURCE.parent / filename
+    output = (options.output or default_output).resolve()
+    variant = (("azimuth" if options.azimuth else "mezcal") + ("-fh3" if options.fh3 else "")
+               + ("-test" if options.test else ""))
     directory = options.build_dir or SOURCE.parent / ".build" / variant
     build(compiler, output, directory.resolve(), options)
     print(output)
