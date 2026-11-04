@@ -182,7 +182,7 @@ mod, as with FH2; mods load in name order.
 Build it with `sh fh3/plugins/GrooveMusicRadio/build.sh` (llvm-mingw clang) and
 install the DLL as `mods\GrooveMusicRadio\plugins\GrooveMusicRadio.dll` next to
 `azimuth.exe`. Its settings are in `mods\GrooveMusicRadio\GrooveMusicRadio.ini`
-(created on first start). Choose what plays in Audio Options > Groove Music
+(shipped with an empty `api_key`; recreated with the defaults if missing). Choose what plays in Audio Options > Groove Music
 Playlist:
 
 - each folder in your Windows Music folder (MP3, FLAC, WAV);

@@ -54,8 +54,9 @@ jobs:
           cp fh2/fh2_plugin.h dist/fh2-mezcal/
           cp fh2/fh2_plugin.h dist/fh2-azimuth/
           cp fh3/fh3_plugin.h fh3/tools/fh3_zip.py fh3/FH3_ExtraOptions.ini dist/fh3-azimuth/
-          # GrooveMusicRadio.ini is written on first start; Spotify's soloist.exe is the player's own.
+          # GrooveMusicRadio.ini ships with an empty api_key; Spotify's soloist.exe is the player's own.
           cp fh3/plugins/NoPause/NoPause.ini dist/fh3-azimuth/mods/NoPause/
+          cp fh3/plugins/GrooveMusicRadio/GrooveMusicRadio.ini dist/fh3-azimuth/mods/GrooveMusicRadio/
           for variant in fh2-mezcal fh2-azimuth fh3-azimuth; do
             cp LICENSE BUILD.md "dist/$variant/"
             (cd "dist/$variant" && zip -r "../ExtraOptions-$version-$variant.zip" .)
