@@ -39,7 +39,9 @@ All modules compile with warnings treated as errors and x64 unwind tables.
 Azimuth, FH3 Azimuth) with Zig 0.15.2 on Ubuntu. It runs when a GitHub
 release is published, attaching `ExtraOptions-<version>-<variant>.zip` to the
 release, or manually from the Actions tab (Run workflow), uploading the same
-zips as a workflow artifact. The FH3 zip also carries `FH3_ExtraOptions.ini`
+zips as a workflow artifact. The zips hold only what players install, plus
+`README.md` and `LICENSE`; plugin headers and tools stay in the repository.
+The FH3 zip also carries `FH3_ExtraOptions.ini`
 (`fh3/FH3_ExtraOptions.ini`, the defaults listed below) and the NoPause and Groove Music
 Radio plugins under `mods\<Name>\plugins\`, built with llvm-mingw 20261020 by
 each plugin's `build.sh`.
