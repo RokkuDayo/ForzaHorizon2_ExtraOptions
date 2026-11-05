@@ -302,6 +302,8 @@ static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
             return 1;
         case GROUP_LAUNCH_CONTROL:
             return options->launch_control;
+        case GROUP_STATUS_NOTICE:
+            return options->autodrive || options->launch_control;
         case GROUP_AUTODRIVE:
             return options->autodrive;
         case GROUP_TREASURE_MAP:

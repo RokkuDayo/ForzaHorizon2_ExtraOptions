@@ -17,6 +17,7 @@
 #include "bindings.h"
 #include "game_input.h"
 #include "autodrive_game.h"
+#include "autodrive_notice.h"
 #include "logging.h"
 #include "support.h"
 
@@ -44,8 +45,8 @@ static int enabled;
 static float share = 0.60f;
 
 static struct {
-    int held, logged_hold, logged_launch;
-    float integral, last_rpm, rate;
+    int held, logged_hold, logged_launch, notice;
+    float integral, last_rpm, rate, notice_time;
 } state;
 
 static float clamp(float value, float low, float high) {
@@ -142,6 +143,10 @@ static int binding_held(void) {
 
 static void let_go(int launched, float rpm) {
     holding = 0;
+    if (state.notice) {
+        autodrive_notice_clear();
+        state.notice = 0;
+    }
     if (state.held && launched && !state.logged_launch) {
         state.logged_launch = 1;
         log_append_value("LAUNCH CONTROL: launch at rpm ", (int)rpm);
@@ -177,6 +182,8 @@ void launch_control_tick(void *car, float dt, int focused) {
         state.integral = 0.05f;
         state.last_rpm = rpm;
         state.rate = 0;
+        state.notice = autodrive_notice_show_label("LAUNCH CONTROL");
+        state.notice_time = 0;
         if (!state.logged_hold) {
             state.logged_hold = 1;
             log_append_value("LAUNCH CONTROL: holding rpm ", (int)(share * red_rpm));
@@ -184,6 +191,10 @@ void launch_control_tick(void *car, float dt, int focused) {
     }
     if (dt > 0) {
         state.rate += ((rpm - state.last_rpm) / dt - state.rate) * clamp(dt / 0.05f, 0, 1);
+    }
+    if (state.notice) {
+        if (dt > 0 && dt <= 1.0f) state.notice_time += dt;
+        autodrive_notice_update(state.notice_time);
     }
     state.last_rpm = rpm;
     float target = share * red_rpm;
