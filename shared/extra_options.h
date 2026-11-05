@@ -47,7 +47,8 @@ typedef enum {
     GROUP_AERO_TUNING,
     GROUP_ADDONS,
     GROUP_ENGINE_SWAPS,
-    GROUP_LAUNCH_CONTROL
+    GROUP_LAUNCH_CONTROL,
+    GROUP_STATUS_NOTICE
 } PatchGroup;
 
 typedef struct {
