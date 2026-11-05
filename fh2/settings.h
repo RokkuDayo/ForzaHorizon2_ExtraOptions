@@ -4,7 +4,7 @@
 #include "extra_options.h"
 
 typedef enum { SETTING_BOOLEAN, SETTING_MSAA, SETTING_PHOTO_SAMPLES,
-               SETTING_LIVERY_COUNT, SETTING_TURBO_INTERVAL } SettingType;
+               SETTING_LIVERY_COUNT, SETTING_TURBO_INTERVAL, SETTING_PERCENT } SettingType;
 
 typedef struct {
     const char *section;

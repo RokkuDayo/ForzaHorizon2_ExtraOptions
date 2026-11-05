@@ -70,6 +70,7 @@ COMMON_SOURCES = [
     "fh2/features/addon_strings.c",
     "fh2/features/addon_wheels.c",
     "fh2/features/vehicle_controls.c",
+    "fh2/features/launch_control.c",
     "fh2/features/headlight_beams.c",
     "fh2/features/blinkers.c",
     "fh2/features/aero_tuning.c",

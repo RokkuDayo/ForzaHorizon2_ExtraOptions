@@ -16,6 +16,7 @@ typedef enum {
     BIND_TOGGLE_UI,
     BIND_RIM_MANUFACTURER_JUMP,
     BIND_CAR_MEET_PHOTO,
+    BIND_LAUNCH_CONTROL,
     BIND_COUNT
 } GameAction;
 
