@@ -7,6 +7,7 @@
 #include "shared/logging.h"
 #include "shared/support.h"
 #include "fh2/vehicle_controls.h"
+#include "fh2/launch_control.h"
 #include "fh2/video_settings.h"
 
 #define CINEMATIC_DELAY 3.0f
@@ -310,6 +311,7 @@ void autodrive_prepare_hooks(unsigned char *image, const ModOptions *options) {
     game_image = image;
     autodrive_game_bind(image);
     vehicle_controls_bind(image);
+    launch_control_bind(image, options);
     autodrive_enabled = options->autodrive;
     autodrive_notice_prepare(image);
     autodrive_ui_prepare(image);

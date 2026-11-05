@@ -46,7 +46,8 @@ typedef enum {
     GROUP_VEHICLE_CONTROLS,
     GROUP_AERO_TUNING,
     GROUP_ADDONS,
-    GROUP_ENGINE_SWAPS
+    GROUP_ENGINE_SWAPS,
+    GROUP_LAUNCH_CONTROL
 } PatchGroup;
 
 typedef struct {
@@ -99,6 +100,8 @@ typedef struct {
     int menu_turbo_interval_ms;
     int all_transmission_swaps;
     int show_playground_events;
+    int launch_control;
+    int launch_control_rpm;
 } ModOptions;
 #endif
 
