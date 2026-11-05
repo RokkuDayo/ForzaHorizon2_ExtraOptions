@@ -16,10 +16,13 @@ EXPORTS
     WriteFile
     ReadProcessMemory
     VirtualQuery
+ VirtualAlloc
     GetCurrentThreadId
     GetCurrentProcessId
     GetFullPathNameW
+    GetPrivateProfileIntW
     GetPrivateProfileStringW
+    WritePrivateProfileStringW
     ExitProcess
     GetProcessHeap
     HeapAlloc
@@ -62,4 +65,10 @@ DeleteCriticalSection
 
     CompareStringOrdinal
     Sleep
-
+    QueryPerformanceCounter
+    QueryPerformanceFrequency
+    CreateDirectoryW
+    RemoveDirectoryW
+    CreateHardLinkW
+    CopyFileW
+    GetFileAttributesExW

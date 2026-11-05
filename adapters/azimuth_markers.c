@@ -1,6 +1,8 @@
 #include "azimuth_markers.h"
 #include "azimuth_host.h"
+#ifndef FH2_BUILD_FH3
 #include "logging.h"
+#endif
 #include "sha256.h"
 #include "support.h"
 
@@ -298,6 +300,9 @@ static void repair_title(const wchar_t *directory, unsigned title_id,
 #ifdef FH2_ENABLE_FM5
     if (title_id == 0x7b35d917u) relative = L"data\\titles\\7B35D917\\saves";
 #endif
+#ifdef FH2_BUILD_FH3
+    if (title_id == 0x4ce1dfabu) relative = L"data\\titles\\4CE1DFAB\\saves";
+#endif
     if (!relative) return;
     wchar_t *root = HeapAlloc(GetProcessHeap(), 0, PATH_CAPACITY * sizeof(wchar_t));
     if (!root) return;
@@ -339,9 +344,11 @@ done:
     HeapFree(GetProcessHeap(), 0, scan);
 }
 
+#ifndef FH2_BUILD_FH3
 void azimuth_repair_missing_markers(unsigned char *host) {
     azimuth_repair_title_markers(host, 0x1a96545bu, log_append);
 }
+#endif
 
 #ifdef FH2_TWEAKS_TEST
 __declspec(dllexport) unsigned Fh2TestAzimuthMarkerRepair(const wchar_t *root) {

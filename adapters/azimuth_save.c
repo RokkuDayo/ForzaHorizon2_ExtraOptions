@@ -1,6 +1,8 @@
 #include "azimuth_host.h"
 #include "azimuth_markers.h"
+#ifndef FH2_BUILD_FH3
 #include "logging.h"
+#endif
 
 /* v1.0.1 through v1.0.4 use the same blob validator for revision selection and actual reads.
    Keep parsing, SHA calculation, buffer sizes, cleanup and save writes native;
@@ -54,6 +56,11 @@ static int apply_save(unsigned char *base) {
     return set ? azimuth_patch_host_code(base, set) : 0;
 }
 
+int azimuth_disable_save_checks(void) {
+    return apply_save((unsigned char *)GetModuleHandleW(NULL));
+}
+
+#ifndef FH2_BUILD_FH3
 void azimuth_apply_save_compatibility(int disable_checksums) {
     if (!disable_checksums) {
         log_append("AZIMUTH: native save checksum and file-size verification "
@@ -72,6 +79,7 @@ void azimuth_apply_save_compatibility(int disable_checksums) {
                    "host is not a supported inspected save-validation build.\r\n");
     }
 }
+#endif
 
 #ifdef FH2_TWEAKS_TEST
 __declspec(dllexport) int Fh2TestAzimuthSaveCompatibility(void *image, int disable_checksums) {

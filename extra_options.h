@@ -5,10 +5,16 @@
 #include <stdint.h>
 #include <windows.h>
 
-#define MOD_NAME "Forza Horizon 2 Extra Options"
 #define MOD_VERSION "0.4.4"
+#ifdef FH2_BUILD_FH3
+#define MOD_NAME "Forza Horizon 3 Extra Options"
+#define MOD_INI_NAME L"FH3_ExtraOptions.ini"
+#define MOD_LOG_NAME L"FH3_ExtraOptions.log"
+#else
+#define MOD_NAME "Forza Horizon 2 Extra Options"
 #define MOD_INI_NAME L"FH2_ExtraOptions.ini"
 #define MOD_LOG_NAME L"FH2_ExtraOptions.log"
+#endif
 #define GAME_EXE_NAME L"forza_durango_release_final.exe"
 #define PATH_CAPACITY 32768
 #define GAME_FILE_SIZE 58204160u

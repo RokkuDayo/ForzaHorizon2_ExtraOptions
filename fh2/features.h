@@ -1,0 +1,74 @@
+#ifndef FH2_FEATURES_H
+#define FH2_FEATURES_H
+#include "extra_options.h"
+extern PatchDefinition garage_hook_patch;
+extern PatchDefinition road_hook_patch;
+extern PatchDefinition gamerpic_hook_patch;
+extern PatchDefinition treasure_map_hook_patch;
+extern PatchDefinition minimap_hook_patch;
+extern PatchDefinition photo_sampling_patch;
+extern PatchDefinition camera_fov_hook_patches[6];
+extern PatchDefinition rims_hook_patch;
+extern PatchDefinition rim_name_hook_patch;
+extern PatchDefinition rim_part_name_hook_patches[2];
+extern PatchDefinition return_garage_hook_patches[4];
+extern PatchDefinition showroom_photo_hook_patches[23];
+void showroom_photo_prepare_hooks(unsigned char *image);
+void showroom_photo_resource_parsed(unsigned char success);
+void return_garage_tick(void);
+void return_garage_prepare_hooks(unsigned char *image);
+void return_garage_resource_parsed(unsigned kind, unsigned char success);
+extern PatchDefinition stock_wheels_hook_patches[3];
+extern PatchDefinition drift_camera_hook_patch;
+extern PatchDefinition video_options_hook_patches[5];
+extern PatchDefinition drift_camera_view_hook_patches[4];
+extern PatchDefinition media_overrides_hook_patch;
+extern PatchDefinition media_overrides_disk_path_hook_patch;
+extern PatchDefinition media_overrides_bank_diagnostics[3];
+extern PatchDefinition video_redirect_hook_patch;
+void video_redirect_prepare_hook(unsigned char *image);
+extern PatchDefinition vehicle_controls_hook_patch;
+extern PatchDefinition blinkers_radio_hook_patch;
+extern PatchDefinition hazards_photo_hook_patch;
+extern PatchDefinition hazards_photo_ready_hook_patch;
+extern PatchDefinition wheel_variants_hook_patch;
+void wheel_variants_prepare_hook(unsigned char *image);
+extern PatchDefinition aero_tuning_hook_patches[2];
+void aero_tuning_prepare_hooks(unsigned char *image);
+extern PatchDefinition autodrive_hook_patches[12];
+void garage_prepare_hook(unsigned char *game_image);
+void garage_commit_options(const ModOptions *options);
+void *garage_callback_address(void);
+void road_prepare_hook(unsigned char *game_image);
+void road_set_enabled(int enabled);
+void gamerpic_prepare_hook(unsigned char *game_image);
+void treasure_map_prepare_hook(unsigned char *game_image);
+void minimap_prepare_hook(unsigned char *game_image);
+void minimap_set_follow_camera(int enabled);
+void autodrive_set_cinematic(int enabled);
+void autodrive_event_tick(void *car, float dt);
+void photo_sampling_prepare_patch(unsigned char *game_image, const ModOptions *options);
+void photo_sampling_commit_options(void);
+extern PatchDefinition photo_capture_hook_patches[2];
+void photo_capture_prepare_hooks(unsigned char *image);
+void photo_capture_invalidate(void *page);
+void sun_shadows_prepare_defaults(unsigned char *game_image);
+const unsigned char *sun_shadows_layer_default(const PatchDefinition *patch);
+void camera_fov_prepare_hooks(unsigned char *game_image);
+void rims_prepare_hook(unsigned char *game_image);
+void stock_wheels_prepare_hooks(unsigned char *game_image);
+const char *stock_wheel_donor_name(const char *name, size_t length);
+void video_options_prepare_hooks(unsigned char *game_image);
+void drift_camera_prepare_hook(unsigned char *game_image);
+void drift_camera_commit_options(const ModOptions *options);
+void media_overrides_prepare_hook(unsigned char *game_image);
+void media_overrides_set_enabled(int enabled);
+void autodrive_prepare_hooks(unsigned char *game_image, const ModOptions *options);
+void gamerpic_set_directory(const wchar_t *directory);
+
+void livery_prepare_defaults(unsigned char *game_image);
+const unsigned char *livery_patch_target(const PatchDefinition *patch, const ModOptions *options);
+extern PatchDefinition world_drivatars_hook_patches[2];
+void world_drivatars_prepare_hooks(unsigned char *image);
+
+#endif

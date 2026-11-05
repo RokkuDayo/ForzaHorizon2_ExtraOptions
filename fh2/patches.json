@@ -1,0 +1,1930 @@
+{
+  "schema": 1,
+  "version": "0.4.4",
+  "filename": "forza_durango_release_final.exe",
+  "size": 58204160,
+  "original_sha256": "3ec04c6163fb5614e3d351ba0570d39b846041a257715d6340eceb03ccb7f0a3",
+  "supported_inputs": {
+    "3ec04c6163fb5614e3d351ba0570d39b846041a257715d6340eceb03ccb7f0a3": "original",
+    "8c4e1af086701e0ce0aab66c166b36df6b8c5d9038f3d6c5cbffaca44a172852": "core",
+    "ceb4e384f516bb1bde7425c07a8b2d06c6afa46501d7634b00df00b10d082ea0": "core_plus_vip",
+    "8304b3bf9a425e4b8cdeae404348d4b2459b62d45399964495d98683534e124a": "dlc_plus_offline_vip",
+    "2cf182ff2540a4042566e1cf196c7384258d4ed71c33ec56b2c69301c70aeacc": "frontend_Both",
+    "fc4547c0b4f2f8589c4b6ec7b05b9a815143ced5b05688b7503c4780798effa8": "frontend_IntroOnly",
+    "cac43f29b08921f1b899d6d24f538002ee30085329a23e545d87e32bd5abf77f": "frontend_MarketplaceOnly",
+    "cc05db463749219a0b07583621ae8c2b5d3276ff2c864ee1c4c4491a6aa40e20": "2048 livery option",
+    "bb32e01da27e6a259b12a8a675d41f5120f6e2c8a04fb1c8fc4be4ece0239c47": "4096 livery option",
+    "6d43b6a828988065094fc159229c32758c5657b13d831bcfcec4f6a72fbd5bbd": "ssaa1-msaa4",
+    "53cbe876bc9ec647b8a5dfbc58054cfab064b4dcbe318d72a836daef78daf82f": "ssaa2-msaa2",
+    "6622c68d9b15b9335fc3f7e248a0772fe63695d2ae28c550671bb7fd3067b925": "ssaa2-msaa4",
+    "57b9ebd786eaf0356d06fa71f90aa732cf0e6cdae6976434f65377149d1a399e": "Community patcher 000:standard",
+    "f0e88f22994f127116f58b79f6cc6af33fd022b408d80e946d2cfc45590b45fb": "Community patcher 000:supersampled",
+    "0ad93c6bc81a1affd7a630977fbf208b58d30ca048348456328007205ab28923": "Community patcher 001:standard",
+    "c66d29757472765b81363fd6c9bf982bbb5bd49e9fa1bd213b1272c8e65921e7": "Community patcher 001:supersampled",
+    "99aa188bfe464dff099c5d542aad0c10af856ea1c568bf35904ba1a5bfcad5a0": "Community patcher 010:standard",
+    "8cf0c631e41b8b6f8c465143fae18c677d78f7b401a81ee98ecc663d3628f8ff": "Community patcher 010:supersampled",
+    "ace36e478e3cc8b9db073ddb3c487416a6c86beabb308a53a984f03354491f63": "Community patcher 011:standard",
+    "be9c39cab9b00262f1580bf7b60950f1dcf7cf036bb1ee6d0fc157f8e576c2b0": "Community patcher 011:supersampled",
+    "1861fa47314fd5cc9b85c35309312c0eabe3d1a423767ff96946f312833cb8f1": "Community patcher 100:standard",
+    "fcf1801d339a6f13b816993cef5e12c1be4254af5a69819246db2369ed05fce7": "Community patcher 100:supersampled",
+    "8a07b4a8b3db83178500286cd3476b02ff7915d42ec688b5aef0acce5e3c32e6": "Community patcher 101:standard",
+    "0f83270e6237b2b818450fe1b9f69d726a3dabd4418348a427057320c1c5c546": "Community patcher 101:supersampled",
+    "0f42f45e83797a4cb829486b0cb68ff8ad52c8c20ba7906d3b18016e2c794335": "Community patcher 110:standard",
+    "f37e137d537d5cd07facde3666f4b22c608a324aac862ff9d0dacb4392e0ac9b": "Community patcher 110:supersampled"
+  },
+  "patches": [
+    {
+      "id": "intro_resources_skip",
+      "group": "intro",
+      "offset": 2214816,
+      "original": "0f8546010000",
+      "accepted": [
+        "0f8546010000",
+        "e94701000090"
+      ],
+      "patched": "e94701000090",
+      "rva": 2217376,
+      "runtime_group": "INTRO"
+    },
+    {
+      "id": "intro_sequence_skip",
+      "group": "intro",
+      "offset": 2219149,
+      "original": "750b",
+      "accepted": [
+        "750b",
+        "eb0b"
+      ],
+      "patched": "eb0b",
+      "rva": 2221709,
+      "runtime_group": "INTRO"
+    },
+    {
+      "id": "intro_complete_state",
+      "group": "intro",
+      "offset": 2225821,
+      "original": "750a",
+      "accepted": [
+        "750a",
+        "eb0a"
+      ],
+      "patched": "eb0a",
+      "rva": 2228381,
+      "runtime_group": "INTRO"
+    },
+    {
+      "id": "intro_resource_name_skip",
+      "group": "intro",
+      "offset": 2230400,
+      "original": "0f858c000000",
+      "accepted": [
+        "0f858c000000",
+        "e98d00000090"
+      ],
+      "patched": "e98d00000090",
+      "rva": 2232960,
+      "runtime_group": "INTRO"
+    },
+    {
+      "id": "main_values_vip",
+      "group": "offline",
+      "offset": 2745868,
+      "original": "e8effffdff",
+      "accepted": [
+        "e8effffdff",
+        "b801000000"
+      ],
+      "patched": "b801000000",
+      "rva": 2748428,
+      "runtime_group": "VIP"
+    },
+    {
+      "id": "local_vip_profile",
+      "group": "offline",
+      "offset": 3111694,
+      "original": "410fb6e80fb6f2",
+      "accepted": [
+        "410fb6e80fb6f2",
+        "40b50140b60190"
+      ],
+      "patched": "40b50140b60190",
+      "rva": 3114254,
+      "runtime_group": "VIP"
+    },
+    {
+      "id": "loaded_profile_vip",
+      "group": "offline",
+      "offset": 3300256,
+      "original": "e84b8cd500",
+      "accepted": [
+        "e84b8cd500",
+        "b801000000"
+      ],
+      "patched": "b801000000",
+      "rva": 3302816,
+      "runtime_group": "VIP"
+    },
+    {
+      "id": "photo_camera_world_restrictions",
+      "group": "photo_camera",
+      "offset": 3763944,
+      "original": "0f8594000000",
+      "accepted": [
+        "0f8594000000",
+        "e99500000090"
+      ],
+      "patched": "e99500000090",
+      "rva": 3766504,
+      "runtime_group": "PHOTO_CAMERA"
+    },
+    {
+      "id": "treasure_map_mainland_property",
+      "group": "treasure_map",
+      "offset": 4202224,
+      "rva": 4204784,
+      "original": "0fb64179c3cc",
+      "accepted": [
+        "0fb64179c3cc",
+        "b801000000c3"
+      ],
+      "patched": "0fb64179c3cc",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap",
+      "note": "Restore the shared getters; the override is now scoped to Treasure Map property registration."
+    },
+    {
+      "id": "treasure_map_barn_marker_reveal",
+      "group": "treasure_map",
+      "offset": 4215942,
+      "rva": 4218502,
+      "original": "746d",
+      "accepted": [
+        "746d",
+        "9090"
+      ],
+      "patched": "9090",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap"
+    },
+    {
+      "id": "treasure_map_board_setup_binding",
+      "group": "treasure_map",
+      "offset": 5197169,
+      "rva": 5199729,
+      "original": "488d0548600100",
+      "accepted": [
+        "488d0548600100",
+        "488b0580d1f0ff"
+      ],
+      "patched": "488b0580d1f0ff",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap"
+    },
+    {
+      "id": "reward_context_vip",
+      "group": "offline",
+      "offset": 6366394,
+      "original": "e831c3a600",
+      "accepted": [
+        "e831c3a600",
+        "b801000000"
+      ],
+      "patched": "b801000000",
+      "rva": 6368954,
+      "runtime_group": "VIP"
+    },
+    {
+      "id": "wheelspin_display_vip",
+      "group": "offline",
+      "offset": 7241856,
+      "original": "e86b679900",
+      "accepted": [
+        "e86b679900",
+        "b801000000"
+      ],
+      "patched": "b801000000",
+      "rva": 7244416,
+      "runtime_group": "VIP"
+    },
+    {
+      "id": "wheelspin_claim_vip",
+      "group": "offline",
+      "offset": 7243605,
+      "original": "e896609900",
+      "accepted": [
+        "e896609900",
+        "b801000000"
+      ],
+      "patched": "b801000000",
+      "rva": 7246165,
+      "runtime_group": "VIP"
+    },
+    {
+      "id": "alternate_claim_vip",
+      "group": "offline",
+      "offset": 7293655,
+      "original": "e8149d9800",
+      "accepted": [
+        "e8149d9800",
+        "b801000000"
+      ],
+      "patched": "b801000000",
+      "rva": 7296215,
+      "runtime_group": "VIP"
+    },
+    {
+      "id": "mainland_boot_skip_car_meet",
+      "group": "boot_car_meet",
+      "offset": 8888934,
+      "original": "7418",
+      "accepted": [
+        "7418",
+        "eb18"
+      ],
+      "patched": "eb18",
+      "rva": 8891494,
+      "runtime_group": "BOOT_CAR_MEET"
+    },
+    {
+      "id": "blinker_radio_left_query",
+      "group": "vehicle_controls",
+      "rva": 9850120,
+      "offset": 9847560,
+      "original": "e8f3d77000",
+      "patched": "e8a7000000",
+      "accepted": [
+        "e8f3d77000",
+        "e8a7000000"
+      ],
+      "runtime_group": "VEHICLE_CONTROLS",
+      "description": "Delay D-pad radio changes until a short release; leave native radio eligibility and transition handling intact."
+    },
+    {
+      "id": "blinker_radio_right_query",
+      "group": "vehicle_controls",
+      "rva": 9850168,
+      "offset": 9847608,
+      "original": "e8c3d77000",
+      "patched": "e877000000",
+      "accepted": [
+        "e8c3d77000",
+        "e877000000"
+      ],
+      "runtime_group": "VEHICLE_CONTROLS",
+      "description": "Delay D-pad radio changes until a short release; leave native radio eligibility and transition handling intact."
+    },
+    {
+      "id": "ownership_predicate",
+      "group": "offline",
+      "offset": 10215099,
+      "original": "400fb6c7",
+      "accepted": [
+        "400fb6c7",
+        "33c0b001"
+      ],
+      "patched": "33c0b001",
+      "rva": 10217659,
+      "runtime_group": "DLC"
+    },
+    {
+      "id": "active_entitlement_predicate",
+      "group": "offline",
+      "offset": 10216043,
+      "original": "400fb6c7",
+      "accepted": [
+        "400fb6c7",
+        "33c0b001"
+      ],
+      "patched": "33c0b001",
+      "rva": 10218603,
+      "runtime_group": "DLC"
+    },
+    {
+      "id": "treasure_map_mainland_property_binding",
+      "group": "treasure_map",
+      "offset": 10870746,
+      "rva": 10873306,
+      "original": "4c8d050f3f9aff",
+      "accepted": [
+        "4c8d050f3f9aff",
+        "4c8d05bf13dfff"
+      ],
+      "patched": "4c8d05bf13dfff",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap"
+    },
+    {
+      "id": "treasure_map_island_property_binding",
+      "group": "treasure_map",
+      "offset": 10870775,
+      "rva": 10873335,
+      "original": "4c8d056286bf00",
+      "accepted": [
+        "4c8d056286bf00",
+        "4c8d05a213dfff"
+      ],
+      "patched": "4c8d05a213dfff",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap"
+    },
+    {
+      "id": "photo_camera_ui_collision",
+      "group": "photo_camera",
+      "offset": 11138689,
+      "original": "7578",
+      "accepted": [
+        "7578",
+        "eb78"
+      ],
+      "patched": "eb78",
+      "rva": 11141249,
+      "runtime_group": "PHOTO_CAMERA"
+    },
+    {
+      "id": "photo_camera_ui_vertical_bounds",
+      "group": "photo_camera",
+      "offset": 11138811,
+      "original": "c5fa10542474",
+      "accepted": [
+        "c5fa10542474",
+        "e95300000090"
+      ],
+      "patched": "e95300000090",
+      "rva": 11141371,
+      "runtime_group": "PHOTO_CAMERA"
+    },
+    {
+      "id": "storm_island_car_availability",
+      "group": "storm_island_cars",
+      "rva": 11546473,
+      "offset": 11543913,
+      "original": "e8022ff6ff",
+      "accepted": [
+        "e8022ff6ff",
+        "eb2a909090"
+      ],
+      "patched": "eb2a909090",
+      "runtime_group": "ISLAND_CARS",
+      "description": "Skip only the IslandIE unlock-flag gate; retain preceding and following purchase logic."
+    },
+    {
+      "id": "minimap_camera_heading_call",
+      "group": "minimap",
+      "offset": 12232182,
+      "rva": 12234742,
+      "original": "e8950b0000",
+      "accepted": [
+        "e8950b0000",
+        "e88d0b0000"
+      ],
+      "patched": "e88d0b0000",
+      "runtime_group": "MINIMAP",
+      "option": "HUD.MinimapFollowsCamera"
+    },
+    {
+      "id": "minimap_camera_heading_thunk",
+      "group": "minimap",
+      "offset": 12235144,
+      "rva": 12237704,
+      "original": "cccccccccccc",
+      "accepted": [
+        "cccccccccccc",
+        "ff25daf2ffff"
+      ],
+      "patched": "ff25daf2ffff",
+      "runtime_group": "MINIMAP",
+      "option": "HUD.MinimapFollowsCamera"
+    },
+    {
+      "id": "storm_island_purchase_gate",
+      "group": "storm_island_cars",
+      "rva": 13291209,
+      "offset": 13288649,
+      "original": "e8a28fdbff",
+      "accepted": [
+        "e8a28fdbff",
+        "eb33909090"
+      ],
+      "patched": "eb33909090",
+      "runtime_group": "ISLAND_CARS",
+      "description": "Skip only the IslandIE unlock-flag gate; retain preceding and following purchase logic."
+    },
+    {
+      "id": "pause_garage_get_in_car",
+      "group": "pause_garage",
+      "offset": 13429856,
+      "original": "7474",
+      "accepted": [
+        "7474",
+        "9090"
+      ],
+      "patched": "9090",
+      "rva": 13432416,
+      "runtime_group": "PAUSE_GARAGE"
+    },
+    {
+      "id": "treasure_map_island_map_check",
+      "group": "treasure_map",
+      "offset": 14099380,
+      "rva": 14101940,
+      "original": "0fb64378",
+      "accepted": [
+        "0fb64378",
+        "31c0ffc0"
+      ],
+      "patched": "31c0ffc0",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap"
+    },
+    {
+      "id": "treasure_map_mainland_map_check",
+      "group": "treasure_map",
+      "offset": 14099386,
+      "rva": 14101946,
+      "original": "0fb64379",
+      "accepted": [
+        "0fb64379",
+        "31c0ffc0"
+      ],
+      "patched": "31c0ffc0",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap"
+    },
+    {
+      "id": "treasure_map_extras_catalog",
+      "group": "treasure_map",
+      "offset": 14121434,
+      "rva": 14123994,
+      "original": "e83187d8ff",
+      "accepted": [
+        "e83187d8ff",
+        "b001909090"
+      ],
+      "patched": "b001909090",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap"
+    },
+    {
+      "id": "treasure_map_extras_entry",
+      "group": "treasure_map",
+      "offset": 14406544,
+      "rva": 14409104,
+      "original": "e87b2dd4ff",
+      "accepted": [
+        "e87b2dd4ff",
+        "b001909090"
+      ],
+      "patched": "b001909090",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap"
+    },
+    {
+      "id": "marketplace_group_enabled_1",
+      "group": "marketplace",
+      "offset": 14525101,
+      "original": "41b801000000",
+      "accepted": [
+        "41b801000000",
+        "41b800000000"
+      ],
+      "patched": "41b800000000",
+      "rva": 14527661,
+      "runtime_group": "MARKETPLACE"
+    },
+    {
+      "id": "clubs_group_enabled_ddae0a",
+      "group": "offline_tabs",
+      "offset": 14525450,
+      "rva": 14528010,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "CLUBS"
+    },
+    {
+      "id": "marketplace_group_enabled_2",
+      "group": "marketplace",
+      "offset": 14525471,
+      "original": "41b801000000",
+      "accepted": [
+        "41b801000000",
+        "41b800000000"
+      ],
+      "patched": "41b800000000",
+      "rva": 14528031,
+      "runtime_group": "MARKETPLACE"
+    },
+    {
+      "id": "rivals_group_enabled_ddae34",
+      "group": "offline_tabs",
+      "offset": 14525492,
+      "rva": 14528052,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "RIVALS"
+    },
+    {
+      "id": "social_group_enabled_ddae81",
+      "group": "offline_tabs",
+      "offset": 14525569,
+      "rva": 14528129,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "SOCIAL"
+    },
+    {
+      "id": "rivals_group_enabled_ddaef0",
+      "group": "offline_tabs",
+      "offset": 14525680,
+      "rva": 14528240,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "RIVALS"
+    },
+    {
+      "id": "rivals_group_enabled_ddaf7a",
+      "group": "offline_tabs",
+      "offset": 14525818,
+      "rva": 14528378,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "RIVALS"
+    },
+    {
+      "id": "rivals_group_enabled_ddb123",
+      "group": "offline_tabs",
+      "offset": 14526243,
+      "rva": 14528803,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "RIVALS"
+    },
+    {
+      "id": "clubs_group_enabled_ddb2a1",
+      "group": "offline_tabs",
+      "offset": 14526625,
+      "rva": 14529185,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "CLUBS"
+    },
+    {
+      "id": "rivals_group_enabled_ddb2b6",
+      "group": "offline_tabs",
+      "offset": 14526646,
+      "rva": 14529206,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "RIVALS"
+    },
+    {
+      "id": "marketplace_group_enabled_3",
+      "group": "marketplace",
+      "offset": 14526709,
+      "original": "41b801000000",
+      "accepted": [
+        "41b801000000",
+        "41b800000000"
+      ],
+      "patched": "41b800000000",
+      "rva": 14529269,
+      "runtime_group": "MARKETPLACE"
+    },
+    {
+      "id": "rivals_group_enabled_ddb655",
+      "group": "offline_tabs",
+      "offset": 14527573,
+      "rva": 14530133,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "RIVALS"
+    },
+    {
+      "id": "social_group_enabled_ddb75d",
+      "group": "offline_tabs",
+      "offset": 14527837,
+      "rva": 14530397,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "SOCIAL"
+    },
+    {
+      "id": "marketplace_group_enabled_4",
+      "group": "marketplace",
+      "offset": 14528272,
+      "original": "41b801000000",
+      "accepted": [
+        "41b801000000",
+        "41b800000000"
+      ],
+      "patched": "41b800000000",
+      "rva": 14530832,
+      "runtime_group": "MARKETPLACE"
+    },
+    {
+      "id": "social_group_enabled_ddba96",
+      "group": "offline_tabs",
+      "offset": 14528662,
+      "rva": 14531222,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "SOCIAL"
+    },
+    {
+      "id": "clubs_group_enabled_ddbad5",
+      "group": "offline_tabs",
+      "offset": 14528725,
+      "rva": 14531285,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "CLUBS"
+    },
+    {
+      "id": "rivals_group_enabled_ddbaea",
+      "group": "offline_tabs",
+      "offset": 14528746,
+      "rva": 14531306,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "RIVALS"
+    },
+    {
+      "id": "marketplace_group_enabled_5",
+      "group": "marketplace",
+      "offset": 14528830,
+      "original": "41b801000000",
+      "accepted": [
+        "41b801000000",
+        "41b800000000"
+      ],
+      "patched": "41b800000000",
+      "rva": 14531390,
+      "runtime_group": "MARKETPLACE"
+    },
+    {
+      "id": "clubs_group_enabled_ddbcd8",
+      "group": "offline_tabs",
+      "offset": 14529240,
+      "rva": 14531800,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "CLUBS"
+    },
+    {
+      "id": "aero_front_tuning_unlocked",
+      "group": "aero_tuning",
+      "rva": 15313723,
+      "offset": 15311163,
+      "original": "e810cf4aff",
+      "patched": "b001909090",
+      "accepted": [
+        "e810cf4aff",
+        "b001909090"
+      ],
+      "runtime_group": "AERO_TUNING",
+      "description": "Allow native downforce slider initialization with the current car physics ranges regardless of installed aero upgrade level."
+    },
+    {
+      "id": "aero_rear_tuning_unlocked",
+      "group": "aero_tuning",
+      "rva": 15313831,
+      "offset": 15311271,
+      "original": "e8f4ce4aff",
+      "patched": "b001909090",
+      "accepted": [
+        "e8f4ce4aff",
+        "b001909090"
+      ],
+      "runtime_group": "AERO_TUNING",
+      "description": "Allow native downforce slider initialization with the current car physics ranges regardless of installed aero upgrade level."
+    },
+    {
+      "id": "stock_rim_localized_name_call",
+      "group": "rims",
+      "offset": 15449118,
+      "rva": 15451678,
+      "original": "e86db70100",
+      "accepted": [
+        "e86db70100",
+        "e8513cffff"
+      ],
+      "patched": "e8513cffff",
+      "runtime_group": "RIMS"
+    },
+    {
+      "id": "all_rims_categories_query",
+      "group": "rims",
+      "offset": 15523103,
+      "rva": 15525663,
+      "original": "e8ccdc530090",
+      "accepted": [
+        "e8ccdc530090",
+        "ff15b30e0000"
+      ],
+      "patched": "ff15b30e0000",
+      "runtime_group": "RIMS",
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "all_rims_items_query",
+      "group": "rims",
+      "offset": 15526151,
+      "rva": 15528711,
+      "original": "e8e4d0530090",
+      "accepted": [
+        "e8e4d0530090",
+        "ff15cb020000"
+      ],
+      "patched": "ff15cb020000",
+      "runtime_group": "RIMS",
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_wheel_archive_preload",
+      "rva": 16581964,
+      "offset": 16579404,
+      "original": "e8ff312eff",
+      "patched": "e853d1efff",
+      "accepted": [
+        "e8ff312eff",
+        "e853d1efff"
+      ],
+      "runtime_group": "RIMS",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory",
+      "description": "Use donor car archives and authored wheel geometry for stock rim swaps."
+    },
+    {
+      "id": "drift_camera_heading_call",
+      "group": "drift_camera",
+      "rva": 17000905,
+      "offset": 16998345,
+      "original": "e88413eeff",
+      "patched": "e893480000",
+      "accepted": [
+        "e88413eeff",
+        "e893480000"
+      ],
+      "runtime_group": "DRIFT_CAMERA",
+      "description": "Use momentum heading only for the two chase views, before the native yaw spring and right-stick orbit."
+    },
+    {
+      "id": "drift_camera_chase_spring_call",
+      "group": "drift_camera",
+      "rva": 17025149,
+      "offset": 17022589,
+      "original": "e89ea0ffff",
+      "patched": "e8ffe9ffff",
+      "accepted": [
+        "e89ea0ffff",
+        "e8ffe9ffff"
+      ],
+      "runtime_group": "DRIFT_CAMERA",
+      "description": "Use a softer chase spring without body-spin coupling; retain native smoothing and orbit."
+    },
+    {
+      "id": "front_aero_physics_ranges",
+      "group": "aero_tuning",
+      "rva": 17135157,
+      "offset": 17132597,
+      "original": "e8069c0000",
+      "patched": "e8fa9b0000",
+      "accepted": [
+        "e8069c0000",
+        "e8fa9b0000"
+      ],
+      "runtime_group": "AERO_TUNING",
+      "description": "Map fixed aero to the matching race aero range and default. Experimental; can alter PI and handling. Disabled by default."
+    },
+    {
+      "id": "rear_aero_physics_ranges",
+      "group": "aero_tuning",
+      "rva": 17135280,
+      "offset": 17132720,
+      "original": "e88b9b0000",
+      "patched": "e8af990000",
+      "accepted": [
+        "e88b9b0000",
+        "e8af990000"
+      ],
+      "runtime_group": "AERO_TUNING",
+      "description": "Map fixed aero to the matching race aero range and default. Experimental; can alter PI and handling. Disabled by default."
+    },
+    {
+      "id": "sun_shadow_all_cascades_per_frame",
+      "group": "sun_shadows",
+      "rva": 18029570,
+      "offset": 18027010,
+      "original": "418b86bc210000",
+      "accepted": [
+        "418b86bc210000",
+        "b8040000009090"
+      ],
+      "patched": "b8040000009090",
+      "runtime_group": "SUN_SHADOWS"
+    },
+    {
+      "id": "sun_shadow_cascade_direction_refresh",
+      "group": "sun_shadows",
+      "offset": 18166874,
+      "original": "750c",
+      "accepted": [
+        "750c",
+        "eb0c"
+      ],
+      "patched": "eb0c",
+      "rva": 18169434,
+      "runtime_group": "SUN_SHADOWS"
+    },
+    {
+      "id": "sun_shadow_focus_direction_refresh",
+      "group": "sun_shadows",
+      "offset": 18173109,
+      "original": "7306",
+      "accepted": [
+        "7306",
+        "9090"
+      ],
+      "patched": "9090",
+      "rva": 18175669,
+      "runtime_group": "SUN_SHADOWS"
+    },
+    {
+      "id": "stock_wheel_models_startup",
+      "rva": 18543195,
+      "offset": 18540635,
+      "original": "e8501d0000",
+      "patched": "e8c209d2ff",
+      "accepted": [
+        "e8501d0000",
+        "e8c209d2ff"
+      ],
+      "runtime_group": "RIMS",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory",
+      "description": "Use donor car archives and authored wheel geometry for stock rim swaps."
+    },
+    {
+      "id": "stock_wheel_models_preview",
+      "rva": 18550576,
+      "offset": 18548016,
+      "original": "e87b000000",
+      "patched": "e8edecd1ff",
+      "accepted": [
+        "e87b000000",
+        "e8edecd1ff"
+      ],
+      "runtime_group": "RIMS",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory",
+      "description": "Use donor car archives and authored wheel geometry for stock rim swaps."
+    },
+    {
+      "id": "livery_5",
+      "group": "livery",
+      "offset": 18990753,
+      "original": "cccccccccccccccccccccccccc",
+      "accepted": [
+        "cccccccccccccccccccccccccc",
+        "41c1e70241c1e402c30000803e",
+        "41c1e70341c1e403c30000003e"
+      ],
+      "targets": {
+        "standard": "41c1e70241c1e402c30000803e",
+        "supersampled": "41c1e70341c1e403c30000003e"
+      },
+      "rva": 18993313,
+      "runtime_group": "LIVERY"
+    },
+    {
+      "id": "livery_6",
+      "group": "livery",
+      "offset": 18991073,
+      "original": "cccccccccccccccccccccccccc",
+      "accepted": [
+        "cccccccccccccccccccccccccc",
+        "c5fa591dc1feffffc5f96ecec3"
+      ],
+      "targets": {
+        "standard": "c5fa591dc1feffffc5f96ecec3",
+        "supersampled": "c5fa591dc1feffffc5f96ecec3"
+      },
+      "rva": 18993633,
+      "runtime_group": "LIVERY"
+    },
+    {
+      "id": "livery_7",
+      "group": "livery",
+      "offset": 18991425,
+      "original": "cccccccccccccccccccccccccc",
+      "accepted": [
+        "cccccccccccccccccccccccccc",
+        "c5f85bc9c5f259155dfdffffc3"
+      ],
+      "targets": {
+        "standard": "c5f85bc9c5f259155dfdffffc3",
+        "supersampled": "c5f85bc9c5f259155dfdffffc3"
+      },
+      "rva": 18993985,
+      "runtime_group": "LIVERY"
+    },
+    {
+      "id": "livery_msaa",
+      "group": "livery",
+      "offset": 18997175,
+      "original": "8b05b31fc901",
+      "accepted": [
+        "8b05b31fc901",
+        "b80400000090"
+      ],
+      "targets": {
+        "standard": "b80400000090",
+        "supersampled": "b80400000090"
+      },
+      "rva": 18999735,
+      "runtime_group": "MSAA"
+    },
+    {
+      "id": "livery_2",
+      "group": "livery",
+      "offset": 18997354,
+      "original": "4503ff4503e4",
+      "accepted": [
+        "4503ff4503e4",
+        "e832e6ffff90"
+      ],
+      "targets": {
+        "standard": "e832e6ffff90",
+        "supersampled": "e832e6ffff90"
+      },
+      "rva": 18999914,
+      "runtime_group": "LIVERY"
+    },
+    {
+      "id": "livery_1",
+      "group": "livery",
+      "offset": 18999002,
+      "original": "ba00080000",
+      "accepted": [
+        "ba00080000",
+        "ba00100000"
+      ],
+      "targets": {
+        "standard": "ba00100000",
+        "supersampled": "ba00100000"
+      },
+      "rva": 19001562,
+      "runtime_group": "LIVERY"
+    },
+    {
+      "id": "livery_0",
+      "group": "livery",
+      "offset": 18999058,
+      "original": "ba00040000",
+      "accepted": [
+        "ba00040000",
+        "ba00080000",
+        "ba00100000"
+      ],
+      "targets": {
+        "standard": "ba00100000",
+        "supersampled": "ba00100000"
+      },
+      "rva": 19001618,
+      "runtime_group": "LIVERY"
+    },
+    {
+      "id": "livery_3",
+      "group": "livery",
+      "offset": 19025641,
+      "original": "c5fa59dcc5f96ece",
+      "accepted": [
+        "c5fa59dcc5f96ece",
+        "e8f378ffff909090"
+      ],
+      "targets": {
+        "standard": "e8f378ffff909090",
+        "supersampled": "e8f378ffff909090"
+      },
+      "rva": 19028201,
+      "runtime_group": "LIVERY"
+    },
+    {
+      "id": "livery_4",
+      "group": "livery",
+      "offset": 19025649,
+      "original": "c5f85bc9c5f259d4",
+      "accepted": [
+        "c5f85bc9c5f259d4",
+        "e84b7affff909090"
+      ],
+      "targets": {
+        "standard": "e84b7affff909090",
+        "supersampled": "e84b7affff909090"
+      },
+      "rva": 19028209,
+      "runtime_group": "LIVERY"
+    },
+    {
+      "id": "profile_multiplayer_privilege",
+      "group": "parental",
+      "offset": 19173968,
+      "rva": 19176528,
+      "original": "48894c2408574883ec30",
+      "patched": "c7414404000000c39090",
+      "accepted": [
+        "48894c2408574883ec30",
+        "c7414404000000c39090"
+      ],
+      "runtime_group": "PARENTAL"
+    },
+    {
+      "id": "profile_content_privilege",
+      "group": "parental",
+      "offset": 19174544,
+      "rva": 19177104,
+      "original": "48894c2408574883ec30",
+      "patched": "c7414804000000c39090",
+      "accepted": [
+        "48894c2408574883ec30",
+        "c7414804000000c39090"
+      ],
+      "runtime_group": "PARENTAL"
+    },
+    {
+      "id": "stock_wheel_archive_startup",
+      "rva": 20506164,
+      "offset": 20503604,
+      "original": "e8d737e8fe",
+      "patched": "e8f8f7b3ff",
+      "accepted": [
+        "e8d737e8fe",
+        "e8f8f7b3ff"
+      ],
+      "runtime_group": "RIMS",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory",
+      "description": "Use donor car archives and authored wheel geometry for stock rim swaps."
+    },
+    {
+      "id": "stock_wheel_archive_preview",
+      "rva": 20615871,
+      "offset": 20613311,
+      "original": "e84c8be6fe",
+      "patched": "e86d4bb2ff",
+      "accepted": [
+        "e84c8be6fe",
+        "e86d4bb2ff"
+      ],
+      "runtime_group": "RIMS",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory",
+      "description": "Use donor car archives and authored wheel geometry for stock rim swaps."
+    },
+    {
+      "id": "treasure_map_island_property",
+      "group": "treasure_map",
+      "offset": 23422560,
+      "rva": 23425120,
+      "original": "0fb64178c3cc",
+      "accepted": [
+        "0fb64178c3cc",
+        "b801000000c3"
+      ],
+      "patched": "0fb64178c3cc",
+      "runtime_group": "TREASURE_MAP",
+      "option": "Content.UnlockTreasureMap",
+      "note": "Restore the shared getters; the override is now scoped to Treasure Map property registration."
+    },
+    {
+      "id": "drift_video_resource_call",
+      "group": "drift_camera",
+      "rva": 24034103,
+      "offset": 24031543,
+      "original": "e884033cff",
+      "patched": "e81828d1ff",
+      "accepted": [
+        "e884033cff",
+        "e81828d1ff"
+      ],
+      "runtime_group": "VIDEO_OPTIONS",
+      "description": "Extend only the Video page resource on the native UIRenderer LoadComponent path before parsing into the existing page."
+    },
+    {
+      "id": "catalog_purchased",
+      "group": "offline",
+      "offset": 31460245,
+      "original": "30",
+      "accepted": [
+        "30",
+        "31"
+      ],
+      "patched": "31",
+      "rva": 31471509,
+      "runtime_group": "DLC"
+    },
+    {
+      "id": "catalog_include_owned_packs",
+      "group": "marketplace",
+      "offset": 32836800,
+      "original": "53454c4543542049642c2050726f6475637449642c20446973706c61794e616d652c204465736372697074696f6e2c20496d616765506174682c205468756d62506174682c204973467265652046524f4d20436f6e74656e744f66666572732057484552452056697369626c653d3120414e44205374796c653d274361725061636b27204f52444552204259204a554c49414e4441592852656c65617365446174652920444553432c2049642044455343",
+      "accepted": [
+        "53454c4543542049642c2050726f6475637449642c20446973706c61794e616d652c204465736372697074696f6e2c20496d616765506174682c205468756d62506174682c204973467265652046524f4d20436f6e74656e744f66666572732057484552452056697369626c653d3120414e44205374796c653d274361725061636b27204f52444552204259204a554c49414e4441592852656c65617365446174652920444553432c2049642044455343",
+        "53454c4543542049642c50726f6475637449642c446973706c61794e616d652c4465736372697074696f6e2c496d616765506174682c5468756d62506174682c4973467265652046524f4d20436f6e74656e744f66666572732057484552452856697369626c657c497350757263686173656429414e44205374796c653d274361725061636b274f52444552204259204a554c49414e4441592852656c656173654461746529444553432c312044455343"
+      ],
+      "patched": "53454c4543542049642c50726f6475637449642c446973706c61794e616d652c4465736372697074696f6e2c496d616765506174682c5468756d62506174682c4973467265652046524f4d20436f6e74656e744f66666572732057484552452856697369626c657c497350757263686173656429414e44205374796c653d274361725061636b274f52444552204259204a554c49414e4441592852656c656173654461746529444553432c312044455343",
+      "rva": 32848064,
+      "runtime_group": "MARKETPLACE"
+    },
+    {
+      "id": "stock_wheel_variant_query",
+      "group": "rims",
+      "offset": 17363164,
+      "rva": 17365724,
+      "original": "e82fdcfafe",
+      "patched": "e833d9ffff",
+      "accepted": [
+        "e82fdcfafe",
+        "e833d9ffff"
+      ],
+      "runtime_group": "RIMS"
+    },
+    {
+      "id": "hazards_photo_input",
+      "group": "vehicle_controls",
+      "offset": 9847296,
+      "rva": 9849856,
+      "original": "e83ba47000",
+      "patched": "e8cfe4ffff",
+      "accepted": [
+        "e83ba47000",
+        "e8cfe4ffff"
+      ],
+      "runtime_group": "VEHICLE_CONTROLS"
+    },
+    {
+      "id": "hazards_photo_hold_ready",
+      "group": "vehicle_controls",
+      "offset": 9841923,
+      "rva": 9844483,
+      "original": "e878fdffff",
+      "patched": "e85c1d0000",
+      "accepted": [
+        "e878fdffff",
+        "e85c1d0000"
+      ],
+      "runtime_group": "VEHICLE_CONTROLS"
+    },
+    {
+      "id": "factory_rim_size_category_lock",
+      "group": "rims",
+      "rva": 15428144,
+      "offset": 15425584,
+      "original": "e86be9ffff",
+      "patched": "31c0909090",
+      "accepted": [
+        "e86be9ffff",
+        "31c0909090"
+      ],
+      "runtime_group": "RIMS",
+      "description": "Allow current factory wheels to use native front/rear diameter upgrades; remove only the stock-wheel menu lock."
+    },
+    {
+      "id": "factory_rim_size_category_select",
+      "group": "rims",
+      "rva": 15465285,
+      "offset": 15462725,
+      "original": "e85658ffff",
+      "patched": "31c0909090",
+      "accepted": [
+        "e85658ffff",
+        "31c0909090"
+      ],
+      "runtime_group": "RIMS",
+      "description": "Allow current factory wheels to use native front/rear diameter upgrades; remove only the stock-wheel menu lock."
+    },
+    {
+      "id": "factory_rim_size_part_lock",
+      "group": "rims",
+      "rva": 15466296,
+      "offset": 15463736,
+      "original": "e86354ffff",
+      "patched": "31c0909090",
+      "accepted": [
+        "e86354ffff",
+        "31c0909090"
+      ],
+      "runtime_group": "RIMS",
+      "description": "Allow current factory wheels to use native front/rear diameter upgrades; remove only the stock-wheel menu lock."
+    }
+  ],
+  "delivery": "runtime-dll",
+  "runtime_hooks": [
+    {
+      "id": "garage_xml_parse_hook",
+      "rva": 49041376,
+      "original_function_rva": 20834272,
+      "runtime_group": "FRONTEND_XML",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "resource_buffer_offset": 224,
+      "resource_length_offset": 232,
+      "game_alloc_rva": 3287488,
+      "game_free_rva": 3262384,
+      "resources": [
+        "ui_screens.xml",
+        "pause.xml",
+        "race_trigger_activation.xml",
+        "free_roam_start.xml"
+      ],
+      "options": [
+        "Frontend.GetInCarFromPauseMenu",
+        "Frontend.SkipIneligibleCarDialogue",
+        "Frontend.SpawnAtFestival",
+        "Frontend.SkipCarMeetOnStartup"
+      ],
+      "description": "Shared parse hook; independent pause-garage, blocking IneligibleCar skip and optional mainland festival placement after skipping car-meet boot."
+    },
+    {
+      "id": "garage_nearest_road_store_hook",
+      "rva": 47347152,
+      "original_function_rva": 9685568,
+      "runtime_group": "ROAD",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Frontend.SnapToRoadOnCarChange",
+      "requires": "Frontend.GetInCarFromPauseMenu",
+      "query_function_rva": 16112448,
+      "scope_marker": "_fh2_car_road",
+      "scope_parameter": "entity_id",
+      "locator_name": "",
+      "description": "Live HUD Change Car Position choice; preserve native store for Same Location."
+    },
+    {
+      "id": "local_gamerpic_converter_hook",
+      "rva": 47868488,
+      "original_function_rva": 12165328,
+      "runtime_group": "GAMERPIC",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Profile.CustomGamerpic",
+      "file": "Gamerpic.png",
+      "directory": "actual loaded DLL directory",
+      "bitmap_factory_rva": 5459968,
+      "image_wrapper_rva": 5460352,
+      "pixel_buffer_factory_rva": 23455232,
+      "texture_request_rva": 17847568,
+      "texture_dispatch_rva": 17844832,
+      "raw_image_method_rva": 17592064,
+      "bitmap_update_rva": 23997888,
+      "raw_format": 3,
+      "dxgi_format": 28
+    },
+    {
+      "id": "treasure_map_board_setup_callback",
+      "rva": 4204792,
+      "original": "cccccccccccccccc",
+      "runtime_group": "TREASURE_MAP",
+      "type": "callback_pointer_in_unused_padding",
+      "disk_normalization": false,
+      "option": "Content.UnlockTreasureMap",
+      "setup_function_rva": 5289920,
+      "discovery_function_rva": 5237008,
+      "state_offset": 256,
+      "position_offset": 296
+    },
+    {
+      "id": "autodrive_gps_update",
+      "rva": 46936472,
+      "original_function_rva": 7032112,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled",
+      "description": "Native GPS update and optional Autodrive controls; vehicle gestures use the local-car update callback."
+    },
+    {
+      "id": "autodrive_gps_deactivation",
+      "rva": 46936496,
+      "original_function_rva": 7081072,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_tracker_update",
+      "rva": 46936712,
+      "original_function_rva": 7032384,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_tracker_destruction",
+      "rva": 46936696,
+      "original_function_rva": 6956768,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_pause_entry",
+      "rva": 47277720,
+      "original_function_rva": 9345248,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_event_context_entry",
+      "rva": 47311440,
+      "original_function_rva": 9513056,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_ui_wait_render",
+      "rva": 48754752,
+      "original_function_rva": 18091728,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_notice_text",
+      "rva": 49084104,
+      "original_function_rva": 21014528,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_ui_draw",
+      "rva": 49085096,
+      "original_function_rva": 22761888,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_ui_present",
+      "rva": 49085088,
+      "original_function_rva": 22761744,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_ui_wait_render_plain",
+      "rva": 48771752,
+      "original_function_rva": 18091728,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_ui_draw_base",
+      "rva": 49320072,
+      "original_function_rva": 22761888,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "autodrive_ui_present_base",
+      "rva": 49320064,
+      "original_function_rva": 22761744,
+      "runtime_group": "AUTODRIVE",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Autodrive.Enabled"
+    },
+    {
+      "id": "minimap_camera_heading_callback",
+      "rva": 12234344,
+      "original": "cccccccccccccccc",
+      "runtime_group": "MINIMAP",
+      "type": "callback_pointer_in_unused_padding",
+      "file_normalized": false,
+      "option": "HUD.MinimapFollowsCamera"
+    },
+    {
+      "id": "media_override_native_resolver",
+      "rva": 48688936,
+      "original_function_rva": 18827696,
+      "runtime_group": "MEDIA_OVERRIDES",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Files.EnableMediaOverrides"
+    },
+    {
+      "id": "all_rims_query_callback",
+      "rva": 15529432,
+      "original": "cccccccccccccccc",
+      "runtime_group": "RIMS",
+      "type": "callback_pointer_in_unused_padding",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory",
+      "loader_function_rva": 21021680,
+      "categories_function_rva": 15524480,
+      "rims_function_rva": 15525744,
+      "virtual_category_id": 5,
+      "description": "Rewrite only the native rim menu SELECTs: append a virtual category and combine the three original aftermarket lists. No database writes."
+    },
+    {
+      "id": "drift_camera_heading_thunk",
+      "rva": 17019489,
+      "original": "cccccccccccccccccccccccccccccc",
+      "runtime_group": "DRIFT_CAMERA",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Settings.HUD.DriftCamera",
+      "callback_offset": 5,
+      "heading_function_rva": 17000736,
+      "atan2_function_rva": 15826258,
+      "description": "Leaf forwarder: pass native RSI camera in R8 and tail-jump to the DLL heading callback."
+    },
+    {
+      "id": "drift_camera_chase_spring_thunk",
+      "rva": 17019521,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "DRIFT_CAMERA",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Settings.HUD.DriftCamera",
+      "description": "Tail-jump to the chase spring callback with the native camera, time step and reset arguments."
+    },
+    {
+      "id": "drift_camera_driver_update",
+      "rva": 48726336,
+      "original_rva": 17024400,
+      "runtime_group": "DRIFT_CAMERA",
+      "type": "vtable_function_pointer",
+      "file_normalized": false,
+      "option": "Settings.HUD.DriftCamera",
+      "description": "Preserve the native attached-camera update, then rotate its view toward momentum with the previous spring tuning."
+    },
+    {
+      "id": "drift_camera_hood_update",
+      "rva": 48725704,
+      "original_rva": 17024400,
+      "runtime_group": "DRIFT_CAMERA",
+      "type": "vtable_function_pointer",
+      "file_normalized": false,
+      "option": "Settings.HUD.DriftCamera",
+      "description": "Preserve the native attached-camera update, then rotate its view toward momentum with the previous spring tuning."
+    },
+    {
+      "id": "drift_camera_bumper_update",
+      "rva": 48694224,
+      "original_rva": 17024400,
+      "runtime_group": "DRIFT_CAMERA",
+      "type": "vtable_function_pointer",
+      "file_normalized": false,
+      "option": "Settings.HUD.DriftCamera",
+      "description": "Preserve the native attached-camera update, then rotate its view toward momentum with the previous spring tuning."
+    },
+    {
+      "id": "drift_video_resource_thunk",
+      "rva": 20964180,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Settings.HUD.DriftCamera"
+    },
+    {
+      "id": "drift_video_reset_options",
+      "rva": 48630016,
+      "original_rva": 15462496,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "vtable_function_pointer",
+      "file_normalized": false,
+      "option": "Settings.HUD.DriftCamera"
+    },
+    {
+      "id": "fov_follow",
+      "rva": 48727056,
+      "original_function_rva": 16990496,
+      "runtime_group": "CAMERA_FOV",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "description": "Live vertical field of view from the native Video menu; retain native default and split-screen ratio."
+    },
+    {
+      "id": "fov_chase",
+      "rva": 48727680,
+      "original_function_rva": 16990496,
+      "runtime_group": "CAMERA_FOV",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "description": "Live vertical field of view from the native Video menu; retain native default and split-screen ratio."
+    },
+    {
+      "id": "fov_far_chase",
+      "rva": 48728304,
+      "original_function_rva": 16990496,
+      "runtime_group": "CAMERA_FOV",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "description": "Live vertical field of view from the native Video menu; retain native default and split-screen ratio."
+    },
+    {
+      "id": "fov_driver",
+      "rva": 48726416,
+      "original_function_rva": 16990448,
+      "runtime_group": "CAMERA_FOV",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "description": "Live vertical field of view from the native Video menu; retain native default and split-screen ratio."
+    },
+    {
+      "id": "fov_hood",
+      "rva": 48725784,
+      "original_function_rva": 16990448,
+      "runtime_group": "CAMERA_FOV",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "description": "Live vertical field of view from the native Video menu; retain native default and split-screen ratio."
+    },
+    {
+      "id": "fov_bumper",
+      "rva": 48694304,
+      "original_function_rva": 16990448,
+      "runtime_group": "CAMERA_FOV",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "description": "Live vertical field of view from the native Video menu; retain native default and split-screen ratio."
+    },
+    {
+      "id": "hud_reset_options",
+      "rva": 48170952,
+      "original_function_rva": 13843168,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "description": "Native HUD reset with independent saved camera and HUD choices."
+    },
+    {
+      "id": "local_car_vehicle_controls_update",
+      "rva": 46517248,
+      "original_function_rva": 2790400,
+      "runtime_group": "VEHICLE_CONTROLS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled",
+      "description": "Preserve the ForzaCar update ABI, handle gestures only for the locally owned car, maintain requested lights and full-detail roof animation."
+    },
+    {
+      "id": "roof_black_fade_color",
+      "rva": 46666632,
+      "original_function_rva": 4684880,
+      "description": "Cover removable roof changes through the native CameraFadeComponent overlay color.",
+      "runtime_group": "VEHICLE_CONTROLS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "stock_wheel_archive_text_thunk",
+      "rva": 15521444,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "RIMS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_wheel_archive_string_thunk",
+      "rva": 15523377,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "RIMS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_wheel_models_thunk",
+      "rva": 15531042,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "RIMS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_rim_localized_name_thunk",
+      "rva": 15401588,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "RIMS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "pause_garage_footer",
+      "rva": 48317200,
+      "original_function_rva": 14446128,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "pause_garage_help_action",
+      "rva": 48369104,
+      "original_function_rva": 14578832,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "pause_garage_update",
+      "rva": 48317264,
+      "original_function_rva": 14476896,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "garage_location_activation",
+      "rva": 46763280,
+      "original_function_rva": 5608032,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "blinker_radio_query_thunk",
+      "rva": 9850292,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "VEHICLE_CONTROLS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "front_aero_tuning_ranges",
+      "rva": 17175092,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "AERO_TUNING",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "rear_aero_tuning_ranges",
+      "rva": 17174628,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "AERO_TUNING",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "stock_rim_part_name_everyman",
+      "rva": 47720096,
+      "original_function_rva": 15429808,
+      "runtime_group": "RIMS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_rim_part_name",
+      "rva": 48623392,
+      "original_function_rva": 15429808,
+      "runtime_group": "RIMS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "stock_wheel_variant_query_thunk",
+      "rva": 17355796,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "RIMS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Frontend.AllRimsCategory"
+    },
+    {
+      "id": "hazards_photo_input_thunk",
+      "rva": 9842900,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "VEHICLE_CONTROLS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "hazards_photo_ready_thunk",
+      "rva": 9852004,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "VEHICLE_CONTROLS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_database_open_thunk",
+      "rva": 17361364,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "ADDONS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_sqlite_open_thunk",
+      "rva": 17356068,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "ADDONS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_database_open",
+      "rva": 16143138,
+      "original": "e8d9951200",
+      "runtime_group": "ADDONS",
+      "type": "relative_call_to_callback_thunk",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_sqlite_open",
+      "rva": 17379630,
+      "original": "e88da5fefe",
+      "runtime_group": "ADDONS",
+      "type": "relative_call_to_callback_thunk",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_string_table_thunk",
+      "rva": 19158292,
+      "original": "cccccccccccccccccccccccc",
+      "runtime_group": "ADDONS",
+      "type": "callback_thunk_in_unused_padding",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "addon_string_table_load",
+      "rva": 19158081,
+      "original": "e8ea1a0000",
+      "runtime_group": "ADDONS",
+      "type": "relative_call_to_callback_thunk",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "mod_video_file_redirect",
+      "rva": 48924240,
+      "original_function_rva": 18482960,
+      "runtime_group": "MEDIA_OVERRIDES",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_view",
+      "rva": 48051984,
+      "original_function_rva": 13427328,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_pause_view",
+      "rva": 47594744,
+      "original_function_rva": 13602176,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_autoshow",
+      "rva": 48000032,
+      "original_function_rva": 13277600,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_view_input",
+      "rva": 48052048,
+      "original_function_rva": 13440656,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_pause_input",
+      "rva": 47594808,
+      "original_function_rva": 13440656,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    },
+    {
+      "id": "showroom_photo_autoshow_input",
+      "rva": 48000096,
+      "original_function_rva": 13295024,
+      "runtime_group": "VIDEO_OPTIONS",
+      "type": "relocated_vtable_pointer",
+      "file_normalized": false,
+      "option": "Global.Enabled"
+    }
+  ],
+  "runtime_data": [
+    {
+      "id": "photo_mode_sample_density",
+      "rva": 48772324,
+      "original_value": 295,
+      "size": 4,
+      "runtime_group": "PHOTO_SAMPLING",
+      "type": "dynamic_integer_control",
+      "file_normalized": false,
+      "option": "PhotoMode.Samples",
+      "description": "Override the native photo accumulation grid; Default retains the translation layer setting (129 samples in the original game)."
+    }
+  ]
+}
