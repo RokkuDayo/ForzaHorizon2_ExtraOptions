@@ -93,7 +93,8 @@ COMMON_SOURCES = [
 FM5_SOURCES = ["fh2/features/fm5.c", "fh2/features/fm5_rims.c"]
 # The FH3 build is a separate, self-contained title profile: none of the FH2
 # runtime, settings, plugins or save compatibility modules are linked.
-FH3_SOURCES = ["dllmain.c", "support.c", "sha256.c", "fh3/fh3.c", "fh3/fh3_mods.c"]
+FH3_SOURCES = ["dllmain.c", "support.c", "sha256.c", "fh3/fh3.c", "fh3/fh3_mods.c",
+               "fh3/fh3_text.c"]
 AZIMUTH_SOURCES = ["adapters/azimuth.c", "adapters/winmm.c", "adapters/winmm_exports.s",
                    "adapters/azimuth_host.c"]
 

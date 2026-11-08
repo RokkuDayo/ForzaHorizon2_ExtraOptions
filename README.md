@@ -96,6 +96,7 @@ A separate build of the mod for the Xbox One version of Forza Horizon 3, running
  - FPS counter with optional GPU usage and frame time.
  - Toggle for having the minimap follow the orbit camera.
  - "mediaoverride" and "mediapc" modding folder support.
+ - Menus and labels added by the mod are translated into every language FH3 supports, following the game's language.
 
 ### Enhancements
  - Skip developer opening videos.

@@ -1,5 +1,6 @@
 #include "fh3.h"
 #include "fh3_internal.h"
+#include "fh3_text.h"
 #include "sha256.h"
 #include "support.h"
 #include <xmmintrin.h>
@@ -679,6 +680,39 @@ static void autodrive_start(void) {
     write_log("AUTODRIVE: AI driver engaged on the local car.\r\n");
 }
 
+/* The mod's own text follows the game's language (fh3_text.c). As in FH2, the
+   string table object ([0x4e7dda8], vtable 0x467d858) keeps the code of the
+   table it loaded (en, chs, de...) in a std::string at +0x30: inline text,
+   length at +0x40, capacity 15 at +0x48. */
+enum { STRING_TABLES = 0x4e7dda8, STRING_TABLES_VTABLE = 0x467d858, STRING_TABLES_CODE = 0x30 };
+
+static const char *game_language_code(void) {
+    static char code[5];
+    unsigned char *tables, value[32];
+    uintptr_t vtable;
+    size_t length, capacity;
+    if (!image || !memory_read_pointer(image + STRING_TABLES, (void **)&tables) ||
+        !memory_read(tables, &vtable, sizeof(vtable)) ||
+        vtable != (uintptr_t)(image + STRING_TABLES_VTABLE) ||
+        !memory_read(tables + STRING_TABLES_CODE, value, sizeof(value)))
+        return NULL;
+    memory_copy(&length, value + 16, sizeof(length));
+    memory_copy(&capacity, value + 24, sizeof(capacity));
+    if (capacity != 15 || length < 2 || length > 3) return NULL;
+    memory_copy(code, value, length);
+    code[length] = 0;
+    return code;
+}
+
+/* ANNA labels are kept as wide English literals. */
+static const wchar_t *translate_label(const wchar_t *english) {
+    char key[64];
+    unsigned i = 0;
+    for (; english[i] && i < sizeof(key) - 1; ++i) key[i] = (char)english[i];
+    key[i] = 0;
+    return fh3_wtext(key, NULL);
+}
+
 /* ANNA menu entries (D-pad Down). HUDAnnaComponent keeps the available command
    names in a std::vector<std::string> at +0xb8 and rebuilds its menu (+0xf8)
    with AddOption 0x10b0da0, which labels each item with the localized
@@ -1053,6 +1087,7 @@ static void **anna_make_label(void *self, void **output, const MsvcString *name)
         const wchar_t *text = anna_entries[index].label;
         int part = anna_entries[index].part;
         if (part >= 0 && part_is_open(driven_car(), part)) text = anna_entries[index].close_label;
+        text = translate_label(text);
         unsigned length = 0;
         while (text[length]) ++length;
         wchar_t *copy = ((Allocate)(image + 0x1edbd00))((length + 1) * sizeof(wchar_t));
@@ -1825,6 +1860,13 @@ static float square_root(float value) {
 
 static void minimap_update(void *controller, const float *position, const float *direction,
                            float speed, float zoom) {
+    /* The pause menu's World Map tile has its own tracking controller, updated
+       with zoom 0 (the HUD minimap's zoom follows the speed); it keeps the
+       native north-up view. */
+    if (zoom == 0.0f) {
+        ((MinimapUpdate)(image + 0x120c6c0))(controller, position, direction, speed, zoom);
+        return;
+    }
     float target_x = 0.0f, target_y = 1.0f, strongest = 0.0f;
     for (DWORD pad = 0; minimap_follows_camera && load_pads() && pad < 4; ++pad) {
         PadState state;
@@ -2665,8 +2707,9 @@ static void open_manufacturer_picker(void *page) {
         picker_initial = NULL;
         return;
     }
-    static const wchar_t heading[] = L"Jump to Manufacturer";
-    void *label = make_ui_string(heading, sizeof(heading) / sizeof(heading[0]) - 1);
+    unsigned heading_length;
+    const wchar_t *heading = fh3_wtext("Jump to Manufacturer", &heading_length);
+    void *label = make_ui_string(heading, heading_length);
     if (label) {
         ui_release(*(unsigned char **)(popup + 0x470));
         *(void **)(popup + 0x470) = label;
@@ -2829,7 +2872,9 @@ static unsigned char return_to_garage_invoke(void *closure) {
    releases the caller's), so ours is handed over, not released here. The
    native label it replaces is released, as the call would have done. */
 static void pause_help_prompt(void *page, int button, void **label, void *callback) {
-    void *text = make_ui_string(L"Return to Garage", 16);
+    unsigned length;
+    const wchar_t *garage = fh3_wtext("Return to Garage", &length);
+    void *text = make_ui_string(garage, length);
     if (text) {
         ui_release(*label);
         *label = NULL;
@@ -3151,6 +3196,27 @@ static void ui_load_resource(void *loader) {
             text_find(bytes, (size_t)size, ui_pages[i].page))
             page = &ui_pages[i];
     if (!page || !ui_register()) return;
+    /* The page's fragments in the game's language, built once per page. */
+    static struct {
+        const char *language, *resources, *controls;
+    } translated[ARRAY_COUNT(ui_pages)];
+    unsigned slot = (unsigned)(page - ui_pages);
+    const char *language = fh3_text_language();
+    if (translated[slot].language != language) {
+        translated[slot].language = language;
+        translated[slot].resources = fh3_text_xaml(page->resources);
+        translated[slot].controls = fh3_text_xaml(page->controls);
+        write_log("LANGUAGE: Extra Options text in ");
+        write_log(language);
+        write_log(" on the ");
+        write_log(page->name);
+        write_log(fh3_text_from_game() ? ", the game's language.\r\n"
+                                       : ", from Azimuth or Windows (the game had not picked one yet).\r\n");
+    }
+    UiPage local = *page;
+    local.resources = translated[slot].resources;
+    local.controls = translated[slot].controls;
+    page = &local;
     unsigned capacity =
         (unsigned)(size + text_length(page->resources) + text_length(page->controls) + 1);
     void *replacement = NULL;
@@ -3365,6 +3431,7 @@ static unsigned horn_prepare(Site *sites) {
                               ARRAY_COUNT(refreshes), extras_refresh);
 }
 
+
 int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *executable,
                    const wchar_t *directory) {
     if (title_id != FH3_TITLE_ID) return 0;
@@ -3383,6 +3450,7 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         !verify_file(executable))
         return rejected("REFUSED: unsupported or modified FH3 executable; only the unmodified "
                         "1.0.125.0 build is supported. No FH3 patches applied.");
+    fh3_text_init(directory, game_language_code);
     if (!option(L"Global", L"Enabled", 1)) {
         status_set("OK: FH3 Extra Options disabled in FH3_ExtraOptions.ini.");
         write_log(status_get());
