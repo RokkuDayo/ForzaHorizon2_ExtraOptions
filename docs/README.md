@@ -55,6 +55,7 @@ Wiki page: W.I.P.
  - Drift camera (as seen in Forza Horizon 4/5/6).
  - Expanded photo mode controls (Focus ring is now properly hidden, driver visiblity, vehicle lights).
  - FOV sliders for every camera type.
+ - Restored cut Zender and Lorinser rims.
  - Light toggles for all cars.
 
 ## Tweaks
