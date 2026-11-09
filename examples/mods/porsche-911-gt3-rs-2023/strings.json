@@ -1,0 +1,11 @@
+{
+  "format_version": 1,
+  "fallback_language": "EN",
+  "languages": {
+    "EN": {
+      "Data_Car": {
+        "27932": "911 GT3 RS (992)"
+      }
+    }
+  }
+}

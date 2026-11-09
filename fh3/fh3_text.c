@@ -1,5 +1,5 @@
 #include "fh3_text.h"
-#include "support.h"
+#include "shared/support.h"
 
 /* FH3's string tables (media\stripped\stringtables) are EN, GB, JP, DE, FR,
    MX, ES, IT, KO, CHS, CHT, CZ, HU, PL, RU, NL and BR. English (EN, GB) uses
@@ -559,9 +559,9 @@ static const Text texts[] = {
       "先以兩倍解析度算繪塗裝再縮小（負載更高）。重新啟動遊戲後生效。"}},
 };
 
-static int language = EN;      /* the guess before the game's language is known */
-static int game_language = -1; /* the language the game loaded, once known */
-static const char *(*game_code)(void);
+static int fallback_language = EN;
+static volatile LONG game_language = -1;
+static int (*game_code)(char [4]);
 
 static int same(const char *left, const char *right) {
     size_t length = text_length(right);
@@ -573,7 +573,7 @@ static int same(const char *left, const char *right) {
 static int language_from(const wchar_t *name) {
     char text[32];
     unsigned length = 0;
-    for (; name[length] && length < sizeof(text) - 1; ++length) {
+    for (; length < sizeof(text) - 1 && name[length]; ++length) {
         wchar_t c = name[length];
         if (c > 127) return -1;
         text[length] = (char)(c >= 'A' && c <= 'Z' ? c + 32 : c == '_' ? '-' : c);
@@ -605,12 +605,12 @@ static int language_from(const wchar_t *name) {
 
 typedef BOOL(WINAPI *PreferredLanguages)(DWORD, PULONG, PZZWSTR, PULONG);
 
-void fh3_text_init(const wchar_t *directory, const char *(*code)(void)) {
+void fh3_text_init(const wchar_t *directory, int (*code)(char [4])) {
     wchar_t value[64];
     int chosen = -1;
     game_code = code;
-    game_language = -1;
-    language = EN;
+    InterlockedExchange(&game_language, -1);
+    fallback_language = EN;
     {
         /* Azimuth's language for the game, when one is set instead of the system's. */
         static wchar_t azimuth[PATH_CAPACITY]; /* static: too large for the stack */
@@ -633,163 +633,131 @@ void fh3_text_init(const wchar_t *directory, const char *(*code)(void)) {
                    : NULL;
         static wchar_t list[512];
         ULONG count = 0, size = ARRAY_COUNT(list);
-        if (preferred && preferred(0x8 /* MUI_LANGUAGE_NAME */, &count, list, &size))
+        if (preferred && preferred(MUI_LANGUAGE_NAME, &count, list, &size))
             for (const wchar_t *name = list; *name && chosen < 0;) {
                 chosen = language_from(name);
                 while (*name) ++name;
                 ++name;
             }
     }
-    if (chosen >= 0) language = chosen;
+    if (chosen >= 0) fallback_language = chosen;
 }
 
-/* The game's language once its locale manager has picked one (its code, such
-   as DE or CHT), else the startup guess. */
-static int current(void) {
-    if (game_language < 0 && game_code) {
-        const char *code = game_code();
-        wchar_t wide[8];
-        unsigned i = 0;
-        for (; code && code[i] && i < ARRAY_COUNT(wide) - 1; ++i) wide[i] = (unsigned char)code[i];
-        wide[i] = 0;
-        int found = i ? language_from(wide) : -1;
-        if (found >= 0) game_language = found;
+int fh3_text_language(void) {
+    LONG current = game_language;
+    char code[4] = {0};
+    if (current < 0 && game_code && game_code(code)) {
+        wchar_t wide[4] = {0};
+        for (unsigned i = 0; i < 3; ++i) wide[i] = (unsigned char)code[i];
+        int found = language_from(wide);
+        current = found < 0 ? EN : found;
+        LONG prior = InterlockedCompareExchange(&game_language, current, -1);
+        if (prior >= 0) current = prior;
     }
-    return game_language >= 0 ? game_language : language;
+    return current < 0 ? fallback_language : (int)current;
 }
 
-const char *fh3_text_language(void) {
-    return codes[current()];
-}
+const char *fh3_text_code(int language) { return codes[language]; }
+int fh3_text_from_game(void) { return game_language >= 0; }
 
-int fh3_text_from_game(void) {
-    current();
-    return game_language >= 0;
-}
-
-const char *fh3_text(const char *english) {
-    int which = current();
-    if (which == EN) return english;
+static const char *translation(const char *english, size_t length, int language) {
+    if (language == EN) return NULL;
     for (unsigned i = 0; i < ARRAY_COUNT(texts); ++i)
-        if (same(english, texts[i].english)) return texts[i].text[which];
-    return english;
+        if (text_length(texts[i].english) == length && memory_equal(english, texts[i].english, length))
+            return texts[i].text[language];
+    return NULL;
 }
 
-/* A key that outlives the caller's buffer: the table's own English text, or
-   a heap copy for text the table does not have. */
-static const char *fh3_text_key(const char *english) {
-    for (unsigned i = 0; i < ARRAY_COUNT(texts); ++i)
-        if (same(english, texts[i].english)) return texts[i].english;
-    size_t length = text_length(english);
-    char *copy = HeapAlloc(GetProcessHeap(), 0, length + 1);
-    if (!copy) return "";
-    memory_copy(copy, english, length + 1);
-    return copy;
+unsigned fh3_text_wide(const char *english, wchar_t *out, unsigned capacity) {
+    const char *value = translation(english, text_length(english), fh3_text_language());
+    int size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value ? value : english,
+                                   -1, out, (int)capacity);
+    if (!size && value)
+        size = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, english, -1, out, (int)capacity);
+    if (!size) out[0] = 0;
+    return size > 0 ? (unsigned)(size - 1) : 0;
 }
 
-const wchar_t *fh3_wtext(const char *english, unsigned *length) {
-    static struct {
-        const char *english;
-        wchar_t *text;
-        unsigned length;
-        int language;
-    } cache[128];
-    static unsigned used;
-    int which = current();
-    for (unsigned i = 0; i < used; ++i)
-        if (cache[i].language == which && same(cache[i].english, english)) {
-            if (length) *length = cache[i].length;
-            return cache[i].text;
+static void append(char *out, size_t *used, const char *text, size_t length) {
+    if (out) memory_copy(out + *used, text, length);
+    *used += length;
+}
+
+static void append_xml(char *out, size_t *used, const wchar_t *text) {
+    while (*text) {
+        unsigned code = *text++;
+        if (code >= 0xd800 && code <= 0xdbff) {
+            code = 0x10000 + ((code - 0xd800) << 10) + (*text++ - 0xdc00);
         }
-    const char *utf8 = fh3_text(english);
-    int size = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, NULL, 0);
-    wchar_t *text = size > 0 ? HeapAlloc(GetProcessHeap(), 0, (size_t)size * sizeof(wchar_t)) : NULL;
-    if (!text || !MultiByteToWideChar(CP_UTF8, 0, utf8, -1, text, size)) {
-        static wchar_t empty[1];
-        if (length) *length = 0;
-        return empty;
-    }
-    if (used < ARRAY_COUNT(cache)) {
-        cache[used].english = fh3_text_key(english);
-        cache[used].text = text;
-        cache[used].length = (unsigned)size - 1;
-        cache[used].language = which;
-        ++used;
-    }
-    if (length) *length = (unsigned)size - 1;
-    return text;
-}
-
-/* Is the English text at `at` a whole attribute value, or the part of one
-   after "Extra Options: "? */
-static int quoted_value(const char *xaml, const char *at, size_t length) {
-    static const char prefix[] = "\"Extra Options: ";
-    size_t prefix_length = sizeof(prefix) - 1;
-    if (at[length] != '"') return 0;
-    if (at > xaml && at[-1] == '"') return 1;
-    return (size_t)(at - xaml) >= prefix_length &&
-           memory_equal(at - prefix_length, prefix, prefix_length);
-}
-
-const char *fh3_text_xaml(const char *xaml) {
-    int language = current();
-    if (language == EN) return xaml;
-    size_t length = text_length(xaml), size = length + 1;
-    /* Measure, then build. Translations are at most a few times longer. */
-    for (int pass = 0; pass < 2; ++pass) {
-        char *out = pass ? HeapAlloc(GetProcessHeap(), 0, size) : NULL;
-        if (pass && !out) return xaml;
-        size_t written = 0;
-        for (size_t at = 0; at < length;) {
-            const Text *match = NULL;
-            size_t match_length = 0;
-            for (unsigned i = 0; i < ARRAY_COUNT(texts); ++i) {
-                size_t n = text_length(texts[i].english);
-                if (n > match_length && at + n < length &&
-                    memory_equal(xaml + at, texts[i].english, n) &&
-                    quoted_value(xaml, xaml + at, n)) {
-                    match = &texts[i];
-                    match_length = n;
-                }
-            }
-            if (match) {
-                /* The game reads this XAML as ANSI, not UTF-8: anything past
-                   ASCII goes in as a character reference (&#xDF; for ß). */
-                const unsigned char *text = (const unsigned char *)match->text[language];
-                for (size_t k = 0; text[k];) {
-                    unsigned code = text[k], extra = 0;
-                    if (code >= 0xf0) code &= 0x07, extra = 3;
-                    else if (code >= 0xe0) code &= 0x0f, extra = 2;
-                    else if (code >= 0xc0) code &= 0x1f, extra = 1;
-                    ++k;
-                    for (unsigned e = 0; e < extra && text[k]; ++e) code = code << 6 | (text[k++] & 0x3f);
-                    if (code < 0x80) {
-                        if (pass) out[written] = (char)code;
-                        ++written;
-                        continue;
-                    }
-                    char reference[12] = "&#x";
-                    unsigned used = 3, digits = 0;
-                    for (unsigned v = code; v; v >>= 4) ++digits;
-                    for (unsigned d = digits; d; --d)
-                        reference[used++] = "0123456789ABCDEF"[(code >> ((d - 1) * 4)) & 0xf];
-                    reference[used++] = ';';
-                    if (pass) memory_copy(out + written, reference, used);
-                    written += used;
-                }
-                at += match_length;
-            } else {
-                if (pass) out[written] = xaml[at];
-                ++written;
-                ++at;
-            }
-        }
-        if (!pass) {
-            size = written + 1;
+        if (code < 0x80 && code != '&' && code != '"' && code != '<' && code != '>') {
+            char character = (char)code;
+            append(out, used, &character, 1);
         } else {
-            out[written] = 0;
-            return out;
+            char reference[10] = "&#x";
+            unsigned digits = 1;
+            for (unsigned remaining = code >> 4; remaining; remaining >>= 4) ++digits;
+            for (unsigned i = 0; i < digits; ++i)
+                reference[3 + i] = "0123456789ABCDEF"[(code >> (4 * (digits - i - 1))) & 15];
+            reference[3 + digits] = ';';
+            append(out, used, reference, 4 + digits);
         }
     }
-    return xaml;
 }
+
+static size_t translate_xaml(const char *xaml, int language, char *out, int *changed) {
+    static const char prefix[] = "Extra Options: ";
+    const char *end = xaml + text_length(xaml);
+    size_t used = 0;
+    for (const char *at = xaml; at < end;) {
+        const char *start = text_find(at, (size_t)(end - at), "=\"");
+        if (!start) {
+            append(out, &used, at, (size_t)(end - at));
+            break;
+        }
+        start += 2;
+        const char *quote = text_find(start, (size_t)(end - start), "\"");
+        if (!quote) {
+            append(out, &used, at, (size_t)(end - at));
+            break;
+        }
+        if ((size_t)(quote - start) >= sizeof(prefix) - 1 &&
+            memory_equal(start, prefix, sizeof(prefix) - 1))
+            start += sizeof(prefix) - 1;
+        const char *value = translation(start, (size_t)(quote - start), language);
+        wchar_t wide[512];
+        if (value && MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value, -1,
+                                         wide, ARRAY_COUNT(wide))) {
+            append(out, &used, at, (size_t)(start - at));
+            append_xml(out, &used, wide);
+            append(out, &used, quote, 1);
+            *changed = 1;
+        } else {
+            append(out, &used, at, (size_t)(quote + 1 - at));
+        }
+        at = quote + 1;
+    }
+    return used;
+}
+
+char *fh3_text_xaml(const char *xaml, int language) {
+    if (language == EN || !*xaml) return NULL;
+    int changed = 0;
+    size_t length = translate_xaml(xaml, language, NULL, &changed);
+    if (!changed) return NULL;
+    char *out = HeapAlloc(GetProcessHeap(), 0, length + 1);
+    if (out) out[translate_xaml(xaml, language, out, &changed)] = 0;
+    return out;
+}
+
+#ifdef FH2_TWEAKS_TEST
+__declspec(dllexport) const char *Fh3TestTextLanguage(void) {
+    return fh3_text_code(fh3_text_language());
+}
+__declspec(dllexport) unsigned Fh3TestTextWide(const char *key, wchar_t *out, unsigned capacity) {
+    return fh3_text_wide(key, out, capacity);
+}
+__declspec(dllexport) char *Fh3TestTextXaml(const char *xaml) {
+    return fh3_text_xaml(xaml, fh3_text_language());
+}
+#endif
+

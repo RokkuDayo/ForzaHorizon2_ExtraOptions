@@ -1,0 +1,28 @@
+FM5 Jump to Manufacturer expansion
+
+With Azimuth closed, replace winmm.dll beside azimuth.exe with the included DLL.
+Keep your existing INI and DAT files. No configuration changes are needed when
+Frontend.JumpToManufacturer=1 (the default).
+
+All car selectors: View opens Jump to Manufacturer. Includes Buy Cars, My Cars,
+Designs/Paint, Career, Free Play, Rivals, lobby selectors and Marketplace, plus
+the initial-purchase and ForzaVista demo variants.
+Rim style lists: Y opens Jump to Manufacturer; View retains Setup manager.
+Includes the original rim styles, All aftermarket rims and All stock rims.
+
+All grids are alphabetical and open on the selected item's manufacturer.
+My Cars skips the pinned current car when a regular brand entry is available.
+Stock rims use car manufacturer names; aftermarket rims resolve native localized
+part manufacturer names. Their logos come from the current database list.
+Aftermarket tiles are white with dark text; stock-brand tiles remain dark.
+
+Validation passed against a private mapped FM5 executable, including native
+popup construction, localized text conversion, current-car pin handling,
+rim row selection, repeated footer rebuilding, cancellation and patch rollback.
+The expanded fixture covers all twelve native car-selector types, their own
+lifecycle callbacks, filtered collections, prompt visibility, recommendations,
+cancel/destruction cleanup and both car-selector XAML scenes.
+Photo Mode footer, damage reset and altitude regression checks also passed.
+Not yet tested in a running game.
+
+Azimuth only; includes the existing FH2 and FM5 development profiles.

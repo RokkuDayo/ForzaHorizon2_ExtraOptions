@@ -1,7 +1,7 @@
-#include "patch_engine.h"
-#include "patches_generated.h"
-#include "sha256.h"
-#include "support.h"
+#include "fh2/patch_engine.h"
+#include "fh2/patches_generated.h"
+#include "shared/sha256.h"
+#include "shared/support.h"
 
 static unsigned char file_buffer[65536];
 

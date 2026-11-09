@@ -1,0 +1,11 @@
+FM5 Photo Mode - Focus prompt width
+
+The captured native layout showed the cause of the extra gap: X/Focus measured 135 px initially, expanded to 243.09 px for Reset to Default in Effects Mode, then retained 243.09 px after returning to Focus. The hidden RB entry was excluded from the footer total correctly.
+
+The normal Focus entry now uses its own initial measured width as MaxWidth. Effects Mode removes that cap so Reset to Default can expand. The width is measured for the current session/language rather than hardcoded. Only the X entry gets this binding. The original native footer, template, fonts, icons, state animations and other prompts are retained. Hide UI is last, after Reset Damage.
+
+Removed the unsuccessful custom template and remeasurement workarounds. No temporary in-game diagnostic logging. The initial lookup is bounded and stops after the width is found; subsequent notifications occur only when the Photo Mode state changes.
+
+Regression checks reproduce the captured 135/243/243 sequence, validate the bound limit returns 135/unlimited/135, repeat with a different starting width, and cover native input, sound ownership, garage visibility and camera altitude. In-game visual confirmation is still required.
+
+Replace winmm.dll with Azimuth closed. Keep existing INI and DAT files.

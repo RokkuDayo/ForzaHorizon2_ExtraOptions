@@ -1,7 +1,7 @@
-#include "settings.h"
-#include "features.h"
-#include "support.h"
-#include "features/bindings.h"
+#include "fh2/settings.h"
+#include "fh2/features.h"
+#include "shared/support.h"
+#include "fh2/bindings.h"
 
 #define INI_MAX_SIZE 8192
 #define SETTING(section, key, field, type) {section, key, key, offsetof(ModOptions, field), type}
@@ -13,6 +13,7 @@ const SettingDefinition setting_definitions[] = {
     SETTING("Experiments", "LocalDrivatarLiveries", local_drivatar_liveries, SETTING_BOOLEAN),
     SETTING("Experiments", "MaxDrivatarLiveries", max_drivatar_liveries, SETTING_LIVERY_COUNT),
     SETTING("Frontend", "SkipIntro", skip_intro, SETTING_BOOLEAN),
+    SETTING("Frontend", "ShowPlaygroundEvents", show_playground_events, SETTING_BOOLEAN),
     SETTING("Frontend", "CarsNextToHome", cars_next_to_home, SETTING_BOOLEAN),
     SETTING("Frontend", "MenuTurboIntervalMs", menu_turbo_interval_ms, SETTING_TURBO_INTERVAL),
     SETTING("Frontend", "AllRimsCategory", all_rims_category, SETTING_BOOLEAN),
@@ -26,9 +27,8 @@ const SettingDefinition setting_definitions[] = {
     SETTING("Content", "UnlockStormIslandCars", unlock_storm_island_cars, SETTING_BOOLEAN),
     SETTING("Content", "UnlockTreasureMap", unlock_treasure_map, SETTING_BOOLEAN),
     SETTING("Compatibility", "DisableParentalLocks", disable_parental_locks, SETTING_BOOLEAN),
-    SETTING("Compatibility", "DisableAzimuthSaveChecksums", disable_azimuth_save_checksums,
+    SETTING("Compatibility", "GenerateMissingSaveCommits", generate_missing_save_commits,
             SETTING_BOOLEAN),
-    SETTING("Profile", "CustomGamerpic", custom_gamerpic, SETTING_BOOLEAN),
     SETTING("PhotoMode", "FreeCamera", free_photo_camera, SETTING_BOOLEAN),
     SETTING("Files", "EnableMediaOverrides", media_overrides, SETTING_BOOLEAN),
     SETTING("Experiments", "UnlockAeroTuning", unlock_aero_tuning, SETTING_BOOLEAN),
@@ -70,12 +70,11 @@ void settings_defaults(ModOptions *options) {
         .snap_car_to_road = 1,
         .unlock_storm_island_cars = 1,
         .disable_parental_locks = 1,
-        .custom_gamerpic = 1,
         .free_photo_camera = 1,
         .unlock_treasure_map = 0,
         .autodrive = 0,
         .autodrive_cinematic = 1,
-        .disable_azimuth_save_checksums = 1,
+        .generate_missing_save_commits = 1,
         .smooth_sun_shadows = -1,
         .skip_ineligible_car_dialogue = 0,
         .minimap_follows_camera = 1,
@@ -119,7 +118,8 @@ static int known_section(const char *name) {
     if (text_equal_ignore_case(name, "Gameplay") || text_equal_ignore_case(name, "Camera") ||
         text_equal_ignore_case(name, "Graphics") || text_equal_ignore_case(name, "Livery") ||
         text_equal_ignore_case(name, "HUD") || text_equal_ignore_case(name, "Bindings") ||
-        text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language")) {
+        text_equal_ignore_case(name, "General") || text_equal_ignore_case(name, "Language") ||
+        text_equal_ignore_case(name, "Mods") || text_equal_ignore_case(name, "Profile")) {
         return 1;
     }
     for (size_t index = 0; index < setting_count; ++index) {
@@ -264,6 +264,15 @@ static int parse_ini(char *text, ModOptions *options) {
         char *key = trim_whitespace(line);
         char *value = trim_whitespace(separator + 1);
 
+        // The loader reads this setting separately; still validate the packaged INI.
+        if (text_equal_ignore_case(section, "Mods") &&
+            text_equal_ignore_case(key, "DatabaseCache")) {
+            if (!text_equal_ignore_case(value, "0") && !text_equal_ignore_case(value, "1")) {
+                goto invalid;
+            }
+            continue;
+        }
+
         if (text_equal_ignore_case(section, "Frontend") &&
             text_equal_ignore_case(key, "HideOnlineTabs")) {
             if (!text_equal_ignore_case(value, "0") && !text_equal_ignore_case(value, "1")) {
@@ -273,7 +282,11 @@ static int parse_ini(char *text, ModOptions *options) {
         }
 
         // Retired keys are ignored so an older INI still loads.
-        if ((text_equal_ignore_case(section, "Language") &&
+        if ((text_equal_ignore_case(section, "Profile") &&
+             text_equal_ignore_case(key, "CustomGamerpic")) ||
+            (text_equal_ignore_case(section, "Compatibility") &&
+             text_equal_ignore_case(key, "DisableAzimuthSaveChecksums")) ||
+            (text_equal_ignore_case(section, "Language") &&
              (text_equal_ignore_case(key, "Text") || text_equal_ignore_case(key, "Audio"))) ||
             (text_equal_ignore_case(section, "Graphics") &&
              (text_equal_ignore_case(key, "ForceAnisoFiltering") ||

@@ -1,0 +1,42 @@
+{
+  "format_version": 2,
+  "target": {
+    "database": "media/stripped/gamedbRC.slt"
+  },
+  "requires": {
+    "records": {
+      "Data_Car": [
+        {
+          "Id": 1655
+        }
+      ]
+    }
+  },
+  "tables": {
+    "List_UpgradeRearWing": {
+      "key": [
+        "Id"
+      ],
+      "insert": [
+        {
+          "Id": 1655099,
+          "Ordinal": 1655,
+          "Level": 1,
+          "IsStock": 0,
+          "Sequence": 7,
+          "ManufacturerId": 39,
+          "PartsStringId": "65",
+          "MassDiff": 1.0,
+          "DragScale": 0.995,
+          "WindInstabilityScale": 0.99,
+          "Price": 101,
+          "AeroPhysicsID": 6,
+          "RequiresGraphics": 1
+        }
+      ]
+    }
+  },
+  "policy": {
+    "id_conflicts": "nearest"
+  }
+}

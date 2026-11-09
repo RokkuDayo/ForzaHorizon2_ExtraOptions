@@ -1,7 +1,7 @@
 #ifndef FH2_SETTINGS_H
 #define FH2_SETTINGS_H
 
-#include "extra_options.h"
+#include "shared/extra_options.h"
 
 typedef enum { SETTING_BOOLEAN, SETTING_MSAA, SETTING_PHOTO_SAMPLES,
                SETTING_LIVERY_COUNT, SETTING_TURBO_INTERVAL } SettingType;
