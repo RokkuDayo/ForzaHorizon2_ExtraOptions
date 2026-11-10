@@ -17,6 +17,8 @@
 //     opens with Media Foundation.
 //
 // Build: see build.sh. Install: mods\GrooveMusicRadio\plugins\GrooveMusicRadio.dll next to azimuth.exe
+#define GROOVE_MUSIC_RADIO_VERSION "1.1.0"
+
 #include "fh3_plugin.h"
 #include "library.hpp"
 #include "reader.hpp"
@@ -26,6 +28,7 @@
 
 #include <knownfolders.h>
 #include <mferror.h>
+#include <shellapi.h>
 #include <shlobj.h>
 
 #include <algorithm>
@@ -64,6 +67,14 @@ enum : uint32_t {
     kPrivilegePlayer = 0x112f1de,
     kCallOpenReader = 0x1991dab,      // the player's MFCreateSourceReaderFromURL(url, attributes, reader)
     kPlayer = 0x4e6d770,              // the XboxMusicPlayer (pointer)
+    // Audio Options' X prompt, "Launch Groove Music": 0x112b4e0(help bar, 2, &label), and its action.
+    kCallAudioPrompt = 0x13a9124,
+    kAudioLaunchInvoke = 0x451b130 + 2 * 8,  // 0x13b5240
+    kCreateUiString = 0x1214480,      // (&string): a new, empty UIString
+    kAllocate = 0x1edbd00,            // (size): the game's heap
+    kFreeUiString = 0x31eb20,         // a UIString whose count (+0x10) reached 0
+    kStringTables = 0x4e7dda8,        // the loaded string tables (pointer); language code at +0x30
+    kStringTablesVtable = 0x467d858,
 };
 
 void logf(const char* format, ...) {
@@ -206,7 +217,38 @@ struct Request {
     std::wstring id;
     uint32_t offset = 0;
     uint32_t needs_gen = 1;
+    bool shuffled = false;
+    uint32_t seed = 0;
 };
+
+bool shuffle_enabled = true;  // [Music] Shuffle
+
+// The game's shuffle seed (a number or any text) as 32 bits; FNV-1a.
+uint32_t seed_of(const wchar_t* text) {
+    uint32_t h = 2166136261u;
+    for (; text && *text; ++text) h = (h ^ (uint32_t)*text) * 16777619u;
+    return h;
+}
+
+// A "more tracks" token: "<next offset>" in folder order, "<next offset>.<seed hex>" when shuffled.
+bool token_seed(const wchar_t* token, uint32_t& seed) {
+    const wchar_t* dot = token ? std::wcschr(token, L'.') : nullptr;
+    if (!dot) return false;
+    seed = (uint32_t)wcstoul(dot + 1, nullptr, 16);
+    return true;
+}
+
+// The same seed always gives the same order, so every page of a playlist agrees.
+void shuffle_songs(std::vector<uint32_t>& songs, uint32_t seed) {
+    uint64_t state = seed;
+    auto next = [&state]() {  // splitmix64
+        uint64_t z = (state += 0x9e3779b97f4a7c15ull);
+        z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ull;
+        z = (z ^ (z >> 27)) * 0x94d049bb133111ebull;
+        return z ^ (z >> 31);
+    };
+    for (size_t i = songs.size(); i > 1; --i) std::swap(songs[i - 1], songs[(size_t)(next() % i)]);
+}
 
 HRESULT fill_permissions(const Request& r) {
     std::memset(r.result, 0, kPermSize);
@@ -279,6 +321,7 @@ HRESULT fill_tracks(const Request& r) {
         }
         p = lists.front();
     }
+    if (r.shuffled) shuffle_songs(p.songs, r.seed);
     uint8_t* b = r.result;
     std::memset(b, 0, kTrSize);
     uint32_t total = (uint32_t)p.songs.size(), first = std::min(r.offset, total);
@@ -303,7 +346,13 @@ HRESULT fill_tracks(const Request& r) {
     }
     if (first + n < total) {
         b[kTrTokenFlag] = 1;
-        put(b + kTrToken, kIdChars, std::to_wstring(first + n));
+        std::wstring token = std::to_wstring(first + n);
+        if (r.shuffled) {
+            wchar_t seed[16];
+            swprintf(seed, 16, L".%08x", r.seed);
+            token += seed;
+        }
+        put(b + kTrToken, kIdChars, token);
     }
     return S_OK;
 }
@@ -451,6 +500,81 @@ HRESULT WINAPI open_song(const wchar_t* url, void* attributes, void** reader) {
     return S_OK;
 }
 
+// ---- Audio Options: X - Open Music Folder ----------------------------------------------------------
+// The page's X prompt launched the Groove app (0x13b5240, the invoke of the X action's callback,
+// vtable 0x451b130, used only here). The label is swapped for ours (0x112b4e0 keeps the reference it
+// is given) and the invoke opens the music folder instead.
+std::wstring music_dir;
+using SetPrompt = void (*)(void*, int, void**);
+SetPrompt set_prompt;
+
+const char* game_language() {
+    static char code[4];
+    unsigned char* tables = *reinterpret_cast<unsigned char**>(image + kStringTables);
+    if (!tables || *reinterpret_cast<void**>(tables) != image + kStringTablesVtable) return "";
+    size_t length, capacity;
+    std::memcpy(&length, tables + 0x30 + 16, sizeof length);
+    std::memcpy(&capacity, tables + 0x30 + 24, sizeof capacity);
+    if (capacity != 15 || length < 2 || length > 3) return "";
+    std::memcpy(code, tables + 0x30, length);
+    code[length] = 0;
+    return code;
+}
+
+const wchar_t* open_folder_label() {
+    static const struct { const char* code; const wchar_t* text; } labels[] = {
+        {"DE", L"Musikordner öffnen"},      {"FR", L"Ouvrir le dossier Musique"},
+        {"IT", L"Apri cartella Musica"},    {"ES", L"Abrir carpeta de música"},
+        {"MX", L"Abrir carpeta de música"}, {"BR", L"Abrir pasta de músicas"},
+        {"NL", L"Muziekmap openen"},        {"PL", L"Otwórz folder z muzyką"},
+        {"CZ", L"Otevřít složku s hudbou"}, {"HU", L"Zenemappa megnyitása"},
+        {"RU", L"Открыть папку с музыкой"}, {"JP", L"ミュージック フォルダーを開く"},
+        {"KO", L"음악 폴더 열기"},          {"CHS", L"打开音乐文件夹"},
+        {"CHT", L"開啟音樂資料夾"},
+    };
+    const char* code = game_language();
+    for (const auto& l : labels)
+        if (!std::strcmp(code, l.code)) return l.text;
+    return L"Open Music Folder";
+}
+
+void* make_ui_string(const wchar_t* text) {
+    void* string = nullptr;
+    reinterpret_cast<void** (*)(void**)>(image + kCreateUiString)(&string);
+    unsigned char* s = static_cast<unsigned char*>(string);
+    if (!s) return nullptr;
+    size_t length = std::wcslen(text);
+    auto copy = static_cast<wchar_t*>(reinterpret_cast<void* (*)(size_t)>(image + kAllocate)((length + 1) * 2));
+    if (copy) {
+        std::memcpy(copy, text, (length + 1) * sizeof(wchar_t));
+        *reinterpret_cast<wchar_t**>(s + 0x28) = copy;
+        *reinterpret_cast<uint32_t*>(s + 0x30) = (uint32_t)length;
+    }
+    return s;
+}
+
+void release_ui_string(void* string) {
+    auto s = static_cast<unsigned char*>(string);
+    if (s && --*reinterpret_cast<int*>(s + 0x10) == 0)
+        reinterpret_cast<void (*)(void*)>(image + kFreeUiString)(s);
+}
+
+unsigned char open_music_folder(void*) {
+    CreateDirectoryW(music_dir.c_str(), nullptr);  // a configured folder that isn't there yet
+    auto r = (INT_PTR)ShellExecuteW(nullptr, L"open", music_dir.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    logf(r > 32 ? "Groove Music Radio: opened %s." : "Groove Music Radio: can't open %s.",
+         narrow(music_dir).c_str());
+    return 1;
+}
+
+void audio_prompt(void* help_bar, int button, void** label) {
+    if (void* text = make_ui_string(open_folder_label())) {
+        release_ui_string(*label);
+        *label = text;
+    }
+    set_prompt(help_bar, button, label);
+}
+
 HRESULT get_permissions(uint8_t* result, void** task) { return start({Kind::Permissions, result, L"", 0, 0}, task); }
 HRESULT get_playlists(uint8_t* result, void** task) {
     return start({Kind::Playlists, result, L"", 0, library_rescan()}, task);
@@ -461,11 +585,21 @@ HRESULT more_playlists(const wchar_t* token, uint8_t* result, void** task) {
 HRESULT get_tracks(const wchar_t* id, uint8_t* result, void** task) {
     return start({Kind::Tracks, result, id ? id : L"", 0, 1}, task);
 }
-HRESULT get_tracks_shuffled(const wchar_t* id, const wchar_t*, uint8_t* result, void** task) {
-    return start({Kind::Tracks, result, id ? id : L"", 0, 1}, task);
+HRESULT get_tracks_shuffled(const wchar_t* id, const wchar_t* seed, uint8_t* result, void** task) {
+    Request r{Kind::Tracks, result, id ? id : L"", 0, 1};
+    if (shuffle_enabled) {
+        r.shuffled = true;
+        // No seed from the game: a new order each time.
+        r.seed = seed && *seed ? seed_of(seed) : (uint32_t)GetTickCount64();
+        logf("Groove Music Radio: shuffling \"%s\" (seed \"%s\").", narrow(r.id).c_str(),
+             seed ? narrow(seed).c_str() : "");
+    }
+    return start(std::move(r), task);
 }
 HRESULT more_tracks(const wchar_t* id, const wchar_t* token, uint8_t* result, void** task) {
-    return start({Kind::Tracks, result, id ? id : L"", token_offset(token), 1}, task);
+    Request r{Kind::Tracks, result, id ? id : L"", token_offset(token), 1};
+    r.shuffled = token_seed(token, r.seed);
+    return start(std::move(r), task);
 }
 HRESULT get_song_url(const wchar_t* id, const wchar_t*, const wchar_t*, uint8_t* result, void** task) {
     return start({Kind::SongUrl, result, id ? id : L"", 0, 1}, task);
@@ -479,6 +613,8 @@ const char kDefaultIni[] =
     "Folder=\r\n"
     "; 1: titles and artists from the files' tags; 0: from the file names (\"Artist - Title.mp3\").\r\n"
     "ReadTags=1\r\n"
+    "; 1: when the game shuffles, a playlist's songs play in a mixed order; 0: always in folder order.\r\n"
+    "Shuffle=1\r\n"
     "\r\n"
     "[spotify]\r\n"
     "; Spotify Soloist (Spotify Premium): put soloist.exe in this folder and your Soloist API key below\r\n"
@@ -649,9 +785,17 @@ extern "C" __declspec(dllexport) BOOL WINAPI FH3PluginInitialize(const FH3Plugin
     LibraryOptions options;
     options.folder = music_folder(ini);
     options.read_tags = ini_int(ini, L"Music", L"ReadTags", 1) != 0;
+    shuffle_enabled = ini_int(ini, L"Music", L"Shuffle", 1) != 0;
     library_start(options, log_line);
+    music_dir = options.folder;
+    if (!music_dir.empty()) {
+        if (host->hook_pointer(kAudioLaunchInvoke, (void*)&open_music_folder))
+            set_prompt = (SetPrompt)host->hook_call(kCallAudioPrompt, (void*)&audio_prompt);
+        if (!set_prompt) host->log_utf8("Groove Music Radio: couldn't change Audio Options' X button.");
+    }
     start_live_players(ini, context->mod_directory);
-    logf("Groove Music Radio: Groove station on; music from %s.", narrow(options.folder).c_str());
+    logf("Groove Music Radio " GROOVE_MUSIC_RADIO_VERSION ": Groove station on; music from %s.",
+         narrow(options.folder).c_str());
     return TRUE;
 }
 

@@ -113,7 +113,7 @@ A separate build of the mod for the Xbox One version of Forza Horizon 3, running
 ### Plugins
 These come as mods and are optional:
  - **No Pause**: the game keeps running, and keeps reading your controller, when it loses focus.
- - **Groove Music Radio**: brings back the Groove Music radio station with your own music: the Windows Music folder, Spotify (Premium), YouTube Music, QQ Music and NetEase Cloud Music. Settings are in "mods\GrooveMusicRadio\GrooveMusicRadio.ini".
+ - **Groove Music Radio**: brings back the Groove Music radio station with your own music: the Windows Music folder, Spotify (Premium), YouTube Music, QQ Music and NetEase Cloud Music. Music folder playlists follow the game's Shuffle option, and Audio Options' X button opens your music folder. Settings are in "mods\GrooveMusicRadio\GrooveMusicRadio.ini".
 
 ### Installation
  - Extract everything from the "fh3-azimuth" ZIP to Azimuth's main folder where "Azimuth.exe" is located: "winmm.dll", "FH3_ExtraOptions.ini" and the "mods" folder with the two plugins.
