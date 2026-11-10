@@ -1,9 +1,9 @@
 #ifndef FH2_FEATURES_H
 #define FH2_FEATURES_H
-#include "extra_options.h"
+#include "shared/extra_options.h"
 extern PatchDefinition garage_hook_patch;
+extern PatchDefinition autoshow_exit_hook_patch;
 extern PatchDefinition road_hook_patch;
-extern PatchDefinition gamerpic_hook_patch;
 extern PatchDefinition treasure_map_hook_patch;
 extern PatchDefinition minimap_hook_patch;
 extern PatchDefinition photo_sampling_patch;
@@ -12,7 +12,7 @@ extern PatchDefinition rims_hook_patch;
 extern PatchDefinition rim_name_hook_patch;
 extern PatchDefinition rim_part_name_hook_patches[2];
 extern PatchDefinition return_garage_hook_patches[4];
-extern PatchDefinition showroom_photo_hook_patches[23];
+extern PatchDefinition showroom_photo_hook_patches[24];
 void showroom_photo_prepare_hooks(unsigned char *image);
 void showroom_photo_resource_parsed(unsigned char success);
 void return_garage_tick(void);
@@ -20,7 +20,7 @@ void return_garage_prepare_hooks(unsigned char *image);
 void return_garage_resource_parsed(unsigned kind, unsigned char success);
 extern PatchDefinition stock_wheels_hook_patches[3];
 extern PatchDefinition drift_camera_hook_patch;
-extern PatchDefinition video_options_hook_patches[5];
+extern PatchDefinition video_options_hook_patches[6];
 extern PatchDefinition drift_camera_view_hook_patches[4];
 extern PatchDefinition media_overrides_hook_patch;
 extern PatchDefinition media_overrides_disk_path_hook_patch;
@@ -38,10 +38,10 @@ void aero_tuning_prepare_hooks(unsigned char *image);
 extern PatchDefinition autodrive_hook_patches[12];
 void garage_prepare_hook(unsigned char *game_image);
 void garage_commit_options(const ModOptions *options);
+int garage_consume_autoshow_switch(void);
 void *garage_callback_address(void);
 void road_prepare_hook(unsigned char *game_image);
 void road_set_enabled(int enabled);
-void gamerpic_prepare_hook(unsigned char *game_image);
 void treasure_map_prepare_hook(unsigned char *game_image);
 void minimap_prepare_hook(unsigned char *game_image);
 void minimap_set_follow_camera(int enabled);
@@ -64,7 +64,6 @@ void drift_camera_commit_options(const ModOptions *options);
 void media_overrides_prepare_hook(unsigned char *game_image);
 void media_overrides_set_enabled(int enabled);
 void autodrive_prepare_hooks(unsigned char *game_image, const ModOptions *options);
-void gamerpic_set_directory(const wchar_t *directory);
 
 void livery_prepare_defaults(unsigned char *game_image);
 const unsigned char *livery_patch_target(const PatchDefinition *patch, const ModOptions *options);

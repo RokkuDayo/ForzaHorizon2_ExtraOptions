@@ -2,11 +2,10 @@
 #define FH3_PLUGIN_API_H
 /* Forza Horizon 3 Extra Options plugin API.
 
-   A mod is a folder in mods\<ModName>\ next to azimuth.exe with any of:
+   A mod is a folder in mods\Forza Horizon 3\<ModName>\ next to azimuth.exe:
      media\      loose files mounted over game:\media\ (above mediapc, below
-                 mediaoverride; mods are mounted in name order, the first
-                 name wins on conflicts)
-     plugins\    DLLs loaded once, in name order, on the game thread right
+                 mediaoverride; later packages in loadorder.txt win)
+     plugins\    DLLs loaded once, in package order, on the game thread right
                  after the native file system is initialized
    A mod is disabled with [Mods] <ModName>=0 in FH3_ExtraOptions.ini.
 
@@ -29,7 +28,7 @@ typedef struct FH3PluginContext {
     uint32_t game_image_size;
     uint32_t reserved;
     HMODULE plugin_module;
-    const wchar_t *mod_directory; /* <Azimuth folder>\mods\<ModName> */
+    const wchar_t *mod_directory; /* <Azimuth folder>\mods\Forza Horizon 3\<ModName> */
     const wchar_t *plugin_path;
     const char *extra_options_version;
     void (*log_utf8)(const char *message); /* one line, newline added */

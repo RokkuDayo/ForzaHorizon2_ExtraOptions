@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "id": "porsche-911-gt3-rs-2023",
+  "name": "2023 Porsche 911 GT3 RS",
+  "version": "0.1.0",
+  "description": "Example addon data converted from the previously compared Porsche SLT.",
+  "database": "database.json",
+  "media": "media",
+  "dependencies": []
+}

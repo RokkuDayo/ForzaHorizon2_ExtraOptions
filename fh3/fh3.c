@@ -1,13 +1,11 @@
 #include "fh3.h"
 #include "fh3_internal.h"
 #include "fh3_text.h"
-#include "sha256.h"
-#include "support.h"
+#include "shared/sha256.h"
+#include "shared/support.h"
 #include <xmmintrin.h>
-#ifdef FH2_AZIMUTH
-#include "adapters/azimuth_host.h"
-#include "adapters/azimuth_markers.h"
-#endif
+#include "shared/adapters/azimuth_markers.h"
+#include "shared/logging.h"
 
 /* All FH3 features participate in the same verified startup transaction. */
 typedef struct {
@@ -31,44 +29,26 @@ typedef unsigned char (*Mount)(void *, const GameString *, void **, unsigned, un
 typedef void (*Sort)(void *);
 
 static unsigned char *image;
-static wchar_t ini_path[PATH_CAPACITY], log_path[PATH_CAPACITY];
+static wchar_t ini_path[PATH_CAPACITY];
 static unsigned char file_buffer[65536];
 #ifdef FH2_TWEAKS_TEST
 static int fail_protection = -1;
 #endif
 
-static void write_log(const char *message) {
-    if (!log_path[0]) return;
-    HANDLE file = CreateFileW(log_path, FILE_APPEND_DATA, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                              NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (file == INVALID_HANDLE_VALUE) return;
-    DWORD written;
-    WriteFile(file, message, (DWORD)text_length(message), &written, NULL);
-    CloseHandle(file);
-}
-
-static int open_log(const wchar_t *directory) {
-    if (!path_join(log_path, directory, MOD_LOG_NAME)) {
-        log_path[0] = 0;
-        return 0;
-    }
-    HANDLE log = CreateFileW(log_path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS,
+static void open_log(const wchar_t *directory) {
+    static wchar_t path[PATH_CAPACITY];
+    if (!path_join(path, directory, L"FH3_ExtraOptions.log")) return;
+    HANDLE log = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS,
                              FILE_ATTRIBUTE_NORMAL, NULL);
     if (log != INVALID_HANDLE_VALUE) CloseHandle(log);
-    write_log(MOD_NAME " " MOD_VERSION "\r\n");
-    return 1;
-}
-
-void fh3_log_status(const wchar_t *directory) {
-    if (!open_log(directory)) return;
-    write_log(status_get());
-    write_log("\r\n");
+    log_set_named(directory, L"FH3_ExtraOptions.log");
+    log_append("Forza Horizon 3 Extra Options " MOD_VERSION "\r\n");
 }
 
 static int rejected(const char *reason) {
     status_set(reason);
-    write_log(reason);
-    write_log("\r\n");
+    log_append(reason);
+    log_append("\r\n");
     return 0;
 }
 
@@ -78,7 +58,7 @@ static int option(const wchar_t *section, const wchar_t *key, int fallback) {
                              ini_path);
     if (value[0] == L'0' && !value[1]) return 0;
     if (value[0] == L'1' && !value[1]) return 1;
-    write_log(fallback ? "CONFIG: invalid boolean; expected 0 or 1, using default 1.\r\n"
+    log_append(fallback ? "CONFIG: invalid boolean; expected 0 or 1, using default 1.\r\n"
                        : "CONFIG: invalid boolean; expected 0 or 1, using default 0.\r\n");
     return fallback;
 }
@@ -154,10 +134,6 @@ static int media_overrides;
 
 /* Services for fh3_mods.c (fh3_internal.h). */
 unsigned char *fh3_image(void) { return image; }
-void fh3_log(const char *message) { write_log(message); }
-int fh3_option(const wchar_t *section, const wchar_t *key, int fallback) {
-    return option(section, key, fallback);
-}
 const wchar_t *fh3_ini_path(void) { return ini_path; }
 int fh3_mount(void *filesystem, const char *folder, unsigned priority) {
     return mount_folder(filesystem, folder, priority);
@@ -166,14 +142,14 @@ int fh3_mount(void *filesystem, const char *folder, unsigned priority) {
 static unsigned char initialize_files(void *filesystem) {
     unsigned char result = ((InitializeFiles)(image + 0x18d3770))(filesystem);
     if (!result) {
-        write_log("FILES: native initialization failed; override mounts skipped.\r\n");
+        log_append("FILES: native initialization failed; override mounts skipped.\r\n");
         return result;
     }
     int override = !media_overrides || mount_folder(filesystem, "game:\\mediaoverride\\", 0x7ffffffe);
     int pc = !media_overrides || mount_folder(filesystem, "game:\\mediapc\\", 0x7ffffffd - 0x100);
-    fh3_mods_mount(filesystem); /* 0x7ffffffc downward, above mediapc */
+    fh3_mods_mount(filesystem);
     ((Sort)(*(void ***)filesystem)[0x1f8 / 8])(filesystem);
-    write_log(override && pc ? "FILES: native mounts ready: mediaoverride > mods > mediapc > original "
+    log_append(override && pc ? "FILES: native mounts ready: mediaoverride > mods > mediapc > original "
                                "media.\r\n"
                              : "FILES: an override mount failed; native asset fallback retained.\r\n");
     fh3_mods_load_plugins();
@@ -234,11 +210,11 @@ static int game_database(void *database) {
 
 static int open_database(const char *filename, void **database) {
     int result = ((SqliteOpen)(image + SQLITE_OPEN))(filename, database);
-    if (result || !*database || !game_database(*database)) return result;
+    if (result || !database || !*database || !game_database(*database)) return result;
     void *copy = NULL;
     if (((SqliteOpen)(image + SQLITE_OPEN))(":memory:", &copy) || !copy) {
         if (copy) ((SqliteCall)(image + SQLITE_CLOSE))(copy);
-        write_log("UNLOCKS: no in-memory database; Forzathon cars and horns stay locked.\r\n");
+        log_append("UNLOCKS: no in-memory database; Forzathon cars and horns stay locked.\r\n");
         return result;
     }
     void *backup = ((SqliteBackupInit)(image + SQLITE_BACKUP_INIT))(copy, "main", *database, "main");
@@ -250,8 +226,8 @@ static int open_database(const char *filename, void **database) {
     int editions = copied && horizon_editions_autoshow &&
                    sql_run(copy, "UPDATE Data_Car SET NotAvailableInAutoshow=0 "
                                  "WHERE Id IN (SELECT CarId FROM HorizonEditionCars)");
-    if (cars) write_log("UNLOCKS: every car hidden from the Autoshow can be bought (in memory).\r\n");
-    if (editions) write_log("UNLOCKS: Horizon Edition cars can be bought in the Autoshow (in memory).\r\n");
+    if (cars) log_append("UNLOCKS: every car hidden from the Autoshow can be bought (in memory).\r\n");
+    if (editions) log_append("UNLOCKS: Horizon Edition cars can be bought in the Autoshow (in memory).\r\n");
     int horns = copied && forzathon_horns &&
                 sql_run(copy, "UPDATE CarHorns SET IsInitial=1 "
                               "WHERE IsInitial=0 AND UnlockByPerk=-1 AND Id NOT IN (31,32,33)");
@@ -260,13 +236,13 @@ static int open_database(const char *filename, void **database) {
                               "(SELECT group_concat(h.CarId) FROM HorizonEditionCars h JOIN Data_Car c ON c.Id=h.CarId) "
                               "WHERE PrizeId IN (SELECT p.PrizeId FROM TombolaPrizes p JOIN HorizonEditionCars h "
                               "ON ','||p.CarAwardIds||',' LIKE '%,'||h.CarId||',%')");
-    if (horns) write_log("UNLOCKS: Forzathon horns unlocked (in memory).\r\n");
-    if (spins) write_log("UNLOCKS: every Horizon Edition car can be won in Wheelspins (in memory).\r\n");
+    if (horns) log_append("UNLOCKS: Forzathon horns unlocked (in memory).\r\n");
+    if (spins) log_append("UNLOCKS: every Horizon Edition car can be won in Wheelspins (in memory).\r\n");
     if ((cars || editions || horns || spins) && !((SqliteCall)(image + SQLITE_CLOSE))(*database)) {
         *database = copy;
     } else {
         ((SqliteCall)(image + SQLITE_CLOSE))(copy);
-        write_log("UNLOCKS: database edit failed; cars, horns and Wheelspins unchanged.\r\n");
+        log_append("UNLOCKS: database edit failed; cars, horns and Wheelspins unchanged.\r\n");
     }
     return result;
 }
@@ -454,12 +430,12 @@ static void read_autodrive_bindings(void) {
                              ini_path);
     int key = parse_key(value);
     if (key) toggle_key = key;
-    else write_log("CONFIG: invalid AutodriveKey; using F2.\r\n");
+    else log_append("CONFIG: invalid AutodriveKey; using F2.\r\n");
     GetPrivateProfileStringW(L"Vehicle", L"AutodriveButtons", L"L3+R3", value,
                              ARRAY_COUNT(value), ini_path);
     WORD buttons = parse_buttons(value);
     if (buttons) toggle_buttons = buttons;
-    else write_log("CONFIG: invalid AutodriveButtons; using L3+R3.\r\n");
+    else log_append("CONFIG: invalid AutodriveButtons; using L3+R3.\r\n");
 }
 
 static int driving_input(void) {
@@ -603,21 +579,21 @@ static void cinematic_enter(void) {
     /* Only from the player's driving views (chase, driver, hood, bumper). */
     if (previous < 0 || previous > 4 || !(camera = relative_camera(manager, &shots, &count)) ||
         !memory_read(camera + 0x890, &cinematic_saved_time, sizeof(cinematic_saved_time))) {
-        write_log("AUTODRIVE: cinematic camera unavailable here.\r\n");
+        log_append("AUTODRIVE: cinematic camera unavailable here.\r\n");
         return;
     }
     if (!select_shot(camera, shots, count, 17) && !select_shot(camera, shots, count, 19)) {
-        write_log("AUTODRIVE: no cinematic shots in CarRelativeCams.\r\n");
+        log_append("AUTODRIVE: no cinematic shots in CarRelativeCams.\r\n");
         return;
     }
     if (!set_camera_group(manager, CINEMATIC_GROUP)) {
         *(volatile double *)(camera + 0x890) = cinematic_saved_time;
-        write_log("AUTODRIVE: cinematic camera unavailable here.\r\n");
+        log_append("AUTODRIVE: cinematic camera unavailable here.\r\n");
         return;
     }
     cinematic_previous = previous;
     hud_set_hidden(1);
-    write_log("AUTODRIVE: cinematic camera on.\r\n");
+    log_append("AUTODRIVE: cinematic camera on.\r\n");
 }
 
 static void cinematic_tick(float dt) {
@@ -657,18 +633,18 @@ static void autodrive_stop(const char *reason) {
     if (autodrive_car && driver_mode(autodrive_car) == 0)
         ((SetAIDriving)(image + 0x18b7040))(autodrive_car, 0);
     autodrive_car = NULL;
-    write_log(reason);
+    log_append(reason);
 }
 
 static void autodrive_start(void) {
     void *car = player_car();
     if (!car) {
-        write_log("AUTODRIVE: no human-driven local car found.\r\n");
+        log_append("AUTODRIVE: no human-driven local car found.\r\n");
         return;
     }
     ((SetAIDriving)(image + 0x18b7040))(car, 1);
     if (driver_mode(car) != 0) {
-        write_log("AUTODRIVE: the AI driver did not engage.\r\n");
+        log_append("AUTODRIVE: the AI driver did not engage.\r\n");
         return;
     }
     autodrive_car = car;
@@ -677,40 +653,7 @@ static void autodrive_start(void) {
     /* The press that started the drive must be released before any driving
        input counts as a cancel. */
     input_armed = 0;
-    write_log("AUTODRIVE: AI driver engaged on the local car.\r\n");
-}
-
-/* The mod's own text follows the game's language (fh3_text.c). As in FH2, the
-   string table object ([0x4e7dda8], vtable 0x467d858) keeps the code of the
-   table it loaded (en, chs, de...) in a std::string at +0x30: inline text,
-   length at +0x40, capacity 15 at +0x48. */
-enum { STRING_TABLES = 0x4e7dda8, STRING_TABLES_VTABLE = 0x467d858, STRING_TABLES_CODE = 0x30 };
-
-static const char *game_language_code(void) {
-    static char code[5];
-    unsigned char *tables, value[32];
-    uintptr_t vtable;
-    size_t length, capacity;
-    if (!image || !memory_read_pointer(image + STRING_TABLES, (void **)&tables) ||
-        !memory_read(tables, &vtable, sizeof(vtable)) ||
-        vtable != (uintptr_t)(image + STRING_TABLES_VTABLE) ||
-        !memory_read(tables + STRING_TABLES_CODE, value, sizeof(value)))
-        return NULL;
-    memory_copy(&length, value + 16, sizeof(length));
-    memory_copy(&capacity, value + 24, sizeof(capacity));
-    if (capacity != 15 || length < 2 || length > 3) return NULL;
-    memory_copy(code, value, length);
-    code[length] = 0;
-    return code;
-}
-
-/* ANNA labels are kept as wide English literals. */
-static const wchar_t *translate_label(const wchar_t *english) {
-    char key[64];
-    unsigned i = 0;
-    for (; english[i] && i < sizeof(key) - 1; ++i) key[i] = (char)english[i];
-    key[i] = 0;
-    return fh3_wtext(key, NULL);
+    log_append("AUTODRIVE: AI driver engaged on the local car.\r\n");
 }
 
 /* ANNA menu entries (D-pad Down). HUDAnnaComponent keeps the available command
@@ -729,6 +672,19 @@ typedef struct {
     };
     size_t size, capacity;
 } MsvcString;
+
+static int game_language_code(char code[4]) {
+    unsigned char *tables;
+    void *vtable;
+    MsvcString language;
+    if (!memory_read_pointer(image + 0x4e7dda8, (void **)&tables) ||
+        !memory_read_pointer(tables, &vtable) || vtable != image + 0x467d858 ||
+        !memory_read(tables + 0x30, &language, sizeof(language)) ||
+        language.capacity != 15 || language.size < 2 || language.size > 3 ||
+        language.text[language.size] != 0) return 0;
+    memory_copy(code, language.text, language.size + 1);
+    return 1;
+}
 typedef void (*AddOption)(void *, const MsvcString *);
 typedef void (*DestroyNames)(void *, void *, void *, unsigned char);
 typedef void **(*MakeLabel)(void *, void **, const MsvcString *);
@@ -737,7 +693,7 @@ typedef MsvcString *(*HighlightedName)(void *, MsvcString *);
 
 typedef struct {
     const char *name; /* < 16 characters, so the native string stays inline */
-    const wchar_t *label, *close_label; /* close_label: a car part that is open */
+    const char *label, *close_label; /* close_label: a car part that is open */
     void (*action)(void *component, int part);
     int enabled, part; /* part >= 0: listed in the Car submenu, not the top level */
 } AnnaEntry;
@@ -875,31 +831,31 @@ static void relabel_car_menu(void *component, int first);
 static void anna_toggle_autodrive(void *component, int part);
 enum { ANNA_CAR, ANNA_PARTS, ANNA_ALL = ANNA_PARTS + PART_ALL, ANNA_AUTODRIVE = ANNA_PARTS + ITEM_AUTODRIVE };
 static AnnaEntry anna_entries[] = {
-    [ANNA_CAR] = {"EO_Car", L"Car", NULL, open_car_submenu, 0, -1},
-    [ANNA_PARTS + PART_ROOF] = {"EO_Roof", L"Open Roof", L"Close Roof", toggle_part, 0, PART_ROOF},
-    [ANNA_PARTS + PART_HOOD] = {"EO_Hood", L"Open Hood", L"Close Hood", toggle_part, 0, PART_HOOD},
-    [ANNA_PARTS + PART_TRUNK] = {"EO_Trunk", L"Open Trunk", L"Close Trunk", toggle_part, 0,
+    [ANNA_CAR] = {"EO_Car", "Car", NULL, open_car_submenu, 0, -1},
+    [ANNA_PARTS + PART_ROOF] = {"EO_Roof", "Open Roof", "Close Roof", toggle_part, 0, PART_ROOF},
+    [ANNA_PARTS + PART_HOOD] = {"EO_Hood", "Open Hood", "Close Hood", toggle_part, 0, PART_HOOD},
+    [ANNA_PARTS + PART_TRUNK] = {"EO_Trunk", "Open Trunk", "Close Trunk", toggle_part, 0,
                                  PART_TRUNK},
-    [ANNA_PARTS + PART_DOOR_LF] = {"EO_DoorLF", L"Open Front Left Door",
-                                   L"Close Front Left Door", toggle_part, 0, PART_DOOR_LF},
-    [ANNA_PARTS + PART_DOOR_RF] = {"EO_DoorRF", L"Open Front Right Door",
-                                   L"Close Front Right Door", toggle_part, 0, PART_DOOR_RF},
-    [ANNA_PARTS + PART_DOOR_LR] = {"EO_DoorLR", L"Open Rear Left Door", L"Close Rear Left Door",
+    [ANNA_PARTS + PART_DOOR_LF] = {"EO_DoorLF", "Open Front Left Door",
+                                   "Close Front Left Door", toggle_part, 0, PART_DOOR_LF},
+    [ANNA_PARTS + PART_DOOR_RF] = {"EO_DoorRF", "Open Front Right Door",
+                                   "Close Front Right Door", toggle_part, 0, PART_DOOR_RF},
+    [ANNA_PARTS + PART_DOOR_LR] = {"EO_DoorLR", "Open Rear Left Door", "Close Rear Left Door",
                                    toggle_part, 0, PART_DOOR_LR},
-    [ANNA_PARTS + PART_DOOR_RR] = {"EO_DoorRR", L"Open Rear Right Door",
-                                   L"Close Rear Right Door", toggle_part, 0, PART_DOOR_RR},
-    [ANNA_ALL] = {"EO_AllParts", L"Open All", L"Close All", toggle_part, 0, PART_ALL},
-    [ANNA_PARTS + LIGHT_HEAD] = {"EO_Headlights", L"Headlights On", L"Headlights Off",
+    [ANNA_PARTS + PART_DOOR_RR] = {"EO_DoorRR", "Open Rear Right Door",
+                                   "Close Rear Right Door", toggle_part, 0, PART_DOOR_RR},
+    [ANNA_ALL] = {"EO_AllParts", "Open All", "Close All", toggle_part, 0, PART_ALL},
+    [ANNA_PARTS + LIGHT_HEAD] = {"EO_Headlights", "Headlights On", "Headlights Off",
                                  toggle_part, 0, LIGHT_HEAD},
-    [ANNA_PARTS + LIGHT_HAZARD] = {"EO_Hazards", L"Hazard Lights On", L"Hazard Lights Off",
+    [ANNA_PARTS + LIGHT_HAZARD] = {"EO_Hazards", "Hazard Lights On", "Hazard Lights Off",
                                    toggle_part, 0, LIGHT_HAZARD},
-    [ANNA_PARTS + LIGHT_LEFT] = {"EO_SignalLeft", L"Left Indicator On", L"Left Indicator Off",
+    [ANNA_PARTS + LIGHT_LEFT] = {"EO_SignalLeft", "Left Indicator On", "Left Indicator Off",
                                  toggle_part, 0, LIGHT_LEFT},
-    [ANNA_PARTS + LIGHT_RIGHT] = {"EO_SignalRight", L"Right Indicator On",
-                                  L"Right Indicator Off", toggle_part, 0, LIGHT_RIGHT},
-    [ANNA_PARTS + PAGE_LIGHTS] = {"EO_Lights", L"Lights", NULL, open_car_page, 0, PAGE_LIGHTS},
-    [ANNA_PARTS + PAGE_DOORS] = {"EO_Doors", L"Doors", NULL, open_car_page, 0, PAGE_DOORS},
-    [ANNA_AUTODRIVE] = {"EO_Autodrive", L"Autodrive", NULL, anna_toggle_autodrive, 0, ITEM_AUTODRIVE},
+    [ANNA_PARTS + LIGHT_RIGHT] = {"EO_SignalRight", "Right Indicator On",
+                                  "Right Indicator Off", toggle_part, 0, LIGHT_RIGHT},
+    [ANNA_PARTS + PAGE_LIGHTS] = {"EO_Lights", "Lights", NULL, open_car_page, 0, PAGE_LIGHTS},
+    [ANNA_PARTS + PAGE_DOORS] = {"EO_Doors", "Doors", NULL, open_car_page, 0, PAGE_DOORS},
+    [ANNA_AUTODRIVE] = {"EO_Autodrive", "Autodrive", NULL, anna_toggle_autodrive, 0, ITEM_AUTODRIVE},
 };
 
 static int item_enabled(int part) {
@@ -1006,7 +962,7 @@ static void treasure_map_tick(void) {
     if ((treasure_done & bit) || now - treasure_since < 5000) return;
     treasure_done |= bit;
     ((void (*)(void))(image + 0x151bf80))();
-    write_log("TREASURE MAP: unlocked for the current world.\r\n");
+    log_append("TREASURE MAP: unlocked for the current world.\r\n");
 }
 static volatile LONG anna_autodrive_requested;
 
@@ -1084,12 +1040,12 @@ static void **anna_make_label(void *self, void **output, const MsvcString *name)
     ((CreateUIString)(image + 0x1214480))(output);
     unsigned char *label = *output;
     if (label) {
-        const wchar_t *text = anna_entries[index].label;
+        const char *english = anna_entries[index].label;
         int part = anna_entries[index].part;
-        if (part >= 0 && part_is_open(driven_car(), part)) text = anna_entries[index].close_label;
-        text = translate_label(text);
-        unsigned length = 0;
-        while (text[length]) ++length;
+        if (anna_entries[index].close_label && part >= 0 && part_is_open(driven_car(), part))
+            english = anna_entries[index].close_label;
+        wchar_t text[128];
+        unsigned length = fh3_text_wide(english, text, ARRAY_COUNT(text));
         wchar_t *copy = ((Allocate)(image + 0x1edbd00))((length + 1) * sizeof(wchar_t));
         if (copy) {
             memory_copy(copy, text, (length + 1) * sizeof(wchar_t));
@@ -1105,7 +1061,7 @@ static MsvcString *anna_selected_name(void *component, MsvcString *output) {
     anna_component = component;
     int index = anna_entry_index(output);
     if (index >= 0) {
-        write_log("ANNA: custom entry selected.\r\n");
+        log_append("ANNA: custom entry selected.\r\n");
         anna_entries[index].action(component, anna_entries[index].part);
         if (index != ANNA_AUTODRIVE) {
             /* Assign (0x245070) the carrier command so ANNA opens a follow-up list. */
@@ -1363,9 +1319,9 @@ static void send_part_event(void *car, int part, int open) {
     memory_copy(event + length + 1, action, text_length(action) + 1);
     use_autovista_lod(car);
     ((CarEvent)(image + 0x1889b40))(car, event);
-    write_log("CAR PARTS: sent ");
-    write_log(event);
-    write_log(".\r\n");
+    log_append("CAR PARTS: sent ");
+    log_append(event);
+    log_append(".\r\n");
     parts_open ^= 1u << part;
     lod_restore_at = parts_open ? 0 : GetTickCount64() + 3000; /* let the close play out */
 }
@@ -1402,7 +1358,7 @@ static void set_signal(void *car, int signal) {
     if (!signal) signal_cleared = car;
     signal_active = signal;
     signal_turned = steering_input() >= 0.3f;
-    write_log(messages[signal]);
+    log_append(messages[signal]);
 }
 
 /* D-pad Left/Right (the RadioLeft/RadioRight actions 0x1d/0x1e) both change
@@ -1497,7 +1453,7 @@ static void toggle_light(void *car, int light) {
     int on = !headlights_on(car);
     headlight_car = car;
     headlight_override = on;
-    write_log(on ? "LIGHTS: headlights on.\r\n" : "LIGHTS: headlights off.\r\n");
+    log_append(on ? "LIGHTS: headlights on.\r\n" : "LIGHTS: headlights off.\r\n");
 }
 
 /* Parts open only while the car is stationary; closing always works. */
@@ -1515,7 +1471,7 @@ static void toggle_part(void *component, int part) {
     }
     int open = !part_is_open(car, part);
     if (open && !car_stationary(car)) {
-        write_log("CAR PARTS: the car must be stationary to open parts.\r\n");
+        log_append("CAR PARTS: the car must be stationary to open parts.\r\n");
     } else if (part == PART_ALL) {
         if (open) {
             for (int i = 0; i < PART_COUNT; ++i)
@@ -1718,9 +1674,9 @@ static void indicator_material_load(void *self, void *owner, const GrubView *vie
     ((MaterialLoad)(image + MATERIAL_LOAD))(self, owner, &replacement, context);
     HeapFree(GetProcessHeap(), 0, copy);
     if (InterlockedIncrement(&material_messages) <= 32) {
-        write_log("LIGHTS: indicator material ");
-        write_log(name);
-        write_log(side == LIGHT_TYPE_LEFT ? " lights as the left indicator (in memory).\r\n"
+        log_append("LIGHTS: indicator material ");
+        log_append(name);
+        log_append(side == LIGHT_TYPE_LEFT ? " lights as the left indicator (in memory).\r\n"
                                           : " lights as the right indicator (in memory).\r\n");
     }
 }
@@ -1752,7 +1708,7 @@ static unsigned char horn_owned(void *manager, void *product) {
         same = (text[i] >= L'A' && text[i] <= L'Z' ? text[i] + 32 : text[i]) == id[i];
     if (same) {
         if (!InterlockedExchange(&horn_reported, 1))
-            write_log("HORN ACCELERATOR: owned (in memory).\r\n");
+            log_append("HORN ACCELERATOR: owned (in memory).\r\n");
         return 1;
     }
     void *inner;
@@ -1809,7 +1765,7 @@ static void satnav_update(void *self, float dt) {
             /* A native state (event start, reset, car change) took the car back. */
             autodrive_car = NULL;
             cinematic_leave();
-            write_log("AUTODRIVE: the game ended the AI drive.\r\n");
+            log_append("AUTODRIVE: the game ended the AI drive.\r\n");
             return;
         }
         int input = driving_input();
@@ -1860,9 +1816,8 @@ static float square_root(float value) {
 
 static void minimap_update(void *controller, const float *position, const float *direction,
                            float speed, float zoom) {
-    /* The pause menu's World Map tile has its own tracking controller, updated
-       with zoom 0 (the HUD minimap's zoom follows the speed); it keeps the
-       native north-up view. */
+    /* The pause-menu World Map controller uses zero zoom. Only the HUD
+       controller should follow the camera or change the smoothed heading. */
     if (zoom == 0.0f) {
         ((MinimapUpdate)(image + 0x120c6c0))(controller, position, direction, speed, zoom);
         return;
@@ -2390,7 +2345,7 @@ static DWORD WINAPI gpu_sampler(void *unused) {
     HANDLE query = NULL, counter = NULL;
     if (!open || !add || !collect || !values || open(NULL, 0, &query) != 0 ||
         add(query, L"\\GPU Engine(*engtype_3D)\\Utilization Percentage", 0, &counter) != 0) {
-        write_log("FPS: GPU usage counters unavailable.\r\n");
+        log_append("FPS: GPU usage counters unavailable.\r\n");
         return 0;
     }
     collect(query);
@@ -2648,7 +2603,7 @@ static void pick_accept(PickFunction *self) {
     group_items(self->page, &count);
     if (index < 0 || index >= count) return;
     select_group(self->page, index);
-    write_log("MENUS: jumped to the chosen manufacturer.\r\n");
+    log_append("MENUS: jumped to the chosen manufacturer.\r\n");
 }
 
 static void *pick_type(PickFunction *self) {
@@ -2707,9 +2662,9 @@ static void open_manufacturer_picker(void *page) {
         picker_initial = NULL;
         return;
     }
-    unsigned heading_length;
-    const wchar_t *heading = fh3_wtext("Jump to Manufacturer", &heading_length);
-    void *label = make_ui_string(heading, heading_length);
+    wchar_t heading[128];
+    unsigned length = fh3_text_wide("Jump to Manufacturer", heading, ARRAY_COUNT(heading));
+    void *label = make_ui_string(heading, length);
     if (label) {
         ui_release(*(unsigned char **)(popup + 0x470));
         *(void **)(popup + 0x470) = label;
@@ -2726,7 +2681,7 @@ static void open_manufacturer_picker(void *page) {
     picker_popup = popup;
     if (ui_registered > 0)
         ((void (*)(void *, void *))(image + 0x56d4f0))(popup, &ui_properties[UI_MAKE_GRID]);
-    write_log("MENUS: manufacturer picker opened.\r\n");
+    log_append("MENUS: manufacturer picker opened.\r\n");
 }
 
 static int picker_button(void) {
@@ -2851,7 +2806,7 @@ static void garage_tick(void) {
     if (!garage_at) garage_at = now + 300;
     if (now < garage_at) return;
     garage_step = 0;
-    write_log(enter_nearest_festival()
+    log_append(enter_nearest_festival()
                   ? "GARAGE: entering the nearest festival site.\r\n"
                   : "GARAGE: no festival site found; Return to Garage unavailable here.\r\n");
 }
@@ -2872,8 +2827,8 @@ static unsigned char return_to_garage_invoke(void *closure) {
    releases the caller's), so ours is handed over, not released here. The
    native label it replaces is released, as the call would have done. */
 static void pause_help_prompt(void *page, int button, void **label, void *callback) {
-    unsigned length;
-    const wchar_t *garage = fh3_wtext("Return to Garage", &length);
+    wchar_t garage[128];
+    unsigned length = fh3_text_wide("Return to Garage", garage, ARRAY_COUNT(garage));
     void *text = make_ui_string(garage, length);
     if (text) {
         ui_release(*label);
@@ -2898,7 +2853,7 @@ static int ui_register(void) {
     UiProperty *text = ((UiBuilder)(image + 0x161f750))();  /* PopupMenu Title (UIString) */
     if (!integer || !real || !video || !hud || !text) {
         ui_registered = -1;
-        write_log("SETTINGS: native property templates unavailable; menu unchanged.\r\n");
+        log_append("SETTINGS: native property templates unavailable; menu unchanged.\r\n");
         return 0;
     }
     for (unsigned i = 0; i < UI_COUNT; ++i) {
@@ -2928,7 +2883,7 @@ static int ui_register(void) {
         ((void (*)(void *, UiLink *))(image + 0x1fe9210))(type, &ui_links[i]);
     }
     ui_registered = 1;
-    write_log("SETTINGS: Extra Options properties registered on the HUD and video options.\r\n");
+    log_append("SETTINGS: Extra Options properties registered on the HUD and video options.\r\n");
     return 1;
 }
 
@@ -3196,48 +3151,37 @@ static void ui_load_resource(void *loader) {
             text_find(bytes, (size_t)size, ui_pages[i].page))
             page = &ui_pages[i];
     if (!page || !ui_register()) return;
-    /* The page's fragments in the game's language, built once per page. */
-    static struct {
-        const char *language, *resources, *controls;
-    } translated[ARRAY_COUNT(ui_pages)];
-    unsigned slot = (unsigned)(page - ui_pages);
-    const char *language = fh3_text_language();
-    if (translated[slot].language != language) {
-        translated[slot].language = language;
-        translated[slot].resources = fh3_text_xaml(page->resources);
-        translated[slot].controls = fh3_text_xaml(page->controls);
-        write_log("LANGUAGE: Extra Options text in ");
-        write_log(language);
-        write_log(" on the ");
-        write_log(page->name);
-        write_log(fh3_text_from_game() ? ", the game's language.\r\n"
-                                       : ", from Azimuth or Windows (the game had not picked one yet).\r\n");
-    }
-    UiPage local = *page;
-    local.resources = translated[slot].resources;
-    local.controls = translated[slot].controls;
-    page = &local;
+    int language = fh3_text_language();
+    UiPage localized = *page;
+    char *resources = fh3_text_xaml(page->resources, language);
+    char *controls = fh3_text_xaml(page->controls, language);
+    if (resources) localized.resources = resources;
+    if (controls) localized.controls = controls;
     unsigned capacity =
-        (unsigned)(size + text_length(page->resources) + text_length(page->controls) + 1);
+        (unsigned)(size + text_length(localized.resources) + text_length(localized.controls) + 1);
     void *replacement = NULL;
     ((UiMakeBuffer)(image + 0x208f320))(&replacement, capacity);
     char *data;
-    if (!replacement || !memory_read_pointer((unsigned char *)replacement + 0x28, (void **)&data))
-        return;
-    unsigned length = ui_extend(page, bytes, (unsigned)size, data, capacity);
+    unsigned length = replacement && memory_read_pointer((unsigned char *)replacement + 0x28, (void **)&data)
+        ? ui_extend(&localized, bytes, (unsigned)size, data, capacity) : 0;
+    if (resources) HeapFree(GetProcessHeap(), 0, resources);
+    if (controls) HeapFree(GetProcessHeap(), 0, controls);
+    if (!replacement) return;
     if (!length) {
         ui_release(replacement);
-        write_log("SETTINGS: ");
-        write_log(page->name);
-        write_log(" layout did not match; original page kept.\r\n");
+        log_append("SETTINGS: ");
+        log_append(page->name);
+        log_append(" layout did not match; original page kept.\r\n");
         return;
     }
     *(int *)((unsigned char *)replacement + 0x30) = (int)length;
     *(void **)((unsigned char *)loader + 0x38) = replacement;
     ui_release(buffer);
-    write_log("SETTINGS: Extra Options extended the ");
-    write_log(page->name);
-    write_log(".\r\n");
+    log_append("SETTINGS: Extra Options extended the ");
+    log_append(page->name);
+    log_append(" in ");
+    log_append(fh3_text_code(language));
+    log_append(fh3_text_from_game() ? " (game language).\r\n" : " (startup language).\r\n");
 }
 
 /* Startup-only transaction: check every enabled site before making any changes,
@@ -3431,13 +3375,13 @@ static unsigned horn_prepare(Site *sites) {
                               ARRAY_COUNT(refreshes), extras_refresh);
 }
 
-
 int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *executable,
                    const wchar_t *directory) {
     if (title_id != FH3_TITLE_ID) return 0;
-    if (!open_log(directory) || !path_join(ini_path, directory, MOD_INI_NAME))
+    if (!directory || !directory[0] || !path_join(ini_path, directory, L"FH3_ExtraOptions.ini"))
         return rejected("REFUSED: cannot resolve the FH3 settings path. No FH3 patches applied.");
-    write_log("TITLE: FH3 (4CE1DFAB) 1.0.125.0; independent title profile.\r\n");
+    open_log(directory);
+    log_append("TITLE: FH3 (4CE1DFAB) 1.0.125.0; independent title profile.\r\n");
     IMAGE_DOS_HEADER dos;
     IMAGE_NT_HEADERS64 nt;
     if (!memory_read(game, &dos, sizeof(dos)) || dos.e_magic != IMAGE_DOS_SIGNATURE ||
@@ -3447,18 +3391,18 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         nt.OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR64_MAGIC ||
         nt.FileHeader.TimeDateStamp != FH3_TIMESTAMP ||
         nt.OptionalHeader.SizeOfImage != FH3_IMAGE_SIZE || !readable_image(game) ||
-        !verify_file(executable))
+        !executable || !verify_file(executable))
         return rejected("REFUSED: unsupported or modified FH3 executable; only the unmodified "
                         "1.0.125.0 build is supported. No FH3 patches applied.");
-    fh3_text_init(directory, game_language_code);
     if (!option(L"Global", L"Enabled", 1)) {
         status_set("OK: FH3 Extra Options disabled in FH3_ExtraOptions.ini.");
-        write_log(status_get());
-        write_log("\r\n");
+        log_append(status_get());
+        log_append("\r\n");
         return 1;
     }
     image = game;
-    fh3_mods_configure(executable);
+    fh3_text_init(directory, game_language_code);
+    int load_mods = option(L"Mods", L"Enabled", 1);
     static Site sites[160]; /* static: too large for the stack without __chkstk */
     unsigned count = 0;
     if (option(L"Frontend", L"SkipIntro", 1)) {
@@ -3468,7 +3412,7 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
            path. (Taking the developer no-parade branch instead hangs boot on
            the legal screen.) */
         sites[count++] = (Site){0x1729355, 2, {0xff,0xc6}, {0x66,0x90}, 0};
-        write_log("INTRO: T10/Microsoft Studios startup video skipped; legal screen retained.\r\n");
+        log_append("INTRO: T10/Microsoft Studios startup video skipped; legal screen retained.\r\n");
     }
     if (option(L"Content", L"OfflineVIP", 1)) {
         /* VIP license refresh: treat the membership license check as owned.
@@ -3480,7 +3424,7 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         sites[count++] = (Site){0x3c5b74, 5, {0xe8,0x37,0x3c,0xcf,0x00}, {0xb8,1,0,0,0}, 0};
         sites[count++] = (Site){0x9826c8, 5, {0xe8,0xe3,0x70,0x73,0x00}, {0xb8,1,0,0,0}, 0};
         sites[count++] = (Site){0x992770, 5, {0xe8,0x3b,0x70,0x72,0x00}, {0xb8,1,0,0,0}, 0};
-        write_log("VIP: VIP license refresh and Main/IsVip reads forced on.\r\n");
+        log_append("VIP: VIP license refresh and Main/IsVip reads forced on.\r\n");
     }
     autodrive_enabled = option(L"Vehicle", L"Autodrive", 1);
     unlock_treasure_map = option(L"Content", L"UnlockTreasureMap", 0);
@@ -3494,7 +3438,7 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         camera_fovs[i].value = parse_degrees(value);
         camera_fov_used |= camera_fovs[i].value != 0.0f;
     }
-    if (camera_fov_used) write_log("CAMERA: custom field of view applied.\r\n");
+    if (camera_fov_used) log_append("CAMERA: custom field of view applied.\r\n");
     minimap_follows_camera = option(L"HUD", L"MinimapFollowsCamera", 1);
     in_game_menu = option(L"Settings", L"InGameMenu", 1);
     if (minimap_follows_camera || in_game_menu) {
@@ -3505,7 +3449,7 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         static const unsigned north[] = {0xab2e54};
         count += redirect_calls(sites + count, 0x1002fc3, 0x1802d9a, north, 1, north_angle);
         if (minimap_follows_camera)
-            write_log("HUD: minimap turns with the right-stick look camera.\r\n");
+            log_append("HUD: minimap turns with the right-stick look camera.\r\n");
     }
     drift_camera = option(L"Camera", L"DriftCamera", 1);
     if (drift_camera || in_game_menu) {
@@ -3516,12 +3460,12 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         }
         drift_apply_tuning();
         count += drift_prepare(sites + count);
-        if (drift_camera) write_log("CAMERA: drift camera follows the slide on chase cameras.\r\n");
+        if (drift_camera) log_append("CAMERA: drift camera follows the slide on chase cameras.\r\n");
     }
     if (in_game_menu || autodrive_enabled) {
         static const unsigned loads[] = {0x21db70c};
         count += redirect_calls(sites + count, 0x1004542, 0x21dd6c0, loads, 1, ui_load_resource);
-        write_log("SETTINGS: settings rows and HUD scene extensions scheduled.\r\n");
+        log_append("SETTINGS: settings rows and HUD scene extensions scheduled.\r\n");
     }
     unrestricted_photo = option(L"PhotoMode", L"Unrestricted", 1);
     photo_no_collision = unrestricted_photo && option(L"PhotoMode", L"NoCollision", 0);
@@ -3536,11 +3480,11 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
                                 {0x0f,0x1f,0x84,0x00,0x00,0x00,0x00,0x00}, 0};
     }
     if (unrestricted_photo)
-        write_log(photo_no_collision
+        log_append(photo_no_collision
                       ? "PHOTO MODE: boundary and height limits removed; collision off.\r\n"
                       : "PHOTO MODE: boundary and height limits removed; collision kept.\r\n");
     if (autodrive_enabled || unlock_treasure_map || unrestricted_photo || camera_fov_used ||
-        in_game_menu || car_menu || dpad_indicators || return_to_garage || fh3_mods_enabled()) {
+        in_game_menu || car_menu || dpad_indicators || return_to_garage || load_mods) {
         /* SatNavComponent vtable slot 2 is its per-frame update. */
         Site slot = {0x4378bd0, 8, {0}, {0}, 0};
         uintptr_t original = (uintptr_t)(image + 0x8f7d10), callback = (uintptr_t)satnav_update;
@@ -3551,36 +3495,36 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
     if (autodrive_enabled) {
         read_autodrive_bindings();
         autodrive_cinematic = option(L"Vehicle", L"AutodriveCinematic", 1);
-        write_log("AUTODRIVE: AutodriveKey or AutodriveButtons toggles the AI driver; throttle, "
+        log_append("AUTODRIVE: AutodriveKey or AutodriveButtons toggles the AI driver; throttle, "
                   "brake or steering cancels.\r\n");
         anna_entries[ANNA_AUTODRIVE].enabled = option(L"Vehicle", L"AutodriveInAnna", 1);
     }
     if (car_menu) {
         for (unsigned i = ANNA_PARTS; i < ARRAY_COUNT(anna_entries); ++i)
             if (i != ANNA_AUTODRIVE) anna_entries[i].enabled = 1;
-        write_log("CAR PARTS: ANNA Car submenu with Lights (headlights, hazards, indicators) and "
+        log_append("CAR PARTS: ANNA Car submenu with Lights (headlights, hazards, indicators) and "
                   "Doors (roof, hood, trunk, doors).\r\n");
     }
     /* Car heads the ANNA menu when it lists anything (Autodrive, Lights, Doors). */
     anna_entries[ANNA_CAR].enabled = car_menu || anna_entries[ANNA_AUTODRIVE].enabled;
     if (car_menu || dpad_indicators) {
         count += lights_prepare(sites + count, dpad_indicators);
-        write_log("LIGHTS: hazard and indicator overrides; indicator materials repaired in memory.\r\n");
+        log_append("LIGHTS: hazard and indicator overrides; indicator materials repaired in memory.\r\n");
         if (dpad_indicators)
-            write_log("LIGHTS: hold D-pad Left/Right for 1 s for the indicators; a tap changes the "
+            log_append("LIGHTS: hold D-pad Left/Right for 1 s for the indicators; a tap changes the "
                       "radio station.\r\n");
     }
     if (option(L"Content", L"UnlockHornAccelerator", 1)) {
         count += horn_prepare(sites + count);
-        write_log("HORN ACCELERATOR: add-on reported owned and shown as purchased in Extras.\r\n");
+        log_append("HORN ACCELERATOR: add-on reported owned and shown as purchased in Extras.\r\n");
     }
     if (unlock_treasure_map)
-        write_log("TREASURE MAP: unlocks once per world after it has loaded.\r\n");
+        log_append("TREASURE MAP: unlocks once per world after it has loaded.\r\n");
     int anna_used = 0;
     for (unsigned i = 0; i < ARRAY_COUNT(anna_entries); ++i) anna_used |= anna_entries[i].enabled;
     if (anna_used) {
         count += anna_prepare(sites + count);
-        write_log("ANNA: custom menu entries enabled.\r\n");
+        log_append("ANNA: custom menu entries enabled.\r\n");
     }
     livery_4k = option(L"Livery", L"Resolution4K", 1);
     livery_msaa4 = GetPrivateProfileIntW(L"Livery", L"MSAA", 4, ini_path) == 4;
@@ -3588,9 +3532,9 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
     int livery_samples = livery_msaa4 ? 4 : 2;
     count += livery_prepare(sites + count, livery_4k, livery_samples, livery_supersampling);
     if (livery_4k || livery_samples == 4 || livery_supersampling) {
-        write_log(livery_4k ? "LIVERY: 4096x4096 livery textures" : "LIVERY: native livery size");
-        write_log(livery_samples == 4 ? ", 4x MSAA" : ", native 2x MSAA");
-        write_log(livery_supersampling ? ", supersampled.\r\n" : ".\r\n");
+        log_append(livery_4k ? "LIVERY: 4096x4096 livery textures" : "LIVERY: native livery size");
+        log_append(livery_samples == 4 ? ", 4x MSAA" : ", native 2x MSAA");
+        log_append(livery_supersampling ? ", supersampled.\r\n" : ".\r\n");
     }
     /* Always installed so Settings can switch the readout on and off. */
     frame_stats_enabled = option(L"HUD", L"ShowFPS", 0);
@@ -3602,12 +3546,12 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
     count += redirect_calls(sites + count, UI_LAYERS_THUNK, UI_LAYERS_UPDATE, layers, 1,
                             ui_layers_update);
     if (frame_stats_enabled && frame_stats_gpu) gpu_sampler_start();
-    write_log(frame_stats_enabled ? "FPS: frame rate readout in the top-right corner of the HUD and menus.\r\n"
+    log_append(frame_stats_enabled ? "FPS: frame rate readout in the top-right corner of the HUD and menus.\r\n"
                                   : "FPS: frame rate readout off (Settings > HUD and Gameplay).\r\n");
     if (option(L"Frontend", L"OnlineTabs", 1)) {
         count += redirect_calls(sites + count, TILE_STATE_THUNK, TILE_STATE_SET, online_tab_calls,
                                 ARRAYSIZE(online_tab_calls), tile_state_set);
-        write_log("MENUS: Social, Clubs, Rivals and Marketplace pause tabs stay enabled offline.\r\n");
+        log_append("MENUS: Social, Clubs, Rivals and Marketplace pause tabs stay enabled offline.\r\n");
     }
     if (return_to_garage) {
         static const unsigned prompts[] = {0x1586af7};
@@ -3622,9 +3566,9 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
             memory_copy(slot.replacement, &callback, sizeof(callback));
             sites[count++] = slot;
         }
-        write_log("MENUS: the pause menu's X button enters the nearest festival site (Return to Garage).\r\n");
+        log_append("MENUS: the pause menu's X button enters the nearest festival site (Return to Garage).\r\n");
     }
-    manufacturer_jump = option(L"Frontend", L"ManufacturerJump", 1);
+    manufacturer_jump = option(L"Frontend", L"JumpToManufacturer", option(L"Frontend", L"ManufacturerJump", 1));
     for (unsigned i = 0; manufacturer_jump && i < ARRAYSIZE(car_select_vtables); ++i) {
         Site slot = {car_select_vtables[i] + SCENE_UPDATE_SLOT, 8, {0}, {0}, 0};
         uintptr_t native;
@@ -3638,9 +3582,9 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         sites[count++] = slot;
     }
     if (manufacturer_jump)
-        write_log("MENUS: View or Backspace on a car list opens Jump to Manufacturer.\r\n");
-    media_overrides = option(L"Files", L"MediaOverrides", 1);
-    if (media_overrides || fh3_mods_enabled()) {
+        log_append("MENUS: View or Backspace on a car list opens Jump to Manufacturer.\r\n");
+    media_overrides = option(L"Files", L"EnableMediaOverrides", option(L"Files", L"MediaOverrides", 1));
+    if (media_overrides || load_mods) {
         /* Redirect the only call to the file-system initializer through a
            thunk in int3 padding between two functions. */
         Site thunk = {0x188c6f2, 12, {0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc},
@@ -3652,7 +3596,7 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         int32_t delta = (int32_t)(0x188c6f2 - 0x1899035 - 5);
         memory_copy(call.replacement + 1, &delta, sizeof(delta));
         sites[count++] = call;
-        write_log("FILES: mediaoverride and mediapc mounts scheduled after native file-system "
+        log_append("FILES: mediaoverride and mediapc mounts scheduled after native file-system "
                   "initialization.\r\n");
     }
     forzathon_cars = option(L"Content", L"UnlockAllCars", 1);
@@ -3675,34 +3619,36 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         memory_copy(content.original, prologue, sizeof(prologue));
         sites[count++] = multiplayer;
         sites[count++] = content;
-        write_log("PARENTAL: multiplayer and user-content privileges reported allowed.\r\n");
+        log_append("PARENTAL: multiplayer and user-content privileges reported allowed.\r\n");
     }
     /* No DLC option: car packs are rebuilt from store licenses on every boot,
        and Azimuth already reports them as owned. */
     if (!apply(game, sites, count))
         return rejected("REFUSED: FH3 patch bytes or page protections changed; no FH3 patches "
                         "applied.");
-#ifdef FH2_AZIMUTH
-    if (option(L"Compatibility", L"DisableAzimuthSaveChecksums", 1)) {
-        /* Host-side: Azimuth keeps parsing and writing saves natively; only the
-           final size/hash rejection is skipped, and revisions copied in without
-           a commit manifest get one built from their actual files. */
-        int result = azimuth_disable_save_checks();
-        write_log(result > 0   ? "AZIMUTH: save checksum and file-size comparisons disabled.\r\n"
-                  : result < 0 ? "AZIMUTH: save checksum override could not be applied.\r\n"
-                               : "AZIMUTH: save checksum override skipped; unsupported host build.\r\n");
-        if (result > 0)
-            azimuth_repair_title_markers((unsigned char *)GetModuleHandleW(NULL), FH3_TITLE_ID,
-                                         write_log);
-    }
-#endif
-    status_set("OK: FH3 Extra Options initialized (4CE1DFAB); FH2 features not loaded.");
-    write_log(status_get());
-    write_log("\r\n");
+    if (load_mods) fh3_mods_configure(directory, executable);
+    if (option(L"Compatibility", L"GenerateMissingSaveCommits", 1))
+        azimuth_repair_title_markers((unsigned char *)GetModuleHandleW(NULL), FH3_TITLE_ID,
+                                     log_append);
+    status_set("OK: FH3 Extra Options initialized (4CE1DFAB); FH2 and FM5 features inactive.");
+    log_append(status_get());
+    log_append("\r\n");
     return 1;
 }
 
 #ifdef FH2_TWEAKS_TEST
+__declspec(dllexport) void Fh3TestTextBind(unsigned char *game, const wchar_t *directory) {
+    image = game;
+    fh3_text_init(directory, game_language_code);
+}
+__declspec(dllexport) void *Fh3TestMinimapBind(unsigned char *game, GetPadState pad) {
+    image = game;
+    get_pad_state = pad;
+    minimap_follows_camera = 1;
+    look_x = look_sin = 0.0f;
+    look_y = look_cos = 1.0f;
+    return (void *)minimap_update;
+}
 __declspec(dllexport) int Fh3TestInitialize(unsigned title, void *game, const wchar_t *path,
                                             const wchar_t *directory) {
     return fh3_initialize(title, game, path, directory);

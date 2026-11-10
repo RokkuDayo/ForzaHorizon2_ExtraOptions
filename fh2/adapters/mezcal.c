@@ -1,5 +1,5 @@
-#include "runtime.h"
-#include "support.h"
+#include "fh2/runtime.h"
+#include "shared/support.h"
 
 #ifndef FH2_TWEAKS_TEST
 static wchar_t mod_directory[PATH_CAPACITY], exe_path[PATH_CAPACITY];

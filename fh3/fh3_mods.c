@@ -1,15 +1,15 @@
-#include "extra_options.h"
 #include "fh3.h"
 #include "fh3_internal.h"
-#include "support.h"
+#include "shared/support.h"
+#include "shared/logging.h"
 #include "fh3_plugin.h"
 
-/* Mod loader: <Azimuth folder>\mods\<ModName>\{media,plugins}, next to
+/* Mod loader: <Azimuth folder>\mods\Forza Horizon 3\<ModName>\{media,plugins}, next to
    azimuth.exe and FH3_ExtraOptions.ini as with FH2. Media folders are
    mounted with the native loose-file volume (like mediaoverride), plugins are
    loaded on the game thread after the file system is up, never under the
    loader lock. */
-enum { MAX_MODS = 64, MOD_MEDIA_PRIORITY = 0x7ffffffc };
+enum { MAX_MODS = 64, MOD_MEDIA_PRIORITY = 0x7fffff00 };
 
 typedef struct Plugin {
     struct Plugin *next;
@@ -18,10 +18,9 @@ typedef struct Plugin {
     wchar_t *path, *folder;
 } Plugin;
 
-static int mods_enabled;
 static wchar_t mods_root[PATH_CAPACITY];
 static wchar_t mod_names[MAX_MODS][MAX_PATH];
-static int media_reachable; /* game:\mods mirrors each mod's media */
+static unsigned char media_ready[MAX_MODS];
 static unsigned mod_count;
 static Plugin *plugins;
 static int plugins_loaded;
@@ -33,9 +32,9 @@ static wchar_t scratch_folder[PATH_CAPACITY], scratch_pattern[PATH_CAPACITY],
 static void log_wide(const char *prefix, const wchar_t *text, const char *suffix) {
     char line[MAX_PATH * 3];
     int n = WideCharToMultiByte(CP_UTF8, 0, text, -1, line, sizeof(line), NULL, NULL);
-    fh3_log(prefix);
-    fh3_log(n > 0 ? line : "?");
-    fh3_log(suffix);
+    log_append(prefix);
+    log_append(n > 0 ? line : "?");
+    log_append(suffix);
 }
 
 static void *heap_copy(const wchar_t *text) {
@@ -45,17 +44,12 @@ static void *heap_copy(const wchar_t *text) {
     return copy;
 }
 
-/* Scan the mods folder once: enabled subfolders, sorted by name. The folder
-   is the one holding FH3_ExtraOptions.ini (the Azimuth folder). */
-/* Azimuth only lets the game open real folders under game:\ (the Mount
-   folder): no "..", no junctions or symbolic links. So each enabled mod's
-   media\ is mirrored to <Mount>\mods\<ModName>\media\ on every start: real
-   folders holding hard links to the mod's files (copies if a hard link
-   can't be made), refreshed when a file's size or time changes, and with
-   anything no longer in a mod removed. The mirror is marked by MIRROR_NOTE
-   and only ever touched when that file is there (or it is new). */
+/* Azimuth's native loose volume opens game: paths under Mount. Keep a
+   private mirror for FH3 until its external file callbacks are verified. */
 static int has_directory(const wchar_t *mod, const wchar_t *child, wchar_t *out);
-#define MIRROR_NOTE L"Extra Options mirror - edit the mods next to azimuth.exe.txt"
+#define MIRROR_FOLDER L"__eo_fh3_media__"
+#define MIRROR_NOTE L".extra-options-fh3-mirror"
+static const char mirror_identity[] = "Extra Options FH3 media mirror v1";
 enum { MIRROR_PATH = 1024 };
 static wchar_t mirror_root[MIRROR_PATH];
 
@@ -77,13 +71,14 @@ static void free_buffer(void *buffer) {
 }
 
 /* Delete a file or a whole folder (it is ours: inside the marked mirror). */
-static void remove_tree(const wchar_t *path) {
+static int remove_tree(const wchar_t *path) {
     DWORD attributes = GetFileAttributesW(path);
-    if (attributes == INVALID_FILE_ATTRIBUTES) return;
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        DWORD error = GetLastError();
+        return error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND;
+    }
     if (!(attributes & FILE_ATTRIBUTE_DIRECTORY) || (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
-        if (attributes & FILE_ATTRIBUTE_DIRECTORY) RemoveDirectoryW(path);
-        else DeleteFileW(path);
-        return;
+        return attributes & FILE_ATTRIBUTE_DIRECTORY ? RemoveDirectoryW(path) : DeleteFileW(path);
     }
     wchar_t *pattern = path_buffer(), *child = path_buffer();
     if (pattern && child && join_short(pattern, path, L"*")) {
@@ -101,7 +96,7 @@ static void remove_tree(const wchar_t *path) {
     }
     free_buffer(pattern);
     free_buffer(child);
-    RemoveDirectoryW(path);
+    return RemoveDirectoryW(path);
 }
 
 static int same_file(const wchar_t *a, const wchar_t *b) {
@@ -113,203 +108,238 @@ static int same_file(const wchar_t *a, const wchar_t *b) {
            x.ftLastWriteTime.dwHighDateTime == y.ftLastWriteTime.dwHighDateTime;
 }
 
-/* Make destination match source; returns the number of files placed. */
-static unsigned mirror_tree(const wchar_t *source, const wchar_t *destination) {
-    unsigned placed = 0;
+static int real_directory(DWORD attributes) {
+    return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY) &&
+           !(attributes & FILE_ATTRIBUTE_REPARSE_POINT);
+}
+
+static int ensure_directory(const wchar_t *path) {
+    return CreateDirectoryW(path, NULL) || real_directory(GetFileAttributesW(path));
+}
+
+/* Return failure for partial mirrors so stale files never mount. */
+static int mirror_tree(const wchar_t *source, const wchar_t *destination) {
+    if (!real_directory(GetFileAttributesW(source))) return 0;
     DWORD attributes = GetFileAttributesW(destination);
-    if (attributes != INVALID_FILE_ATTRIBUTES && !(attributes & FILE_ATTRIBUTE_DIRECTORY))
-        remove_tree(destination);
-    CreateDirectoryW(destination, NULL);
+    if (attributes != INVALID_FILE_ATTRIBUTES && !real_directory(attributes) &&
+        !remove_tree(destination)) return 0;
+    if (!ensure_directory(destination)) return 0;
     wchar_t *pattern = path_buffer(), *from = path_buffer(), *to = path_buffer();
-    if (!pattern || !from || !to) goto done;
-    /* Remove what the mod no longer has. */
-    if (join_short(pattern, destination, L"*")) {
-        WIN32_FIND_DATAW data;
-        HANDLE search = FindFirstFileW(pattern, &data);
-        if (search != INVALID_HANDLE_VALUE) {
-            do {
-                if (data.cFileName[0] == L'.' &&
-                    (!data.cFileName[1] || (data.cFileName[1] == L'.' && !data.cFileName[2])))
-                    continue;
-                if (join_short(from, source, data.cFileName) &&
-                    GetFileAttributesW(from) == INVALID_FILE_ATTRIBUTES &&
-                    join_short(to, destination, data.cFileName))
-                    remove_tree(to);
-            } while (FindNextFileW(search, &data));
-            FindClose(search);
-        }
-    }
-    if (!join_short(pattern, source, L"*")) goto done;
+    int ready = 0;
+    if (!pattern || !from || !to || !join_short(pattern, destination, L"*")) goto done;
     WIN32_FIND_DATAW data;
     HANDLE search = FindFirstFileW(pattern, &data);
-    if (search == INVALID_HANDLE_VALUE) goto done;
+    ready = search != INVALID_HANDLE_VALUE || GetLastError() == ERROR_FILE_NOT_FOUND;
+    if (search != INVALID_HANDLE_VALUE) {
+        do {
+            if (!lstrcmpW(data.cFileName, L".") || !lstrcmpW(data.cFileName, L"..")) continue;
+            if (!join_short(from, source, data.cFileName) ||
+                !join_short(to, destination, data.cFileName)) {
+                ready = 0;
+                break;
+            }
+            DWORD original = GetFileAttributesW(from);
+            if ((original == INVALID_FILE_ATTRIBUTES || (original & FILE_ATTRIBUTE_REPARSE_POINT)) &&
+                !remove_tree(to)) {
+                ready = 0;
+                break;
+            }
+        } while (FindNextFileW(search, &data));
+        ready = ready && GetLastError() == ERROR_NO_MORE_FILES;
+        FindClose(search);
+    }
+    if (!ready || !join_short(pattern, source, L"*")) {
+        ready = 0;
+        goto done;
+    }
+    search = FindFirstFileW(pattern, &data);
+    if (search == INVALID_HANDLE_VALUE) {
+        ready = GetLastError() == ERROR_FILE_NOT_FOUND;
+        goto done;
+    }
     do {
-        if (data.cFileName[0] == L'.' &&
-            (!data.cFileName[1] || (data.cFileName[1] == L'.' && !data.cFileName[2])))
-            continue;
-        if (!join_short(from, source, data.cFileName) || !join_short(to, destination, data.cFileName))
-            continue;
+        if (data.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT ||
+            !lstrcmpW(data.cFileName, L".") || !lstrcmpW(data.cFileName, L"..")) continue;
+        if (!join_short(from, source, data.cFileName) || !join_short(to, destination, data.cFileName)) {
+            ready = 0;
+            break;
+        }
         if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-            placed += mirror_tree(from, to);
-            continue;
+            ready = mirror_tree(from, to);
+        } else {
+            DWORD existing = GetFileAttributesW(to);
+            if (existing != INVALID_FILE_ATTRIBUTES &&
+                !(existing & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) &&
+                same_file(from, to)) continue;
+            ready = remove_tree(to) && (CreateHardLinkW(to, from, NULL) || CopyFileW(from, to, TRUE));
         }
-        DWORD existing = GetFileAttributesW(to);
-        if (existing != INVALID_FILE_ATTRIBUTES && !(existing & FILE_ATTRIBUTE_DIRECTORY) &&
-            same_file(from, to)) {
-            ++placed;
-            continue;
-        }
-        remove_tree(to);
-        if (CreateHardLinkW(to, from, NULL) || CopyFileW(from, to, FALSE)) ++placed;
-        else log_wide("MODS: couldn't place ", to, " for the game.\r\n");
-    } while (FindNextFileW(search, &data));
+    } while (ready && FindNextFileW(search, &data));
+    ready = ready && GetLastError() == ERROR_NO_MORE_FILES;
     FindClose(search);
 done:
     free_buffer(pattern);
     free_buffer(from);
     free_buffer(to);
-    return placed;
+    return ready;
 }
 
-/* The mirror root, <Mount>\mods; 0 if it holds something that isn't ours. */
 static int prepare_mirror(const wchar_t *executable) {
     int folder = lstrlenW(executable);
     while (folder > 0 && executable[folder - 1] != L'\\' && executable[folder - 1] != L'/') --folder;
-    if (folder <= 0 || folder + 6 >= MIRROR_PATH) return 0;
+    if (folder <= 0 || (size_t)folder + ARRAY_COUNT(MIRROR_FOLDER) > MIRROR_PATH) return 0;
     memory_copy(mirror_root, executable, (size_t)folder * sizeof(wchar_t));
-    memory_copy(mirror_root + folder, L"mods", 5 * sizeof(wchar_t));
+    memory_copy(mirror_root + folder, MIRROR_FOLDER, sizeof(MIRROR_FOLDER));
     wchar_t *note = path_buffer();
     int ready = 0;
     if (!note || !join_short(note, mirror_root, MIRROR_NOTE)) goto done;
-    DWORD attributes = GetFileAttributesW(mirror_root);
-    if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_REPARSE_POINT))
-        RemoveDirectoryW(mirror_root), attributes = INVALID_FILE_ATTRIBUTES; /* an old link */
-    if (attributes != INVALID_FILE_ATTRIBUTES && GetFileAttributesW(note) == INVALID_FILE_ATTRIBUTES &&
-        !RemoveDirectoryW(mirror_root)) { /* only succeeds when empty */
-        log_wide("MODS: ", mirror_root, " holds files Extra Options didn't put there; move those "
-                                        "mods next to azimuth.exe. Mod media won't mount.\r\n");
-        goto done;
+    if (CreateDirectoryW(mirror_root, NULL)) {
+        HANDLE file = CreateFileW(note, GENERIC_WRITE, 0, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (file != INVALID_HANDLE_VALUE) {
+            DWORD written;
+            ready = WriteFile(file, mirror_identity, sizeof(mirror_identity), &written, NULL) &&
+                    written == sizeof(mirror_identity);
+            CloseHandle(file);
+            if (!ready) DeleteFileW(note);
+        }
+        if (!ready) RemoveDirectoryW(mirror_root);
+    } else if (real_directory(GetFileAttributesW(mirror_root))) {
+        HANDLE file = CreateFileW(note, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+                                  FILE_FLAG_OPEN_REPARSE_POINT, NULL);
+        if (file != INVALID_HANDLE_VALUE) {
+            char data[sizeof(mirror_identity) + 1];
+            DWORD read;
+            ready = ReadFile(file, data, sizeof(data), &read, NULL) &&
+                    read == sizeof(mirror_identity) && memory_equal(data, mirror_identity, read);
+            CloseHandle(file);
+        }
     }
-    CreateDirectoryW(mirror_root, NULL);
-    HANDLE marker = CreateFileW(note, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (marker == INVALID_HANDLE_VALUE) goto done;
-    static const char text[] =
-        "Extra Options copies each mod's media folder here for the game, because Azimuth\r\n"
-        "only lets it read the game's own folder. Edit the mods in the mods folder next to\r\n"
-        "azimuth.exe; this folder is rebuilt every time the game starts.\r\n";
-    DWORD written;
-    WriteFile(marker, text, sizeof(text) - 1, &written, NULL);
-    CloseHandle(marker);
-    ready = 1;
 done:
     free_buffer(note);
     return ready;
 }
 
 static void mirror_media(const wchar_t *executable) {
-    if (!prepare_mirror(executable)) return;
-    wchar_t *source = path_buffer(), *destination = path_buffer(), *pattern = path_buffer();
-    if (!source || !destination || !pattern) goto done;
-    /* Drop mirrored mods that are gone or disabled. */
-    if (join_short(pattern, mirror_root, L"*")) {
-        WIN32_FIND_DATAW data;
-        HANDLE search = FindFirstFileW(pattern, &data);
-        if (search != INVALID_HANDLE_VALUE) {
-            do {
-                if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || data.cFileName[0] == L'.')
-                    continue;
-                int kept = 0;
-                for (unsigned i = 0; i < mod_count && !kept; ++i)
-                    kept = !lstrcmpiW(mod_names[i], data.cFileName) &&
-                           has_directory(mod_names[i], L"media", scratch_folder);
-                if (!kept && join_short(destination, mirror_root, data.cFileName)) remove_tree(destination);
-            } while (FindNextFileW(search, &data));
-            FindClose(search);
-        }
-    }
+    int prepared = 0;
+    wchar_t *destination = path_buffer(), *media = path_buffer();
+    if (!destination || !media) goto done;
     for (unsigned i = 0; i < mod_count; ++i) {
         if (!has_directory(mod_names[i], L"media", scratch_folder)) continue;
-        if (lstrlenW(scratch_folder) >= MIRROR_PATH) continue;
-        lstrcpyW(source, scratch_folder);
-        if (!join_short(destination, mirror_root, mod_names[i])) continue;
-        CreateDirectoryW(destination, NULL);
-        if (!join_short(pattern, destination, L"media")) continue;
-        unsigned files = mirror_tree(source, pattern);
-        (void)files;
+        if (!prepared) {
+            if (!prepare_mirror(executable)) {
+                log_append("MODS: could not open an owned FH3 media mirror. Plugins can still load.\r\n");
+                break;
+            }
+            prepared = 1;
+        }
+        media_ready[i] = join_short(destination, mirror_root, mod_names[i]) &&
+            ensure_directory(destination) && join_short(media, destination, L"media") &&
+            mirror_tree(scratch_folder, media);
+        if (!media_ready[i]) log_wide("MODS: ", mod_names[i], " media mirror failed.\r\n");
     }
-    media_reachable = 1;
 done:
-    free_buffer(source);
     free_buffer(destination);
-    free_buffer(pattern);
+    free_buffer(media);
 }
 
-void fh3_mods_configure(const wchar_t *executable) {
-    mods_enabled = fh3_option(L"Mods", L"Enabled", 1);
-    const wchar_t *ini = fh3_ini_path();
-    if (!mods_enabled || !ini || !ini[0]) return;
+/* Listed folders go first, in UTF-8 file order. New folders follow in
+   alphabetical order. Higher indices take priority when mounting. */
+static void apply_load_order(const wchar_t *path) {
+    enum { MAX_ORDER_SIZE = 65536 };
+    HANDLE file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+                              FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file == INVALID_HANDLE_VALUE) return;
+    LARGE_INTEGER size;
+    char *data = HeapAlloc(GetProcessHeap(), 0, MAX_ORDER_SIZE);
+    DWORD bytes;
+    int valid = data && GetFileSizeEx(file, &size) && size.QuadPart >= 0 &&
+        size.QuadPart <= MAX_ORDER_SIZE && ReadFile(file, data, (DWORD)size.QuadPart, &bytes, NULL) &&
+        bytes == size.QuadPart && (!bytes || MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+                                                                 data, bytes, NULL, 0));
+    CloseHandle(file);
+    if (valid) {
+        unsigned cursor = bytes >= 3 && memory_equal(data, "\xef\xbb\xbf", 3) ? 3 : 0, slot = 0;
+        while (cursor < bytes && slot < mod_count) {
+            unsigned start = cursor;
+            while (cursor < bytes && data[cursor] != '\n') ++cursor;
+            unsigned end = cursor;
+            if (cursor < bytes) ++cursor;
+            while (start < end && (data[start] == ' ' || data[start] == '\t')) ++start;
+            while (start < end && (data[end-1] == '\r' || data[end-1] == ' ' || data[end-1] == '\t')) --end;
+            if (start == end || data[start] == '#' || data[start] == ';') continue;
+            wchar_t name[MAX_PATH];
+            int count = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, data + start, end - start,
+                                           name, ARRAY_COUNT(name) - 1);
+            if (!count) continue;
+            name[count] = 0;
+            if (lstrlenW(name) != count) continue;
+            for (unsigned i = slot; i < mod_count; ++i) {
+                if (lstrcmpiW(name, mod_names[i])) continue;
+                lstrcpyW(name, mod_names[i]);
+                for (unsigned j = i; j > slot; --j)
+                    lstrcpyW(mod_names[j], mod_names[j - 1]);
+                lstrcpyW(mod_names[slot++], name);
+                break;
+            }
+        }
+    } else {
+        log_append("MODS: could not read UTF-8 loadorder.txt; using alphabetical order.\r\n");
+    }
+    if (data) HeapFree(GetProcessHeap(), 0, data);
+}
+
+void fh3_mods_configure(const wchar_t *directory, const wchar_t *executable) {
     wchar_t *folder = scratch_folder, *pattern = scratch_pattern;
-    int length = lstrlenW(ini);
-    while (length > 0 && ini[length - 1] != L'\\' && ini[length - 1] != L'/') --length;
-    if (length <= 0 || length >= PATH_CAPACITY) return;
-    memory_copy(folder, ini, (size_t)length * sizeof(wchar_t));
-    folder[length] = 0;
-    if (!path_join(mods_root, folder, L"mods") || !path_join(pattern, mods_root, L"*")) return;
-    if (GetFileAttributesW(mods_root) == INVALID_FILE_ATTRIBUTES) return;
+    if (!path_join(folder, directory, L"mods") || !ensure_directory(folder) ||
+        !path_join(mods_root, folder, L"Forza Horizon 3") || !ensure_directory(mods_root) ||
+        !path_join(pattern, mods_root, L"*")) {
+        log_append("MODS: could not open mods\\Forza Horizon 3.\r\n");
+        return;
+    }
     WIN32_FIND_DATAW data;
     HANDLE search = FindFirstFileW(pattern, &data);
     if (search == INVALID_HANDLE_VALUE) return;
     do {
-        if (!(data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || data.cFileName[0] == L'.') continue;
-        int disabled = !GetPrivateProfileIntW(L"Mods", data.cFileName, 1, fh3_ini_path());
-        if (disabled) {
+        if (!real_directory(data.dwFileAttributes) || data.cFileName[0] == L'.') continue;
+        if (!GetPrivateProfileIntW(L"Mods", data.cFileName, 1, fh3_ini_path())) {
             log_wide("MODS: ", data.cFileName, " disabled in FH3_ExtraOptions.ini.\r\n");
             continue;
         }
         if (mod_count == MAX_MODS) {
-            fh3_log("MODS: more than 64 mods; the rest are ignored.\r\n");
+            log_append("MODS: more than 64 mods; package loading skipped.\r\n");
+            mod_count = 0;
             break;
         }
         unsigned slot = mod_count++;
         while (slot && lstrcmpiW(mod_names[slot - 1], data.cFileName) > 0) {
-            memory_copy(mod_names[slot], mod_names[slot - 1], sizeof(mod_names[slot]));
+            lstrcpyW(mod_names[slot], mod_names[slot - 1]);
             --slot;
         }
         lstrcpyW(mod_names[slot], data.cFileName);
     } while (FindNextFileW(search, &data));
     FindClose(search);
     if (!mod_count) return;
+    if (path_join(pattern, mods_root, L"loadorder.txt")) apply_load_order(pattern);
     if (executable) mirror_media(executable);
-    fh3_log(media_reachable ? "MODS: mods folder scanned, media mirrored to game:\\mods; media and "
-                              "plugins load after file-system initialization.\r\n"
-                            : "MODS: mods folder scanned; mod media won't mount (see above).\r\n");
-}
-
-int fh3_mods_enabled(void) {
-    return mods_enabled && mod_count;
 }
 
 static int has_directory(const wchar_t *mod, const wchar_t *child, wchar_t *out) {
     wchar_t *base = scratch_base;
-    if (!path_join(base, mods_root, mod) || !path_join(out, base, child)) return 0;
-    DWORD attributes = GetFileAttributesW(out);
-    return attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_DIRECTORY);
+    return path_join(base, mods_root, mod) && real_directory(GetFileAttributesW(base)) &&
+           path_join(out, base, child) && real_directory(GetFileAttributesW(out));
 }
 
-/* game:\mods holds the mirrored media (mirror_media), so each mounts as
-   game:\mods\<ModName>\media\ over game:\media\. */
 void fh3_mods_mount(void *filesystem) {
-    for (unsigned i = 0; media_reachable && i < mod_count; ++i) {
-        if (!has_directory(mod_names[i], L"media", scratch_folder)) continue;
+    for (unsigned i = 0; i < mod_count; ++i) {
+        if (!media_ready[i]) continue;
         char source[MAX_PATH * 3];
-        const char head[] = "game:\\mods\\";
+        const char head[] = "game:\\__eo_fh3_media__\\";
         int prefix = sizeof(head) - 1;
         memory_copy(source, head, (size_t)prefix);
         int n = WideCharToMultiByte(CP_UTF8, 0, mod_names[i], -1, source + prefix,
                                     (int)sizeof(source) - prefix - 8, NULL, NULL);
         if (n <= 0) continue;
         memory_copy(source + prefix + n - 1, "\\media\\", 8);
-        int mounted = fh3_mount(filesystem, source, MOD_MEDIA_PRIORITY - i);
+        int mounted = fh3_mount(filesystem, source, MOD_MEDIA_PRIORITY + i);
         log_wide("MODS: ", mod_names[i], mounted ? " media mounted.\r\n" : " media mount failed.\r\n");
     }
 }
@@ -317,9 +347,9 @@ void fh3_mods_mount(void *filesystem) {
 /* --- Plugin services. --- */
 
 static void plugin_log(const char *message) {
-    fh3_log("PLUGIN: ");
-    fh3_log(message ? message : "");
-    fh3_log("\r\n");
+    log_append("PLUGIN: ");
+    log_append(message ? message : "");
+    log_append("\r\n");
 }
 
 static int write_code(unsigned char *target, const void *bytes, size_t size) {
@@ -398,16 +428,17 @@ static void *plugin_hook_pointer(uint32_t rva, void *callback) {
 static void load_plugin(const wchar_t *mod, const wchar_t *folder, const wchar_t *file) {
     wchar_t *path = scratch_path, *mod_directory = scratch_mod;
     if (!path_join(path, folder, file) || !path_join(mod_directory, mods_root, mod)) return;
-    HMODULE module = LoadLibraryExW(path, NULL,
-                                    LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
-    if (!module) {
-        log_wide("MODS: ", path, " failed to load.\r\n");
-        return;
-    }
     Plugin *plugin = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(*plugin));
     if (!plugin) return;
     plugin->path = heap_copy(path);
     plugin->folder = heap_copy(mod_directory);
+    if (!plugin->path || !plugin->folder) goto failed;
+    HMODULE module = LoadLibraryExW(path, NULL,
+                                    LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+    if (!module) {
+        log_wide("MODS: ", path, " failed to load.\r\n");
+        goto failed;
+    }
     FH3PluginContext *context = &plugin->context;
     context->size = sizeof(*context);
     context->api_version = FH3_PLUGIN_API_VERSION;
@@ -429,6 +460,11 @@ static void load_plugin(const wchar_t *mod, const wchar_t *folder, const wchar_t
     if (ready) plugin->update = (FH3PluginUpdateFn)(uintptr_t)GetProcAddress(module, "FH3PluginUpdate");
     plugin->next = plugins;
     plugins = plugin;
+    return;
+failed:
+    free_buffer(plugin->path);
+    free_buffer(plugin->folder);
+    free_buffer(plugin);
 }
 
 void fh3_mods_load_plugins(void) {
@@ -444,7 +480,7 @@ void fh3_mods_load_plugins(void) {
         HANDLE search = FindFirstFileW(pattern, &data);
         if (search == INVALID_HANDLE_VALUE) continue;
         do {
-            if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || count == 32) continue;
+            if ((data.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) || count == 32) continue;
             unsigned slot = count++;
             while (slot && lstrcmpiW(files[slot - 1], data.cFileName) > 0) {
                 memory_copy(files[slot], files[slot - 1], sizeof(files[slot]));

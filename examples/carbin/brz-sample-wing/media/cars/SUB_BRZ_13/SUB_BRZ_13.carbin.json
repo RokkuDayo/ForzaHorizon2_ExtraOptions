@@ -1,0 +1,76 @@
+{
+  "format": "fh2-carbin-patch",
+  "format_version": 1,
+  "base_sha256": "c351f1ab26b2ca2c804bf0c802aac1a6f9b3421ca7b7c03566f2e1b1b298a3e2",
+  "ordinal": 1655,
+  "media_name": "sub_brz_13",
+  "parts": [],
+  "groups": [
+    {
+      "op": "merge",
+      "key": 9,
+      "models": [
+        {
+          "op": "upsert",
+          "key": "b8d20d0396bb4c5b9dd24ba7a425d99a",
+          "value": {
+            "version": 15,
+            "path": "game:\\media\\cars\\sub_brz_13\\scene\\_library\\scene\\86_frs_brz\\scene\\exterior\\trunk\\wing_a.modelbin",
+            "transform_hex": "0000803f000000000000000000000000000000000000803f000000000000000000000000000000000000803f000000000000000000000000000000000000803f",
+            "lod": 63,
+            "bone_name": "<root>",
+            "bone_index": 0,
+            "flags": 0,
+            "draw_groups": 5,
+            "material_overrides": [],
+            "material_indices": [
+              {
+                "name": "carpaint",
+                "value": 16
+              },
+              {
+                "name": "frame",
+                "value": 0
+              }
+            ],
+            "has_hash": 1,
+            "hash_hex": "0000803fcc8eceeb",
+            "unknown8_hex": "000080bf",
+            "ao_maps": [
+              {
+                "version": 3,
+                "path": "game:\\media\\cars\\sub_brz_13\\textures\\ao\\wing_a_ao.swatchbin",
+                "data_hex": "ffffffffffffffff0000000000000000000000000000000001001f"
+              }
+            ],
+            "unknown10_hex": "00",
+            "unknown11_hex": "010101000000000000000000000000000000",
+            "part_name": "Trunk",
+            "guid": "b8d20d0396bb4c5b9dd24ba7a425d99a",
+            "unknown14_hex": "0000000000000000000000000000000000000000",
+            "unknown15_hex": "01000000",
+            "upgrade_ids": [
+              1655099
+            ]
+          }
+        }
+      ],
+      "upgrades": [
+        {
+          "op": "upsert",
+          "key": 1655099,
+          "value": {
+            "version": 3,
+            "level": 1,
+            "is_stock": 0,
+            "id": 1655099,
+            "car_body_id": -1,
+            "parent_is_stock": 1,
+            "data_hex": "7a632cbf9d0f3a3f501c07c0000000007a632c3f48f06d3ff12cdbbf00000000"
+          }
+        }
+      ]
+    }
+  ],
+  "description": "BRZ sample wing: new part using the existing stock wing model"
+}

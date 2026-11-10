@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "version": "0.4.4",
+  "version": "0.6.0",
   "filename": "forza_durango_release_final.exe",
   "size": 58204160,
   "original_sha256": "3ec04c6163fb5614e3d351ba0570d39b846041a257715d6340eceb03ccb7f0a3",
@@ -726,6 +726,19 @@
       "runtime_group": "CLUBS"
     },
     {
+      "id": "clubs_group_enabled_offline_refresh_ddbe0e",
+      "group": "offline_tabs",
+      "offset": 14529550,
+      "rva": 14532110,
+      "original": "41b801000000",
+      "patched": "4533c0909090",
+      "accepted": [
+        "41b801000000",
+        "4533c0909090"
+      ],
+      "runtime_group": "CLUBS"
+    },
+    {
       "id": "aero_front_tuning_unlocked",
       "group": "aero_tuning",
       "rva": 15313723,
@@ -1314,26 +1327,6 @@
       "scope_parameter": "entity_id",
       "locator_name": "",
       "description": "Live HUD Change Car Position choice; preserve native store for Same Location."
-    },
-    {
-      "id": "local_gamerpic_converter_hook",
-      "rva": 47868488,
-      "original_function_rva": 12165328,
-      "runtime_group": "GAMERPIC",
-      "type": "relocated_vtable_pointer",
-      "file_normalized": false,
-      "option": "Profile.CustomGamerpic",
-      "file": "Gamerpic.png",
-      "directory": "actual loaded DLL directory",
-      "bitmap_factory_rva": 5459968,
-      "image_wrapper_rva": 5460352,
-      "pixel_buffer_factory_rva": 23455232,
-      "texture_request_rva": 17847568,
-      "texture_dispatch_rva": 17844832,
-      "raw_image_method_rva": 17592064,
-      "bitmap_update_rva": 23997888,
-      "raw_format": 3,
-      "dxgi_format": 28
     },
     {
       "id": "treasure_map_board_setup_callback",
