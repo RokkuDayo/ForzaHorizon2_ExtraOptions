@@ -21,9 +21,9 @@ int config_set_hour(float hour);
 // from [Presets]) into hours. Returns 1 when valid.
 int config_parse_hour(const wchar_t *text, const wchar_t *ini_path, float *hours);
 
-// Weather: the game's own weather options (MainlandWeatherOptions order:
-// Current, Sunny, Wet, Rain, Storm). Dynamic leaves the game's weather alone.
-enum { WEATHER_DYNAMIC, WEATHER_SUNNY, WEATHER_WET, WEATHER_RAIN, WEATHER_STORM, WEATHER_COUNT };
+// Session weather modes. Native spinner indices are mapped in settings_page.c.
+enum { WEATHER_DYNAMIC, WEATHER_SUNNY, WEATHER_WET, WEATHER_RAIN, WEATHER_STORM,
+       WEATHER_FOGGY, WEATHER_HEAVY_FOG, WEATHER_FOGGY_STORM, WEATHER_COUNT };
 void config_load_weather(void);        // Reset session weather after config_load.
 int config_weather(void);
 int config_set_weather(int mode);      // Apply for this session. 0 when refused.

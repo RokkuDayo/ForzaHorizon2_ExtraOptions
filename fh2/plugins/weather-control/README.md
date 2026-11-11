@@ -1,8 +1,10 @@
-# Weather Control 1.0.8
+# Weather Control 1.0.9
 
 Time of Day Lock starts Off and Weather starts on Current (Dynamic) on every launch. Weather presets and the time lock last for the current session. Locked Hour is saved for next time.
 
 The lock holds a freely running clock by passing zero elapsed time to that clock's update only. It does not set the native stopped flag. Native stopped/fixed/stop-locked clocks and timed transitions retain their original update.
+
+Storm Island adds Foggy, Heavy Fog, and Foggy Storm to the Weather row. The same choices are available on the mainland when its active weather preset table contains all three. Travel to a map without those presets and its normal dynamic weather takes over until you return or choose another preset.
 
 ## Automatic startup recovery
 
@@ -16,4 +18,4 @@ Recovery runs automatically with either logging setting. Old `[Recovery] ResumeS
 
 With the affected save loaded in offline free roam, run diagnostics/CollectClockState.cmd. Return focus to the game during the five-second lead-in, then remain driving or idle in free roam for 20 seconds. Do not pause or use Photo Mode. The collector reads process memory, plugin settings and existing logs; it never calls game routines, changes memory, edits settings or touches saved games. Its clock-state.json is written beside the script. An optional first argument selects another Azimuth installation path. Python 3 is required.
 
-The native regression fixture requires the private Extra Options test environment and a supported game image.
+The isolated regression test covers session-only controls, the native recovery guards, the three-second delay, and one-shot recovery with logging disabled. The affected save still needs an in-game test.

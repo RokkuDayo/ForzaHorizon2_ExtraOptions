@@ -315,7 +315,7 @@ __declspec(dllexport) BOOL WINAPI FH2PluginInitialize(const FH2PluginContext *ct
     int weather=weather_hold_init(game,ctx->game_image_size,log_line);
     int clock=weather && clock_hold_install(game,ctx->game_image_size,log_line);
     ready=clock && install_menu();
-    log_line(ready?"EO Weather Control 1.0.8 ready. Pause menu shortcut; standalone native page.\r\n":
+    log_line(ready?"EO Weather Control 1.0.9 ready. Pause menu shortcut; standalone native page.\r\n":
                    "WEATHER CONTROL: UI or clock hook refused; standalone menu unavailable.\r\n");
     return TRUE;
 }

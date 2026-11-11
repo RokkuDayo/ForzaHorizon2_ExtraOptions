@@ -169,7 +169,8 @@ static const struct {
 };
 
 const char *config_weather_name(int mode) {
-    static const char *names[WEATHER_COUNT] = {"Dynamic", "Sunny", "Wet", "Rain", "Storm"};
+    static const char *names[WEATHER_COUNT] = {"Dynamic", "Sunny", "Wet", "Rain", "Storm",
+                                                 "Foggy", "Heavy Fog", "Foggy Storm"};
     return mode >= 0 && mode < WEATHER_COUNT ? names[mode] : "?";
 }
 

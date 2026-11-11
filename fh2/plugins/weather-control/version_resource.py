@@ -1,7 +1,7 @@
 """Deterministic VERSIONINFO for the standalone weather control plugin."""
 import struct
 
-VERSION = "1.0.8"
+VERSION = "1.0.9"
 
 def version_resource():
     version = VERSION

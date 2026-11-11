@@ -45,6 +45,12 @@ enum {
     SET_CONTROL = 0x1981860,
     RELEASE = 0x1981c80,
     FIND_PRESET = 0x1981e00,
+    LOOKUP_PRESET = 0x1981fa0,     // Returns NULL on a miss, unlike FindPreset.
+    PRESET_LOWER_BOUND = 0x6fae30,
+    BUILD_WEATHER_OPTION = 0xd6f110,
+    PRESET_TABLE = 0x158,
+    PRESET_MAP = 0x18,
+    PRESET_NODE_NAME = 0x20,
     OPTIONS = 0x2959a0,             // game options; [+0x3b7d] makes the weather behaviours do nothing
     OPTIONS_CHECK = 0x92f784,       // SetWeatherControl: cmp byte [rax+0x3b7d],0
     PAUSE_CHECK = 0x8e9a9b,         // PauseWeather: the same check
@@ -64,12 +70,16 @@ enum {
 static const struct {
     const char *preset;
     float environmental, precipitation;
+    int native_option;
 } modes[WEATHER_COUNT] = {
     {NULL, 0, 0},                           // Dynamic: never set
     {"Clear", 0.0f, 0.0f},                  // Sunny
     {"ThreateningStormCCloudyA", 0.6f, 0.0f}, // Wet
     {"ThreateningStormACloudyB", 1.0f, 0.8f}, // Rain
     {"StormBCloudyA", 1.0f, 1.0f},          // Storm
+    {"CloudyFog", 0, 0, 3},                 // Foggy
+    {"ThreateningFog", 0, 0, 4},            // Heavy Fog
+    {"StormTropicalFog", 0, 0, 7},          // Foggy Storm
 };
 
 // MSVC std::string as the game passes it: 16-byte buffer (or pointer), size, capacity.
@@ -81,6 +91,15 @@ typedef struct {
     size_t size, capacity;
 } GameString;
 _Static_assert(sizeof(GameString) == 0x20, "std::string layout");
+
+typedef struct {
+    unsigned char prefix[0x18];
+    float environmental;
+    int preset;
+    float precipitation;
+} NativeWeatherOption;
+_Static_assert(offsetof(NativeWeatherOption, preset) == 0x1c &&
+               sizeof(NativeWeatherOption) == 0x24, "native weather option layout");
 
 static unsigned char *game;
 static LogFn log_message;
@@ -94,6 +113,8 @@ static void *volatile recovery_tod;
 
 // Game thread only.
 static unsigned char *last_weather;
+static void *last_preset_table;
+static int unavailable_mode;
 static unsigned char ours[CONTROL_SIZE];  // W's block right after our SetControl
 static int have_ours;
 static long applied_version = -1;
@@ -106,21 +127,16 @@ static void log_line(const char *text) {
     }
 }
 
-const char *weather_hold_preset_name(int mode) {
-    return mode > 0 && mode < WEATHER_COUNT ? modes[mode].preset : NULL;
-}
-
-void weather_hold_build_control(int mode, int preset_index, unsigned char *control) {
+static void build_control(const NativeWeatherOption *option, unsigned char *control) {
     memset(control, 0, CONTROL_SIZE);
-    if (mode <= 0 || mode >= WEATHER_COUNT) return;
     float one = 1.0f;
     control[0x00] = 1;
-    memcpy(control + 0x04, &preset_index, 4);
+    memcpy(control + 0x04, &option->preset, 4);
     control[0x18] = 1;
-    memcpy(control + 0x1c, &modes[mode].environmental, 4);
+    memcpy(control + 0x1c, &option->environmental, 4);
     control[0x20] = 1;
-    memcpy(control + 0x24, &modes[mode].precipitation, 4);
-    control[0x32] = 1;  // the same tail every script call passes
+    memcpy(control + 0x24, &option->precipitation, 4);
+    control[0x32] = 1;
     memcpy(control + 0x34, &one, 4);
     control[0x38] = 1;
 }
@@ -134,38 +150,81 @@ static int still_ours(const unsigned char *weather) {
     return have_ours && !memcmp(weather + CONTROL, ours, CONTROL_SIZE);
 }
 
-static void apply(unsigned char *weather, int mode, const char *why) {
-    GameString name;
-    memset(&name, 0, sizeof name);
-    const char *preset = modes[mode].preset;
+static GameString borrowed_name(const char *preset) {
+    GameString name = {0};
     name.size = strlen(preset);
-    if (name.size < 16) {
+    if (name.size < sizeof name.buffer) {
         memcpy(name.buffer, preset, name.size + 1);
-        name.capacity = 15;
+        name.capacity = sizeof name.buffer - 1;
     } else {
-        name.pointer = preset;  // read only: FindPreset copies it
+        name.pointer = preset;
         name.capacity = name.size;
     }
-    int index = find_preset(weather, &name);
+    return name;
+}
+
+// FindPreset returns zero both for Clear and for a missing name. Use the
+// same underlying map search, check for an exact match, and avoid allocation.
+static int has_fog_preset(unsigned char *table, int mode) {
+    if (!table) return 0;
+    const char *preset = modes[mode].preset;
+    GameString name = borrowed_name(preset);
+    void *map = table + PRESET_MAP;
+    const unsigned char *node =
+        ((const unsigned char *(*)(void *, const GameString *))(game + PRESET_LOWER_BOUND))(map, &name);
+    if (!node || node == *(const unsigned char **)map) return 0;
+    const GameString *key = (const GameString *)(node + PRESET_NODE_NAME);
+    const char *text = key->capacity < sizeof key->buffer ? key->buffer : key->pointer;
+    return key->size == name.size && !memcmp(text, preset, name.size);
+}
+
+static int apply(unsigned char *weather, void *table, int mode, const char *why) {
+    const char *preset = modes[mode].preset;
+    NativeWeatherOption option = {0};
+    if (modes[mode].native_option) {
+        if (!has_fog_preset(table, mode)) return 0;
+        ((void (*)(void *, NativeWeatherOption *, int))(game + BUILD_WEATHER_OPTION))(
+            weather, &option, modes[mode].native_option);
+    } else {
+        GameString name = borrowed_name(preset);
+        option.preset = find_preset(weather, &name);
+        option.environmental = modes[mode].environmental;
+        option.precipitation = modes[mode].precipitation;
+    }
     unsigned char control[0x40];
-    weather_hold_build_control(mode, index, control);
+    build_control(&option, control);
     set_control(weather, control);
     memcpy(ours, weather + CONTROL, CONTROL_SIZE);
     have_ours = 1;
     char line[200];
     snprintf(line, sizeof line, "TIME LOCK: %s; weather set to %s (preset %s #%d, road wetness %.2f, rain %.2f).\r\n", why,
-             config_weather_name(mode), preset, index, (double)modes[mode].environmental, (double)modes[mode].precipitation);
+             config_weather_name(mode), preset, option.preset, (double)option.environmental, (double)option.precipitation);
     log_line(line);
+    return 1;
 }
 
-static unsigned char *game_weather_of(unsigned char *tod) {
+static unsigned char *game_world(void) {
     unsigned char *global = *(unsigned char **)(game + WORLD_GLOBAL);
     if (!global) return NULL;
     unsigned char *holder = *(unsigned char **)(global + 0x48);
     if (!holder) return NULL;
-    unsigned char *world = *(unsigned char **)(holder + 0x98);
+    return *(unsigned char **)(holder + 0x98);
+}
+
+static unsigned char *game_weather_of(unsigned char *tod) {
+    unsigned char *world = game_world();
     if (!world || *(unsigned char **)(world + 0x480) != tod) return NULL;  // only the clock's own world
     return *(unsigned char **)(world + 0x488);
+}
+
+int weather_hold_has_fog_presets(void) {
+    if (!ready || !game) return 0;
+    unsigned char *world = game_world();
+    unsigned char *weather = world ? *(unsigned char **)(world + 0x488) : NULL;
+    void *table = weather ? *(void **)(weather + PRESET_TABLE) : NULL;
+    return has_fog_preset(table, WEATHER_FOGGY) &&
+           has_fog_preset(table, WEATHER_HEAVY_FOG) &&
+           has_fog_preset(table, WEATHER_FOGGY_STORM);
 }
 
 static int scripts_disabled(void) {
@@ -203,9 +262,13 @@ void weather_hold_frame(unsigned char *tod) {
     if (!ready || !tod) return;
     unsigned char *weather = weather_of(tod);
     if (!weather) return;
-    if (weather != last_weather) {  // a new world: forget the old manager
+    void *table = *(void **)(weather + PRESET_TABLE);
+    int table_changed = table != last_preset_table;
+    if (weather != last_weather || table_changed) {
+        if (weather != last_weather) have_ours = 0;
         last_weather = weather;
-        have_ours = 0;
+        last_preset_table = table;
+        unavailable_mode = WEATHER_DYNAMIC;
     }
     long version = config_version();
     int changed = version != applied_version;
@@ -215,15 +278,24 @@ void weather_hold_frame(unsigned char *tod) {
     if (recovery_pending && recovery_tod == tod &&
         InterlockedCompareExchangePointer(&recovery_tod, NULL, tod) == tod)
         recover_weather(weather, mode);
-    if (mode != WEATHER_DYNAMIC) {
-        if (released(weather))
-            apply(weather, mode, have_ours ? "the game released the weather again" : "free-roam weather was dynamic");
-        else if (changed && still_ours(weather))
-            apply(weather, mode, "weather setting changed");
-    } else if (changed && still_ours(weather)) {
-        release(weather);
-        have_ours = 0;
-        log_line("TIME LOCK: weather set to Dynamic; the game's own weather cycle is back.\r\n");
+    if (mode == WEATHER_DYNAMIC) {
+        if (still_ours(weather)) {
+            release(weather);
+            have_ours = 0;
+            log_line("TIME LOCK: weather set to Dynamic; the game's own weather cycle is back.\r\n");
+        }
+        return;
+    }
+    if (mode == unavailable_mode) return;
+    int own = still_ours(weather);
+    if (!released(weather) && !(own && (changed || table_changed))) return;
+    const char *why = own ? "weather setting changed" : "free-roam weather was dynamic";
+    if (!apply(weather, table, mode, why)) {
+        unavailable_mode = mode;
+        if (own) {
+            release(weather);
+            have_ours = 0;
+        }
     }
 }
 
@@ -262,6 +334,11 @@ int weather_hold_verify(const unsigned char *image, size_t size, LogFn log) {
                   "\x00\x00\x00\x00\xc6\x40\xc8\x00", 34, "WeatherManager::Release"},
         {RELEASE + 0x4f, "\x66\xc7\x40\xe8\x00\x00\xc6\x40\xea\x01\xc6\x40\xf0\x01\xe8", 15, "WeatherManager::Release"},
         {FIND_PRESET, "\x40\x53\x48\x83\xec\x40\x48\x83\xb9\x58\x01\x00\x00\x00\x48\x8b\xd9\x74\x47", 19, "FindPreset"},
+        {PRESET_LOWER_BOUND, "\x40\x53\x55\x41\x56\x48\x83\xec\x20\x48\x8b\x29", 12, "preset map search"},
+        {LOOKUP_PRESET + 0x20, "\x48\x8d\x71\x18\x48\x8b\xce", 7, "preset map"},
+        {LOOKUP_PRESET + 0x34, "\x48\x8d\x50\x20", 4, "preset map key"},
+        {LOOKUP_PRESET, "\x48\x89\x54\x24\x10\x57\x48\x83\xec\x30", 10, "preset table lookup"},
+        {BUILD_WEATHER_OPTION, "\x48\x8b\xc4\x55\x48\x8d\x68\xe8\x48\x81\xec\x10\x01\x00\x00", 15, "native weather option"},
         {FIND_PRESET + 0x51, "\x8b\x40\x60\x48\x83\xc4\x40\x5b\xc3", 9, "FindPreset"},
         {OPTIONS, "\x40\x53\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x8b", 16, "game options"},
         {OPTIONS_CHECK, "\x80\xb8\x7d\x3b\x00\x00\x00", 7, "SetWeatherControl options check"},
@@ -281,6 +358,8 @@ int weather_hold_verify(const unsigned char *image, size_t size, LogFn log) {
         }
     if (!rel32_to(image, size, WORLD_ACCESSOR, 7, WORLD_GLOBAL) || !rel32_to(image, size, WORLD_ACCESSOR + 12, 5, WORLD_STEP1) ||
         !rel32_to(image, size, WORLD_STEP1 + 7, 6, WORLD_STEP2) || !rel32_to(image, size, RELEASE + 0x5d, 5, SET_CONTROL) ||
+        !rel32_to(image, size, FIND_PRESET + 0x47, 5, LOOKUP_PRESET) ||
+        !rel32_to(image, size, LOOKUP_PRESET + 0x27, 5, PRESET_LOWER_BOUND) ||
         !rel32_to(image, size, OPTIONS_CHECK - 5, 5, OPTIONS) ||
         !rel32_to(image, size, SET_AUTO_CHANGE - 5, 5, WORLD_WEATHER)) {
         if (log) log("TIME LOCK: weather call chain didn't match; weather not held.\r\n");
@@ -313,6 +392,8 @@ void weather_hold_test_setup(WeatherSetControlFn set, WeatherReleaseFn rel, Weat
     find_preset = find;
     weather_of = of;
     last_weather = NULL;
+    last_preset_table = NULL;
+    unavailable_mode = WEATHER_DYNAMIC;
     have_ours = 0;
     applied_version = -1;
     logs = 0;
@@ -320,3 +401,9 @@ void weather_hold_test_setup(WeatherSetControlFn set, WeatherReleaseFn rel, Weat
     InterlockedExchange(&recovery_pending, 0);
     ready = 1;
 }
+
+#ifdef WEATHER_CONTROL_TEST
+__declspec(dllexport) int WeatherTestHasFogPresets(void) {
+    return weather_hold_has_fog_presets();
+}
+#endif

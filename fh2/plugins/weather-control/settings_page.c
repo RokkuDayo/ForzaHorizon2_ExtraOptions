@@ -10,10 +10,8 @@
 //    same type's list:
 //      TimeLockEnabled  int, 0 = Off, 1 = On (the page's own OnOffOptions list)
 //      TimeLockHour     float hours, 0-23.75
-//      TimeLockWeather  int, the game's MainlandWeatherOptions order:
-//                       Current (= Dynamic), Sunny, Wet, Rain, Storm
-//      TimeLockWeatherOptions  the game's own localized list for that row,
-//                       built by game+0xd61880 (as the online event options do),
+//      TimeLockWeather  int, mapped to the active native weather list
+//      TimeLockWeatherOptions  the game's localized Mainland or Island list,
 //                       on a copy of the page's OnOffOptions property
 //    Nothing existing is changed; the game's setters are untouched.
 //
@@ -40,6 +38,7 @@
 #include <string.h>
 
 #include "settings_page.h"
+#include "weather_hold.h"
 
 enum {
     RESOURCE_CALL = 0x16ebb37,   // call into Extra Options' jump (originally the game's loader)
@@ -66,6 +65,11 @@ enum {
     WEATHER_LIST_CTOR = 0xd63bf0,
     WEATHER_LIST_VTABLE = 0x2e0e3c0, // EnumDataSource<MainlandWeatherOptions>
     WEATHER_LIST_COUNT = 0xd63cad,   // cmp ebx,5: five items
+    MAKE_ISLAND_LIST = 0xd61820,
+    MAKE_ISLAND_CALL = 0xd6185f,
+    ISLAND_LIST_CTOR = 0xd63b20,
+    ISLAND_LIST_VTABLE = 0x2e0e290,
+    ISLAND_LIST_COUNT = 0xd63bdd,
     BOX_INT = 0x4702d0,          // (out, &value) -> boxed int
     BOX_FLOAT = 0x3f5990,        // (out, &value) -> boxed float
     PROPERTY_CHANGED = 0xcf9c60, // (page, property): refresh bindings
@@ -108,7 +112,14 @@ static LogFn log_message;
 static NativeProperty enabled_property, hour_property, weather_property, weather_list_property;
 static Link enabled_link, hour_link, weather_link, weather_list_link;
 static int weather_row = 1;          // settings_page_install turns it off when the weather hold isn't ready
-static void *volatile weather_list;  // the one data source we hand out (we keep a reference forever)
+static void *volatile weather_lists[2];  // Keep one reference to each native list.
+static const int mainland_weather_modes[] = {
+    WEATHER_DYNAMIC, WEATHER_SUNNY, WEATHER_WET, WEATHER_RAIN, WEATHER_STORM,
+};
+static const int island_weather_modes[] = {
+    WEATHER_DYNAMIC, WEATHER_SUNNY, WEATHER_FOGGY, WEATHER_WET,
+    WEATHER_HEAVY_FOG, WEATHER_RAIN, WEATHER_STORM, WEATHER_FOGGY_STORM,
+};
 
 
 static volatile LONG logged_mismatch, set_logs;
@@ -302,9 +313,28 @@ static void **get_hour(void **output, NativeProperty *property, void *page) {
     return ((BoxFn)(game + BOX_FLOAT))(output, &value);
 }
 
+static const int *weather_modes(int island, unsigned *count) {
+    *count = island ? ARRAYSIZE(island_weather_modes) : ARRAYSIZE(mainland_weather_modes);
+    return island ? island_weather_modes : mainland_weather_modes;
+}
+
+static int weather_index(int mode, int island) {
+    unsigned count;
+    const int *modes = weather_modes(island, &count);
+    for (unsigned i = 0; i < count; ++i)
+        if (modes[i] == mode) return (int)i;
+    return 0;
+}
+
+static int weather_mode_at(int index, int island) {
+    unsigned count;
+    const int *modes = weather_modes(island, &count);
+    return index >= 0 && (unsigned)index < count ? modes[index] : -1;
+}
+
 static void **get_weather(void **output, NativeProperty *property, void *page) {
     (void)property, (void)page;
-    int value = config_weather();
+    int value = weather_index(config_weather(), weather_hold_has_fog_presets());
     *output = NULL;
     return ((BoxFn)(game + BOX_INT))(output, &value);
 }
@@ -312,17 +342,19 @@ static void **get_weather(void **output, NativeProperty *property, void *page) {
 // Same shape as the game's own list getters: the object itself, one more reference for the caller.
 static void **get_weather_list(void **output, NativeProperty *property, void *page) {
     (void)property, (void)page;
-    void *list = weather_list;
+    int island = weather_hold_has_fog_presets();
+    void *volatile *cached = &weather_lists[island];
+    void *list = *cached;
     if (!list) {
         void *made = NULL;
-        ((void (*)(void **))(game + MAKE_WEATHER_LIST))(&made);
+        ((void (*)(void **))(game + (island ? MAKE_ISLAND_LIST : MAKE_WEATHER_LIST)))(&made);
         if (made) {
-            if (InterlockedCompareExchangePointer((void *volatile *)&weather_list, made, NULL)) {
+            if (InterlockedCompareExchangePointer(cached, made, NULL)) {
                 if(InterlockedDecrement((volatile LONG *)((unsigned char *)made+0x10))==0)
                     ((ObjectFn)(game+DELETE_OBJECT))(made);
             }
         }
-        list = weather_list;
+        list = *cached;
     }
     *output = list;
     if (list) InterlockedIncrement((volatile LONG *)((unsigned char *)list + 0x10));
@@ -347,7 +379,7 @@ static void set_enabled(NativeProperty *property, void *page, void *boxed) {
 static void set_weather(NativeProperty *property, void *page, void *boxed) {
     int value = -1;
     if (boxed) memcpy(&value, (unsigned char *)boxed + 0x28, sizeof value);  // boxed int payload
-    int ok = value >= 0 && value < WEATHER_COUNT && config_set_weather(value);
+    int ok = config_set_weather(weather_mode_at(value, weather_hold_has_fog_presets()));
     if (ok) ((PropertyChangedFn)(game + PROPERTY_CHANGED))(page, property);
     log_set("TimeLockWeather", value, ok);
 }
@@ -411,6 +443,8 @@ int settings_page_verify(const unsigned char *image, size_t image_size, LogFn lo
         {FLOAT_TEMPLATE, "\x40\x57\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x48", 16, "float property template"},
         {LIST_TEMPLATE, "\x40\x57\x48\x83\xec\x30\x48\xc7\x44\x24\x20\xfe\xff\xff\xff\x48", 16, "list property template"},
         {MAKE_WEATHER_LIST, "\x40\x57\x48\x83\xec\x30\x48\xc7\x44\x24\x28\xfe\xff\xff\xff\x48", 16, "weather list maker"},
+        {MAKE_ISLAND_LIST, "\x40\x57\x48\x83\xec\x30\x48\xc7\x44\x24\x28\xfe\xff\xff\xff\x48", 16, "island weather list maker"},
+        {ISLAND_LIST_COUNT, "\x83\xfb\x08", 3, "island weather list size"},
         {WEATHER_LIST_COUNT, "\x83\xfb\x05", 3, "weather list size"},
     };
     char line[200];
@@ -434,7 +468,10 @@ int settings_page_verify(const unsigned char *image, size_t image_size, LogFn lo
     if (!is_lea(image, image_size, LIST_TEMPLATE_NAME, 0x05) || lea_target(image, LIST_TEMPLATE_NAME) + 13 > image_size ||
         memcmp(image + lea_target(image, LIST_TEMPLATE_NAME), "OnOffOptions", 13) ||
         !call_to(image, image_size, MAKE_WEATHER_CALL, WEATHER_LIST_CTOR) || !is_lea(image, image_size, WEATHER_LIST_CTOR + 0x1d, 0x05) ||
-        lea_target(image, WEATHER_LIST_CTOR + 0x1d) != WEATHER_LIST_VTABLE) {
+        lea_target(image, WEATHER_LIST_CTOR + 0x1d) != WEATHER_LIST_VTABLE ||
+        !call_to(image, image_size, MAKE_ISLAND_CALL, ISLAND_LIST_CTOR) ||
+        !is_lea(image, image_size, ISLAND_LIST_CTOR + 0x1d, 0x05) ||
+        lea_target(image, ISLAND_LIST_CTOR + 0x1d) != ISLAND_LIST_VTABLE) {
         if (log) log("TIME LOCK PAGE: weather list didn't match; no Settings rows.\r\n");
         return 0;
     }
@@ -509,5 +546,12 @@ void settings_page_refresh(void *page){
 }
 
 #ifdef WEATHER_CONTROL_TEST
+__declspec(dllexport) int WeatherTestWeatherRow(int index, int with_fog) {
+    int mode = weather_mode_at(index, with_fog);
+    return mode < 0 || weather_index(mode, with_fog) == index ? mode : -1;
+}
+__declspec(dllexport) int WeatherTestWeatherPageVerify(void *base, size_t size) {
+    return settings_page_verify(base, size, NULL);
+}
 void settings_page_test_bind(void *base){game=base;}
 #endif
