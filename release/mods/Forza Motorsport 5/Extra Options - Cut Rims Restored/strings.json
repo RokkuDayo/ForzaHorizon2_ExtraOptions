@@ -1,0 +1,12 @@
+{
+  "format_version": 1,
+  "fallback_language": "EN",
+  "languages": {
+    "EN": {
+      "List_PartManufacturer": {
+        "32769": "Zender",
+        "32770": "Lorinser"
+      }
+    }
+  }
+}

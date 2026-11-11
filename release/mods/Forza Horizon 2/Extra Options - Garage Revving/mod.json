@@ -1,0 +1,9 @@
+{
+  "format_version": 1,
+  "id": "extraoptions-garagerevving",
+  "name": "Extra Options - Garage Revving",
+  "author": "Arthur (RokkuDayo)",
+  "version": "1.0.0",
+  "description": "Built-in addon for the garage revving feature.",
+  "dependencies": []
+}

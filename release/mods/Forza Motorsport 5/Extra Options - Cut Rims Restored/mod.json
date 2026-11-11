@@ -1,0 +1,11 @@
+{
+  "format_version": 1,
+  "id": "extraoptions-cutrimsrestored",
+  "name": "Extra Options - Cut Rims Restored",
+  "author": "RokkuDayo",
+  "version": "1.0.0",
+  "description": "Restores the Lorinser and Zender rims that were cut from the final game.",
+  "database": "database.json",
+  "media": "media",
+  "dependencies": []
+}

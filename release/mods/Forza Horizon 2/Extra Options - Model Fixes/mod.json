@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "id": "extraoptions-modelfixes",
+  "name": "Extra Options - Model Fixes",
+  "author": "Arthur (RokkuDayo)",
+  "version": "1.0.0",
+  "description": "Fixes the left mirror in the 1999 SRT Viper GTS ACR using the material for the right mirror.",
+  "media": "media",
+  "dependencies": []
+}

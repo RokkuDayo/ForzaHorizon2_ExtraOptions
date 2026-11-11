@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "id": "extraoptions-weathercontrol",
+  "name": "Extra Options - Weather Control",
+  "author": "BlackPanthaa; adapted by Arthur (RokkuDayo)",
+  "version": "1.1.0",
+  "description": "Native pause-menu time and weather controls.",
+  "dependencies": [],
+  "media": "plugins/EO_WeatherControl/Media"
+}

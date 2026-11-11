@@ -1,0 +1,94 @@
+{
+  "version": "1.0.3",
+  "dll": {
+    "bytes": 13824,
+    "sha256": "ba6b6df6446c1c0d9f6045759b57e215ba00fe26b9d40e075907dffd56e98031",
+    "exports": [
+      "FH2PluginInitialize"
+    ]
+  },
+  "regression": {
+    "result": "PASS",
+    "outpost_full_snapshot_name_and_exact_restore": true,
+    "outpost_pending_command_exit_restore": true,
+    "actual_native_UICar_map": true,
+    "native_callable_clone_invoke_destroy": true,
+    "native_car_meet_reader": true,
+    "actual_CCarDynamics_get_set": true,
+    "idle_partial_full": [
+      0,
+      0.4,
+      1
+    ],
+    "clutch_handbrake_preparation_and_guard": true,
+    "native_reset_immediately_before_car_snapshot": true,
+    "ordinary_physics_getter_pointer_and_bytes_unchanged": true,
+    "parked_input_restored_on_exit": true,
+    "other_input_preserved": true,
+    "focus_gate": true,
+    "modal_and_inactive_page_gate": true,
+    "preview_replacement_cleanup": true,
+    "page_exit_cancels_throttle": true,
+    "existing_callbacks_preserved": true,
+    "reference_balances": true,
+    "native_snapshot_getter_and_hash": true,
+    "queued_blend_override_and_exact_restore": true,
+    "snapshot_enable_count_preserved": true,
+    "page_scoped_mix_across_preview_replacement": true,
+    "immediate_exit_restoration_order": true,
+    "zero_blend_and_manager_replacement_guard": true,
+    "temporary_music_five_percent_and_restore": true,
+    "music_enable_count_preserved": true,
+    "already_muted_music_stays_muted": true,
+    "native_Gas_localization_and_RT_property_mapping": true,
+    "footer_no_duplicates_and_clear_rebuild": true,
+    "gas_last_native_collection_order_and_lifetime": true,
+    "localized_UI_ownership_balanced": true,
+    "native_linear_SFX_fader_five_percent_and_restore": true,
+    "SFX_snapshot_unchanged": true,
+    "SFX_GUID_only": true,
+    "replaced_audio_engine_guard": true,
+    "effects_enable_count_preserved": true,
+    "muted_effects_preserved": true,
+    "car_snapshot_never_changed": true,
+    "live_engine_simulation_or_audio_tested": false
+  },
+  "logging": {
+    "on": "PASS",
+    "off": "PASS",
+    "missing": "PASS"
+  },
+  "live_outpost_audio_tested": false,
+  "release_metadata": {
+    "windows_version_info": true,
+    "original_binary_reproduced": true,
+    "rebuild_identical": true,
+    "runtime_code_unchanged": true,
+    "imports_unchanged": true,
+    "signed": false,
+    "new_virustotal_verdict": {
+      "sha256": "ba6b6df6446c1c0d9f6045759b57e215ba00fe26b9d40e075907dffd56e98031",
+      "date_local": "2026-10-27",
+      "analysis_time_local": "18:57:50 America/Sao_Paulo",
+      "url": "https://www.virustotal.com/gui/file/ba6b6df6446c1c0d9f6045759b57e215ba00fe26b9d40e075907dffd56e98031",
+      "flagged": 1,
+      "reported_total": 68,
+      "detections": {
+        "Cynet": "Malicious (score: 100)"
+      },
+      "undetected_checked": [
+        "McAfee Scanner",
+        "Microsoft",
+        "Acronis (Static ML)",
+        "SentinelOne (Static ML)"
+      ],
+      "timeouts": [
+        "Skyhigh (SWG)",
+        "Trellix ENS",
+        "TrendMicro"
+      ],
+      "submitted_with_user_approval": true,
+      "false_positive_vendor_submission": false
+    }
+  }
+}

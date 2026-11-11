@@ -1,0 +1,6 @@
+__pycache__/
+build/
+dist/
+/weather-control/translations.h
+/weather-control/version.res
+/weather-control/diagnostics/clock-state.json

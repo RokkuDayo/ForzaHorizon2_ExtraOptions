@@ -1,0 +1,101 @@
+{
+  "format": "fh2-carbin-patch",
+  "format_version": 1,
+  "base_sha256": "a659c82e733d901bf39f37300fee9cef0b71bbc1e472f74df27eab241a5c533a",
+  "ordinal": 461,
+  "media_name": "toy_suprarz_98",
+  "parts": [],
+  "groups": [
+    {
+      "op": "merge",
+      "key": 34,
+      "models": [
+        {
+          "op": "upsert",
+          "key": "ad0f5f8cfb6c44408c2f27c6bb374a34",
+          "value": {
+            "version": 14,
+            "path": "game:\\media\\cars\\toy_suprarz_98\\scene\\exterior\\bumperf\\bumperf_i.modelbin",
+            "transform_hex": "0000803f000000000000000000000000000000000000803f000000000000000000000000000000000000803f000000000000000000000000000000000000803f",
+            "lod": 127,
+            "bone_name": "<root>",
+            "bone_index": 0,
+            "flags": 0,
+            "draw_groups": 13,
+            "material_overrides": [],
+            "material_indices": [
+              {
+                "name": "Chrome|bumperFBadge_i",
+                "value": 0
+              },
+              {
+                "name": "LBK_smoothChrome_custom_L|bumperFSideMarkers_i",
+                "value": 0
+              },
+              {
+                "name": "LBK_smoothChrome_custom_R|bumperFSideMarkers_i",
+                "value": 0
+              },
+              {
+                "name": "TOY_badge_001|bumperFBadge_i",
+                "value": 0
+              },
+              {
+                "name": "backfacingGeo",
+                "value": 0
+              },
+              {
+                "name": "carpaint",
+                "value": 1
+              },
+              {
+                "name": "frame",
+                "value": 0
+              },
+              {
+                "name": "gls_patternCH1_003_custom_amber|bumperFSideMarkers_i",
+                "value": 0
+              },
+              {
+                "name": "gls_ridgesCH1_003_custom_amber|bumperFSideMarkers_i",
+                "value": 0
+              },
+              {
+                "name": "gls_ridgesCH1_003_custom_clear|bumperFSideMarkers_i",
+                "value": 0
+              },
+              {
+                "name": "grilleplasticFilled_010|grille_i",
+                "value": 0
+              },
+              {
+                "name": "undercarriage_001",
+                "value": 0
+              }
+            ],
+            "has_hash": 0,
+            "hash_hex": "",
+            "unknown8_hex": "000080bf",
+            "ao_maps": [
+              {
+                "version": 3,
+                "path": "game:\\media\\cars\\toy_suprarz_98\\textures\\ao\\bumperf_i_ao.swatchbin",
+                "data_hex": "ffffffffffffffff0000000000000000000000000000000001001f"
+              }
+            ],
+            "unknown10_hex": "00",
+            "unknown11_hex": "010101000000010000000100000001000000",
+            "part_name": "BumperF",
+            "guid": "ad0f5f8cfb6c44408c2f27c6bb374a34",
+            "unknown14_hex": "0000000000000000000000000000000000000000",
+            "unknown15_hex": "",
+            "upgrade_ids": [
+              461003
+            ]
+          }
+        }
+      ],
+      "upgrades": []
+    }
+  ]
+}

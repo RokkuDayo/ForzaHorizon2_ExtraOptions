@@ -1,0 +1,10 @@
+{
+  "format_version": 1,
+  "id": "extraoptions-modelfixes",
+  "name": "Extra Options - Model Fixes",
+  "author": "Arthur (RokkuDayo)",
+  "version": "1.0.0",
+  "description": "Fixes the AO texture not being assigned to the Trial front bumper for the Toyota Supra RZ.",
+  "media": "media",
+  "dependencies": []
+}

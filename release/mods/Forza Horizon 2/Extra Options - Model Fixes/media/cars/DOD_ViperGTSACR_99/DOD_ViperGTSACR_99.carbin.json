@@ -1,0 +1,69 @@
+{
+  "format": "fh2-carbin-patch",
+  "format_version": 1,
+  "base_sha256": "69582a95b7fc51d965af207fadc4e72dd9b5611d259a10702461de7dbfa3f0d3",
+  "ordinal": 483,
+  "media_name": "dod_vipergtsacr_99",
+  "parts": [
+    {
+      "op": "merge",
+      "key": 2,
+      "models": [
+        {
+          "op": "upsert",
+          "key": "b5fd38b14250e74581b258f27a40f4be",
+          "value": {
+            "version": 15,
+            "path": "game:\\media\\cars\\dod_vipergtsacr_99\\scene\\exterior\\doors\\wingmirrorl_a.modelbin",
+            "transform_hex": "0000803f000000000000000000000000000000000000803f000000000000000000000000000000000000803f000000000000000000000000000000000000803f",
+            "lod": 31,
+            "bone_name": "<root>",
+            "bone_index": 0,
+            "flags": 0,
+            "draw_groups": 7,
+            "material_overrides": [],
+            "material_indices": [
+              {
+                "name": "backfacinggeo",
+                "value": 0
+              },
+              {
+                "name": "blkplastic_ngl",
+                "value": 0
+              },
+              {
+                "name": "carpaint",
+                "value": 8
+              },
+              {
+                "name": "mirrorleft",
+                "value": 0
+              },
+              {
+                "name": "rubber_smooth",
+                "value": 0
+              }
+            ],
+            "has_hash": 1,
+            "hash_hex": "cdcccc3d21ea56a2",
+            "unknown8_hex": "000080bf",
+            "ao_maps": [
+              {
+                "version": 3,
+                "path": "game:\\media\\cars\\dod_vipergtsacr_99\\textures\\ao\\fenders_a_ao.swatchbin",
+                "data_hex": "ffffffffffffffff0000000000000000000000000000000001001f"
+              }
+            ],
+            "unknown10_hex": "00",
+            "unknown11_hex": "010100000000000000000000000000000000",
+            "part_name": "Doors",
+            "guid": "b5fd38b14250e74581b258f27a40f4be",
+            "unknown14_hex": "0000000000000000000000000000000000000000",
+            "unknown15_hex": "01000000"
+          }
+        }
+      ]
+    }
+  ],
+  "groups": []
+}

@@ -1,0 +1,146 @@
+{
+  "EN": [
+    "Change time",
+    "Time of Day Lock",
+    "Locked Hour",
+    "Weather",
+    "Hold the free-roam clock at the selected hour. Events keep their own time.",
+    "Choose an hour from 00:00 to 23:45, in 15-minute steps.",
+    "Current keeps dynamic weather. Events keep their own weather."
+  ],
+  "BR": [
+    "Alterar horário",
+    "Fixar horário",
+    "Horário fixo",
+    "Clima",
+    "Fixa o horário no modo livre. Os eventos mantêm seu próprio horário.",
+    "Escolha um horário de 00:00 a 23:45, em intervalos de 15 minutos.",
+    "Atual mantém o clima dinâmico. Os eventos mantêm seu próprio clima."
+  ],
+  "DE": [
+    "Uhrzeit ändern",
+    "Tageszeit fixieren",
+    "Feste Uhrzeit",
+    "Wetter",
+    "Hält die Uhrzeit in der freien Fahrt fest. Events behalten ihre eigene Tageszeit.",
+    "Wähle eine Uhrzeit von 00:00 bis 23:45 in Schritten von 15 Minuten.",
+    "Aktuell behält dynamisches Wetter bei. Events behalten ihr eigenes Wetter."
+  ],
+  "FR": [
+    "Changer l’heure",
+    "Bloquer l’heure",
+    "Heure fixe",
+    "Météo",
+    "Bloque l’heure en exploration libre. Les épreuves gardent leur propre heure.",
+    "Choisissez une heure de 00:00 à 23:45 par pas de 15 minutes.",
+    "Actuelle conserve la météo dynamique. Les épreuves gardent leur propre météo."
+  ],
+  "ES": [
+    "Cambiar hora",
+    "Fijar hora del día",
+    "Hora fija",
+    "Clima",
+    "Fija la hora en el modo libre. Los eventos conservan su propia hora.",
+    "Elige una hora de 00:00 a 23:45, en intervalos de 15 minutos.",
+    "Actual mantiene el clima dinámico. Los eventos conservan su propio clima."
+  ],
+  "IT": [
+    "Cambia ora",
+    "Blocca ora",
+    "Ora fissa",
+    "Meteo",
+    "Blocca l’ora nella modalità libera. Gli eventi mantengono il proprio orario.",
+    "Scegli un orario da 00:00 a 23:45 a intervalli di 15 minuti.",
+    "Attuale mantiene il meteo dinamico. Gli eventi mantengono il proprio meteo."
+  ],
+  "JP": [
+    "時刻を変更",
+    "時刻を固定",
+    "固定する時刻",
+    "天候",
+    "フリーロームの時刻を固定します。イベントでは指定の時刻が使われます。",
+    "00:00から23:45まで15分刻みで選びます。",
+    "現在を選ぶと動的な天候を維持します。イベントでは指定の天候が使われます。"
+  ],
+  "KO": [
+    "시간 변경",
+    "시간 고정",
+    "고정 시간",
+    "날씨",
+    "자유 주행의 시간을 고정합니다. 이벤트는 자체 시간을 유지합니다.",
+    "00:00부터 23:45까지 15분 단위로 선택합니다.",
+    "현재를 선택하면 동적 날씨를 유지합니다. 이벤트는 자체 날씨를 유지합니다."
+  ],
+  "CHT": [
+    "變更時間",
+    "固定時間",
+    "固定時刻",
+    "天氣",
+    "固定自由漫遊的時間。賽事保留自己的時間設定。",
+    "以15分鐘為單位，選擇00:00至23:45的時間。",
+    "目前會保留動態天氣。賽事保留自己的天氣設定。"
+  ],
+  "CZ": [
+    "Změnit čas",
+    "Uzamknout čas",
+    "Nastavený čas",
+    "Počasí",
+    "Uzamkne čas ve volné jízdě. Závody si ponechají vlastní čas.",
+    "Vyber čas od 00:00 do 23:45 po 15 minutách.",
+    "Aktuální zachová dynamické počasí. Závody si ponechají vlastní počasí."
+  ],
+  "HU": [
+    "Idő módosítása",
+    "Idő rögzítése",
+    "Rögzített idő",
+    "Időjárás",
+    "Rögzíti a szabad barangolás idejét. Az események megtartják a saját idejüket.",
+    "Válassz időt 00:00 és 23:45 között, 15 perces lépésekben.",
+    "A jelenlegi megőrzi a változó időjárást. Az események saját időjárást használnak."
+  ],
+  "PL": [
+    "Zmień czas",
+    "Zablokuj czas",
+    "Ustawiona godzina",
+    "Pogoda",
+    "Blokuje czas podczas swobodnej jazdy. Zawody zachowują własny czas.",
+    "Wybierz godzinę od 00:00 do 23:45, co 15 minut.",
+    "Bieżąca zachowuje dynamiczną pogodę. Zawody zachowują własną pogodę."
+  ],
+  "RU": [
+    "Изменить время",
+    "Зафиксировать время",
+    "Заданное время",
+    "Погода",
+    "Фиксирует время в свободной езде. События сохраняют своё время.",
+    "Выберите время с 00:00 до 23:45 с шагом 15 минут.",
+    "Текущая сохраняет динамическую погоду. События сохраняют свою погоду."
+  ],
+  "NL": [
+    "Tijd wijzigen",
+    "Tijd vastzetten",
+    "Vaste tijd",
+    "Weer",
+    "Zet de tijd tijdens vrij rijden vast. Evenementen behouden hun eigen tijd.",
+    "Kies een tijd van 00:00 tot 23:45 in stappen van 15 minuten.",
+    "Huidig behoudt dynamisch weer. Evenementen behouden hun eigen weer."
+  ],
+  "GB": [
+    "Change time",
+    "Time of Day Lock",
+    "Locked Hour",
+    "Weather",
+    "Hold the free-roam clock at the selected hour. Events keep their own time.",
+    "Choose an hour from 00:00 to 23:45, in 15-minute steps.",
+    "Current keeps dynamic weather. Events keep their own weather."
+  ],
+  "MX": [
+    "Cambiar hora",
+    "Fijar hora del día",
+    "Hora fija",
+    "Clima",
+    "Fija la hora en el modo libre. Los eventos conservan su propia hora.",
+    "Elige una hora de 00:00 a 23:45, en intervalos de 15 minutos.",
+    "Actual mantiene el clima dinámico. Los eventos conservan su propio clima."
+  ]
+}

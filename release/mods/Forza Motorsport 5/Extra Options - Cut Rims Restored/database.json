@@ -1,0 +1,179 @@
+{
+  "format_version": 2,
+  "target": {
+    "database": "media/db/gamedb.slt",
+    "base_sha256": "5e567ae8006a771fac2c9561e524ad9c5d72280248731fc4901323246e9adc04"
+  },
+  "policy": {
+    "id_conflicts": "nearest",
+    "update_conflicts": "last_wins"
+  },
+  "requires": {
+    "records": {
+      "WheelCategories": [
+        {
+          "ID": 4
+        },
+        {
+          "ID": 3
+        },
+        {
+          "ID": 2
+        }
+      ]
+    }
+  },
+  "tables": {
+    "List_PartManufacturer": {
+      "key": [
+        "Id"
+      ],
+      "insert": [
+		{
+          "Id": 801,
+          "PartManufacturer": "_&1568964609",
+          "LogoPath": "decalzen"
+        },
+		{
+          "Id": 802,
+          "PartManufacturer": "_&1568964610",
+          "LogoPath": "decallor"
+        }
+      ]
+    },
+    "List_Wheels": {
+      "key": [
+        "ID"
+      ],
+      "insert": [
+        {
+          "ID": 800,
+          "MediaName": "ZEN_Challenge",
+          "DisplayName": "Challenge",
+          "PartManufacturerID": 801,
+          "Mass": 30.0,
+          "Price": 3400,
+          "IsStock": 0,
+          "Type": "",
+          "Lip": 0,
+          "CenterCap": 0,
+          "Logo": 0,
+          "ActualColor": "",
+          "WheelColor": "",
+          "RGB": 0,
+          "BrakeDrawOffset": 0.0,
+          "IconPath": "ZEN_Challenge"
+        },
+        {
+          "ID": 801,
+          "MediaName": "ZEN_Dynamic",
+          "DisplayName": "Dynamic",
+          "PartManufacturerID": 801,
+          "Mass": 30.0,
+          "Price": 3400,
+          "IsStock": 0,
+          "Type": "",
+          "Lip": 0,
+          "CenterCap": 0,
+          "Logo": 0,
+          "ActualColor": "",
+          "WheelColor": "",
+          "RGB": 0,
+          "BrakeDrawOffset": 0.0,
+          "IconPath": "ZEN_Dynamic"
+        },
+        {
+          "ID": 802,
+          "MediaName": "ZEN_Turbo2",
+          "DisplayName": "Turbo Phase 2",
+          "PartManufacturerID": 801,
+          "Mass": 30.0,
+          "Price": 3400,
+          "IsStock": 0,
+          "Type": "",
+          "Lip": 0,
+          "CenterCap": 0,
+          "Logo": 0,
+          "ActualColor": "",
+          "WheelColor": "",
+          "RGB": 0,
+          "BrakeDrawOffset": 0.0,
+          "IconPath": "ZEN_Turbo2"
+        },
+        {
+          "ID": 803,
+          "MediaName": "LOR_RSK6",
+          "DisplayName": "RSK6",
+          "PartManufacturerID": 802,
+          "Mass": 35.0,
+          "Price": 3700,
+          "IsStock": 0,
+          "Type": "",
+          "Lip": 0,
+          "CenterCap": 0,
+          "Logo": 0,
+          "ActualColor": "",
+          "WheelColor": "",
+          "RGB": 0,
+          "BrakeDrawOffset": 0.0,
+          "IconPath": "LOR_RSK6"
+        },
+        {
+          "ID": 804,
+          "MediaName": "LOR_Type_LM6",
+          "DisplayName": "LM6",
+          "PartManufacturerID": 802,
+          "Mass": 35.0,
+          "Price": 3700,
+          "IsStock": 0,
+          "Type": "",
+          "Lip": 0,
+          "CenterCap": 0,
+          "Logo": 0,
+          "ActualColor": "",
+          "WheelColor": "",
+          "RGB": 0,
+          "BrakeDrawOffset": 0.0,
+          "IconPath": "LOR_Type_LM6"
+        }
+      ]
+    },
+    "WheelAnnotations": {
+      "key": [
+        "ID"
+      ],
+      "insert": [
+        {
+          "ID": 144,
+          "WheelID": 800,
+          "CategoryID": 3,
+          "DisplayOrder": 6000
+        },
+        {
+          "ID": 145,
+          "WheelID": 801,
+          "CategoryID": 3,
+          "DisplayOrder": 6000
+        },
+        {
+          "ID": 146,
+          "WheelID": 802,
+          "CategoryID": 3,
+          "DisplayOrder": 6000
+        },
+        {
+          "ID": 147,
+          "WheelID": 803,
+          "CategoryID": 3,
+          "DisplayOrder": 6000
+        },
+        {
+          "ID": 148,
+          "WheelID": 804,
+          "CategoryID": 3,
+          "DisplayOrder": 6000
+        }
+      ]
+    }
+  }
+}
