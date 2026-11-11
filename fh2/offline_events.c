@@ -683,10 +683,19 @@ typedef struct RouteGate {
 static RouteGate *route_gates;
 static SRWLOCK route_gate_lock = SRWLOCK_INIT;
 static volatile LONG route_generation;
-static LONG applied_generation = -1;
+static LONG applied_generation = -1, playground_generation = -1;
 static int show_playgrounds, native_routes[2];
 static int last_map = -1, last_campaign = -1, last_network = -1, last_prologue = -1;
 static ULONGLONG next_filter_poll;
+
+typedef struct {
+    int event_id;
+    unsigned route;
+    int available;
+} ChampionshipRoute;
+static ChampionshipRoute *championship_routes;
+static int championship_route_count, route_data_ready;
+static int route_data_map = -1, route_data_campaign = -1;
 
 void offline_events_configure(int playgrounds) {
     show_playgrounds = playgrounds != 0;
@@ -738,22 +747,70 @@ static void set_event_feature(GameString *name, unsigned char value) {
     ((void (*)(const GameString *, unsigned char))(image + 0x899010))(name, value);
 }
 
-static int mark_routes(RouteGate *head, const char *sql, int playground) {
-    void *rows = query_database(sql);
+static int mark_playground_routes(RouteGate *head) {
+    void *rows = query_database(
+        "SELECT DISTINCT t.Route AS RouteId FROM AnthemOnlineEvents e "
+        "JOIN Tracks t ON t.id=e.TrackId WHERE e.RaceModeId IN (25,26)");
     if (!rows) return 0;
     int count = ((int (*)(void *))(*(void ***)rows)[0x148 / 8])(rows);
     for (int i = 0; i < count; ++i) {
         unsigned route = (unsigned)row_integer(rows, "RouteId");
-        for (RouteGate *gate = head; gate; gate = gate->next) {
-            if (gate->route == route) {
-                if (playground) gate->playground = 1;
-                else gate->championship = 1;
-            }
-        }
+        for (RouteGate *gate = head; gate; gate = gate->next)
+            if (gate->route == route) gate->playground = 1;
         ((void (*)(void *, int))(*(void ***)rows)[0x160 / 8])(rows, 1);
     }
     release_object(rows);
     return count >= 0;
+}
+
+static int load_championship_routes(int map, int campaign) {
+    if (championship_routes) HeapFree(GetProcessHeap(), 0, championship_routes);
+    championship_routes = NULL;
+    championship_route_count = 0;
+    if (campaign <= 0) return 1;
+
+    char sql[384];
+    char *end = append_number(append_text(sql,
+        "SELECT DISTINCT e.AnthemEventId AS EventId,t.Route AS RouteId FROM AnthemEvents e "
+        "JOIN AnthemEventRaces r ON r.AnthemEventId=e.AnthemEventId "
+        "JOIN Tracks t ON t.id=r.TrackId WHERE e.CampaignId="), (unsigned)campaign);
+    append_number(append_text(end, " AND t.MediaTrack="), map ? 549 : 542);
+    void *rows = query_database(sql);
+    if (!rows) return 0;
+    int count = ((int (*)(void *))(*(void ***)rows)[0x148 / 8])(rows);
+    if (count > 0 && (size_t)count <= SIZE_MAX / sizeof(*championship_routes))
+        championship_routes = HeapAlloc(GetProcessHeap(), 0,
+                                         (size_t)count * sizeof(*championship_routes));
+    if (championship_routes) {
+        for (int i = 0; i < count; ++i) {
+            championship_routes[i] = (ChampionshipRoute){
+                row_integer(rows, "EventId"), (unsigned)row_integer(rows, "RouteId"), 1};
+            ((void (*)(void *, int))(*(void ***)rows)[0x160 / 8])(rows, 1);
+        }
+        championship_route_count = count;
+    }
+    release_object(rows);
+    return count == 0 || championship_routes != NULL;
+}
+
+/* The native career event predicate receives CForzaProfile +0xf0 and an
+ * AnthemEventId. It consults the current regional playthrough's completed
+ * event set and completion count, including progress loaded from a save. */
+static void *championship_manager(const unsigned char *profile, int map) {
+    void *manager, *tree, *root, *owner, *playthrough, *progress, *vtable;
+    return profile && memory_read_pointer(profile + 0xf0, &manager) &&
+        memory_read_pointer((unsigned char *)manager + 0x10, &tree) &&
+        memory_read_pointer((unsigned char *)tree + 8, &root) &&
+        memory_read_pointer((unsigned char *)manager + 0xc8, &tree) &&
+        memory_read_pointer((unsigned char *)tree + 8, &root) &&
+        memory_read_pointer((unsigned char *)manager + (map ? 0x100 : 0xf8), &owner) &&
+        memory_read_pointer((unsigned char *)owner + (map ? 0 : 8), &playthrough) &&
+        memory_read_pointer(playthrough, &vtable) &&
+        (uintptr_t)vtable >= (uintptr_t)image &&
+        (uintptr_t)vtable - (uintptr_t)image < 0x34aba60 &&
+        memory_read_pointer((unsigned char *)playthrough + 0x20, &progress) &&
+        memory_read_pointer((unsigned char *)progress + 8, &tree) &&
+        memory_read_pointer((unsigned char *)tree + 8, &root) ? manager : NULL;
 }
 
 static int route_visible(const RouteGate *gate, int all, int network, int map, int ready,
@@ -766,29 +823,45 @@ static int route_visible(const RouteGate *gate, int all, int network, int map, i
 }
 
 static void refresh_route_gates(int value, int network, int map, int campaign,
-                                int prologue_complete) {
+                                int prologue_complete, void *career) {
     LONG generation = InterlockedCompareExchange(&route_generation, 0, 0);
-    if (last_enabled == value && last_map == map && last_campaign == campaign &&
-        last_network == network && last_prologue == prologue_complete &&
-        applied_generation == generation) return;
+    int changed = last_enabled != value || last_map != map || last_campaign != campaign ||
+        last_network != network || last_prologue != prologue_complete ||
+        applied_generation != generation;
+    int ready = map == 0 || map == 1;
+    if (value && !network && ready) {
+        if (!route_data_ready || route_data_map != map || route_data_campaign != campaign) {
+            route_data_ready = load_championship_routes(map, campaign);
+            route_data_map = map;
+            route_data_campaign = campaign;
+            changed = 1;
+        }
+        ready = route_data_ready;
+        for (int i = 0; career && i < championship_route_count; ++i) {
+            ChampionshipRoute *route = &championship_routes[i];
+            int available = ((int (*)(void *, int))(image + 0x3a9d80))(career, route->event_id) == 1;
+            changed |= available != route->available;
+            route->available = available;
+        }
+    }
+    if (!changed) return;
     AcquireSRWLockShared(&route_gate_lock);
     RouteGate *head = route_gates;
     ReleaseSRWLockShared(&route_gate_lock);
     if (!head) return;
-    int ready = map == 0 || map == 1;
-    if (value && !network) {
+    if (value && !network && ready) {
+        if (playground_generation != generation) {
+            ready = mark_playground_routes(head);
+            if (ready) playground_generation = generation;
+        }
         for (RouteGate *gate = head; gate; gate = gate->next)
-            gate->playground = gate->championship = 0;
-        ready &= mark_routes(head,
-            "SELECT DISTINCT t.Route AS RouteId FROM AnthemOnlineEvents e "
-            "JOIN Tracks t ON t.id=e.TrackId WHERE e.RaceModeId IN (25,26)", 1);
-        if (campaign > 0) {
-            char sql[320];
-            append_number(append_text(sql,
-                "SELECT DISTINCT t.Route AS RouteId FROM AnthemEvents e "
-                "JOIN AnthemEventRaces r ON r.AnthemEventId=e.AnthemEventId "
-                "JOIN Tracks t ON t.id=r.TrackId WHERE e.CampaignId="), (unsigned)campaign);
-            ready &= mark_routes(head, sql, 0);
+            gate->championship = 0;
+        for (int i = 0; i < championship_route_count; ++i) {
+            const ChampionshipRoute *route = &championship_routes[i];
+            if (!route->available) continue;
+            for (RouteGate *gate = head; gate; gate = gate->next)
+                if (gate->island == map && gate->route == route->route)
+                    gate->championship = 1;
         }
     }
     for (RouteGate *gate = head; gate; gate = gate->next) {
@@ -813,7 +886,7 @@ static void refresh_route_gates(int value, int network, int map, int campaign,
 
 /* CPlayerManager returns CPlayer. The player's native profile getter returns
  * CForzaProfile; CareerState lives in that profile's typed save registry. */
-static int read_filter_career(int *map, int *campaign) {
+static int read_filter_career(int *map, int *campaign, void **career) {
     void *service = ((void *(*)(void))(image + 0x327270))();
     void *player = service ?
         ((void *(*)(void *))(*(void ***)service)[0x48 / 8])(service) : NULL;
@@ -836,11 +909,20 @@ static int read_filter_career(int *map, int *campaign) {
      * the native route-activation logic at 0x89938e: loaded MediaTrack +8. */
     void *world;
     unsigned media_track;
-    int result = state && memory_read(state + 0x28, campaign, sizeof(*campaign)) &&
+    int result = state &&
         memory_read_pointer(image + 0x365ad70, &world) && world &&
         memory_read((unsigned char *)world + 8, &media_track, sizeof(media_track)) &&
         (media_track == 0x21e || media_track == 0x225);
-    if (result) *map = media_track == 0x225;
+    if (result) {
+        int island = media_track == 0x225;
+        result = memory_read(state + (island ? 0x2c : 0x28), campaign, sizeof(*campaign));
+        if (result) *map = island;
+        if (result && career && *campaign > 0) {
+            int location;
+            if (memory_read(state + 8, &location, sizeof(location)) && location == island)
+                *career = championship_manager(profile, island);
+        }
+    }
     release_object(value.counter);
     return result;
 }
@@ -854,12 +936,13 @@ void offline_events_tick(void) {
        rather than the simulation pause state so the world map keeps its markers. */
     int value = enabled() && autodrive_game_event_context() == 2;
     int network = value && in_network_session(), map = -1, campaign = -1;
+    void *career = NULL;
     unsigned stage = 0;
     /* After the profile and world are ready, use the native stage reader.
      * It returns stage 4 when a completed save has no iestate record. */
-    if (value && !network && read_filter_career(&map, &campaign))
+    if (value && !network && read_filter_career(&map, &campaign, &career))
         stage = ((unsigned (*)(void))(image + 0xa65d90))();
-    refresh_route_gates(value, network, map, campaign, stage == 4);
+    refresh_route_gates(value, network, map, campaign, stage == 4, career);
 }
 
 void offline_events_resource_parsed(int success) {
@@ -1002,15 +1085,15 @@ __declspec(dllexport) void Fh2TestPollEventFilters(void) {
 }
 
 __declspec(dllexport) int Fh2TestReadEventCareer(int *map, int *campaign) {
-    return read_filter_career(map, campaign);
+    return read_filter_career(map, campaign, NULL);
 }
 __declspec(dllexport) void Fh2TestEventFilters(int all, int network, int map, int campaign,
                                              int playgrounds) {
     offline_events_configure(playgrounds);
-    refresh_route_gates(all, network, map, campaign, 1);
+    refresh_route_gates(all, network, map, campaign, 1, NULL);
 }
 __declspec(dllexport) void Fh2TestEventFiltersRepeat(int all, int network, int map, int campaign) {
-    refresh_route_gates(all, network, map, campaign, 1);
+    refresh_route_gates(all, network, map, campaign, 1, NULL);
 }
 __declspec(dllexport) size_t Fh2TestOfflineResultsXaml(const char *text,size_t n,char *out,size_t cap){return offline_results_xaml(text,n,out,cap);}
 __declspec(dllexport) void Fh2TestOfflineEventsReady(int value) {
