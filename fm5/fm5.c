@@ -283,13 +283,18 @@ int fm5_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
     }
     if (option(L"Compatibility", L"DisableParentalLocks")) {
         /* CGamerProfile's UGC (247) and multiplayer (254) requests store
-           their results in distinct fields. Use the native Allowed value. */
+           their results in distinct fields. Use the native Allowed value:
+           3, what each request's own already-privileged path writes
+           (0x7d5745 for +0x40, 0x7d58b5 for +0x3c). 4 is the pending value
+           the callers set before the request (0x7d59a2, 0x7d59c2); the
+           Multiplayer gate (0x377b70) keeps polling it, so the tile would
+           never open. */
         sites[count++] = (Site){0x7d5670, 10,
             {0x48,0x89,0x4c,0x24,0x08,0x57,0x48,0x83,0xec,0x30},
-            {0xc7,0x41,0x40,4,0,0,0,0xc3,0x90,0x90}, 0};
+            {0xc7,0x41,0x40,3,0,0,0,0xc3,0x90,0x90}, 0};
         sites[count++] = (Site){0x7d57e0, 10,
             {0x48,0x89,0x4c,0x24,0x08,0x57,0x48,0x83,0xec,0x30},
-            {0xc7,0x41,0x3c,4,0,0,0,0xc3,0x90,0x90}, 0};
+            {0xc7,0x41,0x3c,3,0,0,0,0xc3,0x90,0x90}, 0};
         write_log("PARENTAL: local UGC and multiplayer privileges allowed.\r\n");
     }
     if (option(L"Content", L"OfflineVIP")) {
