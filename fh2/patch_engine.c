@@ -8,6 +8,7 @@
 #include "shared/addon_strings.h"
 #include "shared/addons.h"
 #include "fh2/engine_swaps.h"
+#include "fh2/launch_control.h"
 #include "fh2/photo_environment.h"
 #include "fh2/transmission_swaps.h"
 #include "fh2/autodrive_notice.h"
@@ -154,6 +155,8 @@ static const PatchDefinition *const callback_patches[] = {&local_liveries_hook_p
                                                           &road_hook_patch,
                                                           &treasure_map_hook_patch,
                                                           &vehicle_controls_hook_patch,
+                                                          &launch_control_hook_patches[0],
+                                                          &launch_control_hook_patches[1],
                                                           &headlight_beam_patches[0],
                                                           &headlight_beam_patches[1],
                                                           &headlight_beam_patches[2],
@@ -347,6 +350,10 @@ static int patch_group_enabled(PatchGroup group, const ModOptions *options) {
             return options->unlock_aero_tuning;
         case GROUP_VEHICLE_CONTROLS:
             return 1;
+        case GROUP_LAUNCH_CONTROL:
+            return options->launch_control;
+        case GROUP_STATUS_NOTICE:
+            return options->autodrive || options->launch_control;
         case GROUP_AUTODRIVE:
             return options->autodrive;
         case GROUP_TREASURE_MAP:

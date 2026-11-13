@@ -102,7 +102,7 @@ static void **notice_convert(void *self, void **out, void *value, void *type, vo
 PatchDefinition autodrive_notice_hook_patch = {CONVERTER_SLOT,
                                                0,
                                                8,
-                                               GROUP_AUTODRIVE,
+                                               GROUP_STATUS_NOTICE,
                                                "autodrive_notice_text",
                                                original_pointer,
                                                replacement_pointer,
@@ -120,6 +120,10 @@ void autodrive_notice_prepare(unsigned char *image) {
 }
 
 int autodrive_notice_show(void) {
+    return autodrive_notice_show_label("AUTODRIVE");
+}
+
+int autodrive_notice_show_label(const char *label) {
     autodrive_notice_clear();
     unsigned category_ready;
     if (!memory_read(game + 0x34e1e38, &category_ready, sizeof(category_ready)) ||
@@ -127,7 +131,6 @@ int autodrive_notice_show(void) {
         autodrive_notice_clear();
         return 0;
     }
-    const char *label = "AUTODRIVE";
     void *title = 0, *status = 0;
     ((StringFactory)(game + 0x3d9820))(&title, &label);
     if (title) {

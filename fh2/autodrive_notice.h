@@ -5,6 +5,7 @@
 extern PatchDefinition autodrive_notice_hook_patch;
 void autodrive_notice_prepare(unsigned char *image);
 int autodrive_notice_show(void);
+int autodrive_notice_show_label(const char *label); // the same notice with another title: "<label> On"
 void autodrive_notice_update(float elapsed);
 void autodrive_notice_clear(void);
 #endif

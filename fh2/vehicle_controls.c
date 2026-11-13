@@ -10,6 +10,7 @@
 #include "fh2/offline_events.h"
 #include "fh2/local_liveries.h"
 #include "shared/plugins.h"
+#include "fh2/launch_control.h"
 
 #define ROOF_HOLD_MILLISECONDS 1500u
 #define ROOF_BRANCH_SETTLE_MILLISECONDS 350u
@@ -617,6 +618,7 @@ static void vehicle_update(void *self, float dt, float frame_dt, unsigned frame)
         close_roof_for_car_meet(local_car);
         vehicle_controls_tick(local_car, focused);
         maintain_controls(self);
+        launch_control_tick(local_car, dt, autodrive_game_window_focused());
     }
     ((CarUpdate)(game_image + 0x2a9400))(self, dt, frame_dt, frame);
     if (owned) {
