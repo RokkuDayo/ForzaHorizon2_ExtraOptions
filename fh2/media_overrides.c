@@ -304,6 +304,32 @@ static int native_read_mode(unsigned flags, NativeFileMode *mode) {
     return mode->valid && mode->disposition == OPEN_EXISTING && mode->access == GENERIC_READ;
 }
 
+static void **open_loose_file(void *volume, void **output, const BorrowedGameString *path,
+                              unsigned flags, const NativeFileMode *mode, const wchar_t *physical,
+                              DWORD extra_sharing) {
+    HANDLE handle = CreateFileW(physical, mode->access, mode->sharing | extra_sharing, NULL,
+                                mode->disposition, FILE_ATTRIBUTE_NORMAL | mode->attributes, NULL);
+    if (handle == INVALID_HANDLE_VALUE) {
+        return output;
+    }
+    void *storage = allocate(0x90);
+    if (!storage) {
+        CloseHandle(handle);
+        return output;
+    }
+    void **methods = *(void ***)volume;
+    ((Reference)methods[0x10 / 8])(volume);
+    void *owner = volume;
+    typedef void *(*ConstructFile)(void *, HANDLE, void **, unsigned);
+    void *file = ((ConstructFile)(image + 0x11e04a0))(storage, handle, &owner, flags);
+    methods = *(void ***)file;
+    typedef void (*SetFilename)(void *, const BorrowedGameString *);
+    ((SetFilename)methods[0x280 / 8])(file, path);
+    ((Reference)methods[0x10 / 8])(file);
+    *output = file;
+    return output;
+}
+
 static void **open_addon_file(void *volume, void **output, const BorrowedGameString *path,
                               unsigned flags, unsigned char a, unsigned char b, void *extra) {
     void *fs = absolute_media_filesystem(volume, path);
@@ -329,14 +355,8 @@ static void **open_addon_file(void *volume, void **output, const BorrowedGameStr
     }
     *output = NULL;
 
-    struct {
-        DWORD disposition, access, sharing, attributes;
-        unsigned char valid;
-    } mode;
-
-    typedef void *(*FileMode)(void *, unsigned);
-    ((FileMode)(image + 0x11e1290))(&mode, flags);
-    if (!mode.valid || mode.disposition != OPEN_EXISTING || mode.access != GENERIC_READ) {
+    NativeFileMode mode;
+    if (!native_read_mode(flags, &mode)) {
         return output;
     }
     wchar_t *physical = volume == carbin_volume ? carbin_cached_path(volume, path)
@@ -344,31 +364,71 @@ static void **open_addon_file(void *volume, void **output, const BorrowedGameStr
     if (!physical) {
         return output;
     }
-    HANDLE handle = CreateFileW(
-        physical, mode.access,
-        mode.sharing | (volume == carbin_volume ? FILE_SHARE_WRITE | FILE_SHARE_DELETE : 0), NULL,
-        mode.disposition, FILE_ATTRIBUTE_NORMAL | mode.attributes, NULL);
+    open_loose_file(volume, output, path, flags, &mode, physical,
+                    volume == carbin_volume ? FILE_SHARE_WRITE | FILE_SHARE_DELETE : 0);
     HeapFree(GetProcessHeap(), 0, physical);
-    if (handle == INVALID_HANDLE_VALUE) {
-        return output;
-    }
-    void *storage = allocate(0x90);
-    if (!storage) {
-        CloseHandle(handle);
-        return output;
-    }
-    void **methods = *(void ***)volume;
-    ((Reference)methods[0x10 / 8])(volume);
-    void *owner = volume;
-    typedef void *(*ConstructFile)(void *, HANDLE, void **, unsigned);
-    void *file = ((ConstructFile)(image + 0x11e04a0))(storage, handle, &owner, flags);
-    methods = *(void ***)file;
-    typedef void (*SetFilename)(void *, const BorrowedGameString *);
-    ((SetFilename)methods[0x280 / 8])(file, path);
-    ((Reference)methods[0x10 / 8])(file);
-    *output = file;
     return output;
 }
+
+typedef void **(*OpenXmlFile)(void *, void **, const BorrowedGameString *, unsigned, unsigned char);
+
+static void **open_xml_file(void *volume, void **output, const BorrowedGameString *path,
+                            unsigned flags, unsigned char option) {
+    // The startup preload and the audio parser both use this XML resource reader.
+    // Resolve the loose file here without relying on the native mount table.
+    static const char filename[] = "game:\\media\\audio\\audioglobals.xml";
+    NativeFileMode mode;
+    if (path->length == sizeof(filename) - 1 && same_path(string_text(path), path->length, filename) &&
+        native_read_mode(flags, &mode)) {
+        static const char relative[] = "audio\\audioglobals.xml";
+        BorrowedGameString loose = borrowed_string(relative);
+        *output = NULL;
+        wchar_t *folder = HeapAlloc(GetProcessHeap(), 0, PATH_CAPACITY * sizeof(wchar_t));
+        const wchar_t *root = addons_content_directory();
+        if (folder) {
+            static const wchar_t *const priorities[] = {L"mediaoverride", L"mediapc"};
+            for (unsigned i = 0; !*output && root[0] && i < ARRAY_COUNT(priorities); ++i) {
+                if (!path_join(folder, root, priorities[i])) {
+                    continue;
+                }
+                wchar_t *physical = physical_path(folder, relative, loose.length);
+                if (physical) {
+                    open_loose_file(volume, output, path, flags, &mode, physical, 0);
+                    HeapFree(GetProcessHeap(), 0, physical);
+                }
+            }
+            HeapFree(GetProcessHeap(), 0, folder);
+        }
+        for (unsigned i = *output ? 0 : addons_count(); !*output && i; --i) {
+            wchar_t *physical = addon_file_path(i - 1, &loose);
+            if (physical) {
+                open_loose_file(volume, output, path, flags, &mode, physical, 0);
+                if (*output) {
+                    log_append("AUDIO GLOBALS: opened loose mod override.\r\n");
+                }
+                HeapFree(GetProcessHeap(), 0, physical);
+            }
+        }
+        if (*output) {
+            return output;
+        }
+    }
+    return ((OpenXmlFile)(*(void ***)volume)[0x138 / 8])(volume, output, path, flags, option);
+}
+
+static const unsigned char xml_call_original[] = {0xff, 0x90, 0x38, 0x01, 0, 0};
+static const unsigned char xml_call_replacement[] = {0xe8, 0x86, 0, 0, 0, 0x90};
+static const unsigned char xml_thunk_original[12] = {
+    0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc};
+static unsigned char xml_thunk_replacement[12] = {0x48, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xe0};
+static const unsigned char *const xml_call_accepted[] = {xml_call_original, xml_call_replacement};
+static const unsigned char *const xml_thunk_accepted[] = {xml_thunk_original, xml_thunk_replacement};
+PatchDefinition media_overrides_audio_globals_patches[] = {
+    {0x13de661, 0, 12, GROUP_MEDIA_OVERRIDES, "audio_globals_open_thunk", xml_thunk_original,
+     xml_thunk_replacement, xml_thunk_replacement, xml_thunk_accepted, 2},
+    {0x13de5d6, 0, 6, GROUP_MEDIA_OVERRIDES, "audio_globals_open", xml_call_original,
+     xml_call_replacement, xml_call_replacement, xml_call_accepted, 2},
+};
 
 typedef void **(*OpenAsyncFile)(void *, void **, const BorrowedGameString *, unsigned, void *,
                                 unsigned, unsigned, unsigned char);
@@ -653,6 +713,8 @@ void media_overrides_prepare_hook(unsigned char *game_image) {
         addon_archives_reset();
     }
     image = game_image;
+    uintptr_t xml_callback = (uintptr_t)open_xml_file;
+    memory_copy(xml_thunk_replacement + 2, &xml_callback, sizeof(xml_callback));
     static const unsigned bank_sites[]={0x10121d4,0x101218d,0x2e72260};
     for(unsigned i=0;i<3;++i){
         unsigned size=i==2?8:i?5:12;

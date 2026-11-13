@@ -24,6 +24,7 @@ extern PatchDefinition video_options_hook_patches[6];
 extern PatchDefinition drift_camera_view_hook_patches[4];
 extern PatchDefinition media_overrides_hook_patch;
 extern PatchDefinition media_overrides_disk_path_hook_patch;
+extern PatchDefinition media_overrides_audio_globals_patches[2];
 extern PatchDefinition media_overrides_bank_diagnostics[3];
 extern PatchDefinition video_redirect_hook_patch;
 void video_redirect_prepare_hook(unsigned char *image);

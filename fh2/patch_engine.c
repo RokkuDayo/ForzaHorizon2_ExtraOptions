@@ -185,6 +185,8 @@ static const PatchDefinition *const callback_patches[] = {&local_liveries_hook_p
                                                           &minimap_hook_patch,
                                                           &media_overrides_hook_patch,
                                                           &media_overrides_disk_path_hook_patch,
+                                                          &media_overrides_audio_globals_patches[0],
+                                                          &media_overrides_audio_globals_patches[1],
 
                                                           &media_overrides_bank_diagnostics[0],
                                                           &media_overrides_bank_diagnostics[1],
