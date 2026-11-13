@@ -73,7 +73,7 @@ int runtime_initialize(unsigned char *game_image, const wchar_t *executable_path
     static wchar_t cache_ini[PATH_CAPACITY];
     int cache=path_join(cache_ini,settings_directory,MOD_INI_NAME) &&
               GetPrivateProfileIntW(L"Mods",L"DatabaseCache",1,cache_ini)!=0;
-    addons_cache_configure(settings_directory,cache,0);
+    addons_cache_configure(settings_directory,cache);
     if (initialized && options.enabled) addons_layout_prepare();
     plugins_configure(game_image, executable_path, initialized && options.enabled);
     if (initialized) {

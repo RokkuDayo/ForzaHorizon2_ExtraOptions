@@ -2,6 +2,7 @@
 #include "shared/boot_diagnostics.h"
 #include "shared/addons.h"
 #include "fh2/features.h"
+#include "fh2/loose_media_index.h"
 #include "shared/logging.h"
 #include "shared/support.h"
 #include "shared/carbin_patch.h"
@@ -47,6 +48,7 @@ static struct {
 } addon_volumes[128];
 
 static unsigned addon_volume_count, archive_revision;
+static LooseMediaIndex *addon_media_indexes[ARRAY_COUNT(addon_volumes)];
 static unsigned char original_pointer[8], callback_pointer[8];
 static const unsigned char *const accepted[] = {original_pointer, callback_pointer};
 
@@ -156,7 +158,9 @@ static wchar_t *addon_file_path(unsigned addon, const BorrowedGameString *path) 
     if (!folder) {
         return NULL;
     }
-    wchar_t *physical=physical_path(folder,text,length);
+    const LooseMediaIndex *index = addon < ARRAY_COUNT(addon_media_indexes)
+        ? __atomic_load_n(&addon_media_indexes[addon], __ATOMIC_ACQUIRE) : NULL;
+    wchar_t *physical = loose_media_may_exist(index, text, length) ? physical_path(folder, text, length) : NULL;
     return physical?physical:plugins_media_file(addon,text,length);
 }
 
@@ -505,6 +509,12 @@ static void ensure_folders_mounted(void *filesystem) {
             if (!folder) {
                 continue;
             }
+            if (i < ARRAY_COUNT(addon_media_indexes)) {
+                uint64_t begin = boot_diag_now();
+                LooseMediaIndex *index = loose_media_index_create(folder);
+                __atomic_store_n(&addon_media_indexes[i], index, __ATOMIC_RELEASE);
+                boot_diag_end_w("assets.index_loose_media", folder, begin);
+            }
             char source[] = "game:\\__fh2_mods__\\000\\";
             size_t number = sizeof(source) - 5;
             source[number] = (char)('0' + i / 100);
@@ -635,6 +645,10 @@ void media_overrides_prepare_hook(unsigned char *game_image) {
         carbin_volume = NULL;
         InterlockedExchange(&mount_state, 0);
         addon_volume_count = 0;
+        for (unsigned i = 0; i < ARRAY_COUNT(addon_media_indexes); ++i) {
+            loose_media_index_destroy(addon_media_indexes[i]);
+            addon_media_indexes[i] = NULL;
+        }
         archive_revision = 0;
         addon_archives_reset();
     }
@@ -696,6 +710,10 @@ __declspec(dllexport) void Fh2TestMediaOverridesReset(void) {
     carbin_reset();
     InterlockedExchange(&mount_state, 0);
     addon_volume_count = 0;
+    for (unsigned i = 0; i < ARRAY_COUNT(addon_media_indexes); ++i) {
+        loose_media_index_destroy(addon_media_indexes[i]);
+        addon_media_indexes[i] = NULL;
+    }
     archive_revision = 0;
     addon_archives_reset();
 }
