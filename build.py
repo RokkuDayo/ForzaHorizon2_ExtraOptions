@@ -51,6 +51,7 @@ COMMON_SOURCES = [
     "fh2/sun_shadows.c",
     "fh2/livery.c",
     "fh2/media_overrides.c",
+    "fh2/loose_media_index.c",
     "shared/media_files.c",
     "fh2/video_redirect.c",
     "fh2/showroom_photo.c",
