@@ -25,6 +25,10 @@ static const struct {
     {AZIMUTH_102, 0x6ae05dd1u, 0x9af000u},
     {AZIMUTH_103, 0x6ae0f17au, 0x9d8000u},
     {AZIMUTH_104, 0x6ae393ebu, 0x8a2000u},
+    /* 1.0.4 with the FH3 DLC patch: the same code, plus a .fh3dlc data
+       section after .reloc (0x8a2000). Listed second so host_image_size
+       keeps the original bound for code patches. */
+    {AZIMUTH_104, 0x6ae393ebu, 0x8a3000u},
 };
 
 static unsigned host_image_size(AzimuthBuild build) {

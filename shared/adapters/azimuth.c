@@ -38,6 +38,13 @@ static const HostProfile host_profiles[] = {
      {0x56,0xd2,0xc9,0xcb,0x6c,0xcf,0x3a,0xe1,0x83,0x6d,0xee,0x96,0x76,0xb6,0x42,0x85,
       0xf3,0xa2,0x47,0xef,0xa2,0xd1,0x2c,0xf0,0x2c,0x6c,0x74,0x26,0x96,0xb3,0xb0,0x92},
      "AZIMUTH: 1.0.4 initialized for FH2 (1A96545B); native game loader and TLS retained.\r\n"},
+    /* 1.0.4 with the FH3 DLC patch. .text is byte-identical to 1.0.4; the patch
+       only adds a .fh3dlc data section, one .rdata pointer to it (0x6c4a18) and
+       the matching header and relocation entries, so the offsets are 1.0.4's. */
+    {AZIMUTH_104, 8613888u, 0x3f2c0u, 0xa684bu, 0xa1384u, 0xa4e09u,
+     {0x7d,0x4d,0x0c,0x25,0x76,0x6f,0xa6,0xbc,0x5a,0x0b,0xea,0x71,0xeb,0x48,0xef,0x8c,
+      0x09,0x1c,0x01,0xd7,0x0c,0xdf,0xe7,0x34,0x00,0x96,0xf7,0xac,0x04,0x0e,0x85,0x56},
+     "AZIMUTH: 1.0.4 (FH3 DLC patch) initialized; native game loader and TLS retained.\r\n"},
 };
 static const HostProfile *host_profile;
 #define MAP_GAME (host_profile->map_game)
@@ -317,7 +324,8 @@ static int verify_host(unsigned char *host, const wchar_t *path) {
         }
     }
     return refuse("REFUSED: unsupported Azimuth build. Extra Options " MOD_VERSION
-                  " supports the inspected Azimuth 1.0.1, 1.0.2, 1.0.3 and 1.0.4 executables only. "
+                  " supports the inspected Azimuth 1.0.1, 1.0.2, 1.0.3 and 1.0.4 executables only "
+                  "(1.0.4 also with the FH3 DLC patch). "
                   "No game or save compatibility patches applied.");
 }
 
