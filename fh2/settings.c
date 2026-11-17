@@ -33,6 +33,8 @@ const SettingDefinition setting_definitions[] = {
     SETTING("Files", "EnableMediaOverrides", media_overrides, SETTING_BOOLEAN),
     SETTING("Experiments", "UnlockAeroTuning", unlock_aero_tuning, SETTING_BOOLEAN),
     {"Autodrive", "Enabled", "AutodriveEnabled", offsetof(ModOptions, autodrive), SETTING_BOOLEAN},
+    SETTING("LaunchControl", "Enabled", launch_control, SETTING_BOOLEAN),
+    SETTING("LaunchControl", "RPM", launch_control_rpm, SETTING_PERCENT),
 };
 
 static const SettingDefinition legacy_settings[] = {
@@ -74,6 +76,8 @@ void settings_defaults(ModOptions *options) {
         .unlock_treasure_map = 0,
         .autodrive = 0,
         .autodrive_cinematic = 1,
+        .launch_control = 1,
+        .launch_control_rpm = 60,
         .generate_missing_save_commits = 1,
         .smooth_sun_shadows = -1,
         .skip_ineligible_car_dialogue = 0,
@@ -152,6 +156,17 @@ static const SettingDefinition *find_setting(const char *section, const char *ke
 }
 
 static int parse_value(const SettingDefinition *definition, const char *text, int *value) {
+    if (definition->type == SETTING_PERCENT) {
+        unsigned percent = 0;
+        if (!*text) return 0;
+        for (; *text; ++text) {
+            if (*text < '0' || *text > '9' || percent > 100) return 0;
+            percent = percent * 10 + (unsigned)(*text - '0');
+        }
+        if (percent < 20 || percent > 95) return 0;
+        *value = (int)percent;
+        return 1;
+    }
     if (definition->type == SETTING_TURBO_INTERVAL) {
         unsigned interval = 0;
         if (!*text) return 0;
