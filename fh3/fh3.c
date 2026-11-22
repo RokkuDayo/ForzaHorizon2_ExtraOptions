@@ -1,6 +1,7 @@
 #include "fh3.h"
 #include "fh3_internal.h"
 #include "fh3_text.h"
+#include "fh3_plugin.h"
 #include "shared/sha256.h"
 #include "shared/support.h"
 #include <xmmintrin.h>
@@ -251,7 +252,6 @@ static int open_database(const char *filename, void **database) {
    0x18b7040(car, enabled); car+0x7398 is 1 while a human drives and 0 under
    AI. The local player's cars are listed at 0x1724f70(manager, 0)+0x298. */
 typedef void (*SatNavUpdate)(void *, float);
-typedef void (*SetAIDriving)(void *, unsigned char);
 typedef void *(*PlayerContext)(void *, unsigned);
 typedef SHORT(WINAPI *KeyState)(int);
 typedef HWND(WINAPI *ForegroundWindow)(void);
@@ -260,9 +260,6 @@ typedef DWORD(WINAPI *WindowProcess)(HWND, LPDWORD);
 static KeyState key_state;
 static ForegroundWindow foreground_window;
 static WindowProcess window_process;
-static int key_was_down = 1;
-static void *autodrive_car;
-static int autodrive_enabled;
 
 static int window_focused(void) {
     if (!key_state) {
@@ -318,14 +315,7 @@ static void *player_car(void) {
     return NULL;
 }
 
-/* The car the player drives, also while Autodrive has it. */
-static void *driven_car(void) {
-    void *car = player_car();
-    return car ? car : autodrive_car;
-}
-
-/* Driving input is read straight from XInput (and the usual driving keys), so
-   cancelling never depends on the native input contexts the AI owns. */
+/* Pads are read straight from XInput. */
 typedef struct {
     DWORD packet;
     WORD buttons;
@@ -335,7 +325,6 @@ typedef struct {
 typedef DWORD(WINAPI *GetPadState)(DWORD, PadState *);
 enum { PAD_LEFT_THUMB = 0x40, PAD_RIGHT_THUMB = 0x80 };
 static GetPadState get_pad_state;
-static int input_armed;
 
 static int load_pads(void) {
     if (!get_pad_state) {
@@ -346,325 +335,6 @@ static int load_pads(void) {
     return get_pad_state != NULL;
 }
 
-/* D-pad Down belongs to ANNA in FH3, so the default controller toggle is both
-   sticks clicked together (horn + look back on their own). */
-static WORD toggle_buttons = PAD_LEFT_THUMB | PAD_RIGHT_THUMB;
-static int toggle_key = VK_F2;
-
-static int toggle_chord(void) {
-    for (DWORD pad = 0; load_pads() && pad < 4; ++pad) {
-        PadState state;
-        if (get_pad_state(pad, &state) == ERROR_SUCCESS &&
-            (state.buttons & toggle_buttons) == toggle_buttons)
-            return 1;
-    }
-    return 0;
-}
-
-static int same_name(const wchar_t *text, size_t length, const char *name) {
-    size_t i = 0;
-    for (; i < length && name[i]; ++i) {
-        wchar_t c = text[i] >= L'a' && text[i] <= L'z' ? text[i] - 32 : text[i];
-        if (c != (wchar_t)name[i]) return 0;
-    }
-    return i == length && !name[i];
-}
-
-/* "L3+R3", "LB+Y", ... ; 0 when any part is unknown. */
-static WORD parse_buttons(const wchar_t *text) {
-    static const struct { const char *name; WORD bit; } names[] = {
-        {"UP", 0x1}, {"DOWN", 0x2}, {"LEFT", 0x4}, {"RIGHT", 0x8}, {"MENU", 0x10},
-        {"START", 0x10}, {"VIEW", 0x20}, {"BACK", 0x20}, {"L3", 0x40}, {"R3", 0x80},
-        {"LB", 0x100}, {"RB", 0x200}, {"A", 0x1000}, {"B", 0x2000}, {"X", 0x4000},
-        {"Y", 0x8000}};
-    WORD mask = 0;
-    while (*text) {
-        while (*text == L' ' || *text == L'+') ++text;
-        size_t length = 0;
-        while (text[length] && text[length] != L'+' && text[length] != L' ') ++length;
-        if (!length) break;
-        WORD bit = 0;
-        for (unsigned i = 0; i < ARRAY_COUNT(names) && !bit; ++i)
-            if (same_name(text, length, names[i].name)) bit = names[i].bit;
-        if (!bit) return 0;
-        mask |= bit;
-        text += length;
-    }
-    return mask;
-}
-
-/* "F2", "G", "7" or a virtual-key code such as "0x71"; 0 when unknown. */
-static int parse_key(const wchar_t *text) {
-    size_t length = 0;
-    while (text[length]) ++length;
-    if (length > 2 && text[0] == L'0' && (text[1] == L'x' || text[1] == L'X')) {
-        int value = 0;
-        for (size_t i = 2; i < length; ++i) {
-            wchar_t c = text[i];
-            int digit = c >= L'0' && c <= L'9' ? c - L'0'
-                        : c >= L'a' && c <= L'f' ? c - L'a' + 10
-                        : c >= L'A' && c <= L'F' ? c - L'A' + 10 : -1;
-            if (digit < 0 || value > 0xff) return 0;
-            value = value * 16 + digit;
-        }
-        return value > 0 && value < 0xff ? value : 0;
-    }
-    if (length == 1) {
-        wchar_t c = text[0] >= L'a' && text[0] <= L'z' ? text[0] - 32 : text[0];
-        return (c >= L'A' && c <= L'Z') || (c >= L'0' && c <= L'9') ? (int)c : 0;
-    }
-    if ((length == 2 || length == 3) && (text[0] == L'F' || text[0] == L'f')) {
-        int number = text[1] - L'0';
-        if (length == 3) number = number * 10 + (text[2] - L'0');
-        return number >= 1 && number <= 12 && text[1] >= L'0' && text[1] <= L'9' &&
-                       (length == 2 || (text[2] >= L'0' && text[2] <= L'9'))
-                   ? VK_F1 + number - 1
-                   : 0;
-    }
-    return 0;
-}
-
-static void read_autodrive_bindings(void) {
-    wchar_t value[64];
-    GetPrivateProfileStringW(L"Vehicle", L"AutodriveKey", L"F2", value, ARRAY_COUNT(value),
-                             ini_path);
-    int key = parse_key(value);
-    if (key) toggle_key = key;
-    else log_append("CONFIG: invalid AutodriveKey; using F2.\r\n");
-    GetPrivateProfileStringW(L"Vehicle", L"AutodriveButtons", L"L3+R3", value,
-                             ARRAY_COUNT(value), ini_path);
-    WORD buttons = parse_buttons(value);
-    if (buttons) toggle_buttons = buttons;
-    else log_append("CONFIG: invalid AutodriveButtons; using L3+R3.\r\n");
-}
-
-static int driving_input(void) {
-    for (DWORD pad = 0; load_pads() && pad < 4; ++pad) {
-        PadState state;
-        if (get_pad_state(pad, &state) == ERROR_SUCCESS &&
-            (state.left_trigger > 40 || state.right_trigger > 40 || state.left_x > 12000 ||
-             state.left_x < -12000))
-            return 1;
-    }
-    static const int keys[] = {VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT, 'W', 'A', 'S', 'D'};
-    for (unsigned i = 0; i < ARRAY_COUNT(keys); ++i)
-        if (focused_key(keys[i])) return 1;
-    return 0;
-}
-
-/* Autodrive cinematic camera: ForzaMultiCam (singleton at 0x4e6caf0) holds
-   its camera groups as 64-byte entries at +0x1a8 (camera at +0x30) and the
-   current group on a list at +0x1d0 (count +0x1f0, back() via 0x447250).
-   0x18f0f40(manager, group) switches group; group 13 is CarRelativeCams.
-   CarRelativeCams (Camera::CTSCCamera) keeps its shots at [+0x1b8]: mode
-   (+0) and 0x5b0-byte entries (+8 begin, +0x10 end) with label byte +0x20
-   and start time +0x28. In mode 3 each shot starts at its index and the
-   update picks the shot under the time at +0x890, so writing the time
-   selects a shot. Labels 17 and 19 are the slow orbiting shots FH2 used;
-   other shots are static, e.g. shot 0 looks back from the bumper. The anim
-   player at +0x1c0 has the playing shot config at +0x1a8 (entry +0x80) and
-   its keys (64 bytes, time first) at +0x1b0..+0x1b8. */
-enum { CAMERA_MANAGER = 0x4e6caf0, CAMERA_SET_GROUP = 0x18f0f40, CAMERA_GROUP_BACK = 0x447250 };
-typedef void (*SetCameraGroup)(void *, int);
-typedef int *(*CameraGroupBack)(void *);
-enum { CINEMATIC_GROUP = 13, SHOT_SIZE = 0x5b0 };
-static int autodrive_cinematic = 1, cinematic_previous = -1;
-static int cinematic_tried, cinematic_label;
-static float autodrive_elapsed, shot_elapsed, shot_length;
-static double cinematic_saved_time;
-static unsigned shot_seed = 0x9e3779b9u;
-
-static void *camera_manager(void) {
-    void *manager;
-    return memory_read_pointer(image + CAMERA_MANAGER, &manager) ? manager : NULL;
-}
-
-static int camera_group(void *manager) {
-    size_t count;
-    int group;
-    if (!manager || !memory_read((unsigned char *)manager + 0x1f0, &count, sizeof(count)) ||
-        !count)
-        return -1;
-    int *current = ((CameraGroupBack)(image + CAMERA_GROUP_BACK))((unsigned char *)manager + 0x1d0);
-    return current && memory_read(current, &group, sizeof(group)) ? group : -1;
-}
-
-static int set_camera_group(void *manager, int group) {
-    unsigned char *groups, *end;
-    void *camera;
-    if (!manager || group < 0 ||
-        !memory_read_pointer((unsigned char *)manager + 0x1a8, (void **)&groups) ||
-        !memory_read_pointer((unsigned char *)manager + 0x1b0, (void **)&end) || end < groups ||
-        (size_t)(end - groups) / 64 <= (unsigned)group ||
-        !memory_read_pointer(groups + (size_t)group * 64 + 0x30, &camera) || !camera)
-        return 0;
-    ((SetCameraGroup)(image + CAMERA_SET_GROUP))(manager, group);
-    return camera_group(manager) == group;
-}
-
-/* The CarRelativeCams camera and its shot table, if it has the expected shape. */
-static unsigned char *relative_camera(void *manager, unsigned char **shots, unsigned *count) {
-    unsigned char *groups, *end, *camera, *data, *last;
-    void *vtable;
-    unsigned mode;
-    if (!manager || !memory_read_pointer((unsigned char *)manager + 0x1a8, (void **)&groups) ||
-        !memory_read_pointer((unsigned char *)manager + 0x1b0, (void **)&end) ||
-        (size_t)(end - groups) / 64 <= CINEMATIC_GROUP ||
-        !memory_read_pointer(groups + CINEMATIC_GROUP * 64 + 0x30, (void **)&camera) ||
-        !memory_read_pointer(camera, &vtable) || vtable != image + 0x42ef648 ||
-        !memory_read_pointer(camera + 0x1b8, (void **)&data) ||
-        !memory_read(data, &mode, sizeof(mode)) || mode != 3 ||
-        !memory_read_pointer(data + 8, (void **)shots) ||
-        !memory_read_pointer(data + 0x10, (void **)&last) || last <= *shots ||
-        (size_t)(last - *shots) % SHOT_SIZE || (size_t)(last - *shots) / SHOT_SIZE > 1024)
-        return NULL;
-    *count = (unsigned)((size_t)(last - *shots) / SHOT_SIZE);
-    return camera;
-}
-
-/* Select a random shot with the given label; 0 when there is none. */
-static int select_shot(unsigned char *camera, unsigned char *shots, unsigned count, int label) {
-    unsigned matches = 0;
-    for (unsigned i = 0; i < count; ++i) {
-        unsigned char value;
-        if (!memory_read(shots + (size_t)i * SHOT_SIZE + 0x20, &value, 1)) return 0;
-        matches += value == label;
-    }
-    if (!matches) return 0;
-    shot_seed = shot_seed * 1664525u + 1013904223u + (unsigned)GetTickCount64();
-    unsigned pick = (shot_seed >> 8) % matches;
-    for (unsigned i = 0; i < count; ++i) {
-        unsigned char value;
-        memory_read(shots + (size_t)i * SHOT_SIZE + 0x20, &value, 1);
-        if (value != label || pick--) continue;
-        float start;
-        if (!memory_read(shots + (size_t)i * SHOT_SIZE + 0x28, &start, sizeof(start)) ||
-            !float_is_finite(start))
-            return 0;
-        *(volatile double *)(camera + 0x890) = start + 0.5;
-        cinematic_label = label;
-        shot_elapsed = 0.0f;
-        shot_length = 0.0f;
-        return 1;
-    }
-    return 0;
-}
-
-/* Length of the shot the anim player is playing, once it has picked it up. */
-static float playing_shot_length(unsigned char *camera, unsigned char *shots, unsigned count) {
-    unsigned char *config, *keys, *keys_end;
-    double time;
-    float first, last;
-    if (!memory_read(camera + 0x890, &time, sizeof(time)) || !(time >= 0 && time < count) ||
-        !memory_read_pointer(camera + 0x1c0 + 0x1a8, (void **)&config) ||
-        config != shots + (size_t)time * SHOT_SIZE + 0x80 ||
-        !memory_read_pointer(camera + 0x1c0 + 0x1b0, (void **)&keys) ||
-        !memory_read_pointer(camera + 0x1c0 + 0x1b8, (void **)&keys_end) || keys_end <= keys ||
-        (size_t)(keys_end - keys) % 64 || !memory_read(keys, &first, sizeof(first)) ||
-        !memory_read(keys_end - 64, &last, sizeof(last)) || !float_is_finite(first) ||
-        !float_is_finite(last))
-        return 0.0f;
-    float length = last - first;
-    return length < 3.0f ? 3.0f : length > 15.0f ? 15.0f : length;
-}
-
-static void hud_set_hidden(int hidden);
-
-static void cinematic_enter(void) {
-    cinematic_tried = 1;
-    void *manager = camera_manager();
-    int previous = camera_group(manager);
-    unsigned char *shots, *camera;
-    unsigned count;
-    /* Only from the player's driving views (chase, driver, hood, bumper). */
-    if (previous < 0 || previous > 4 || !(camera = relative_camera(manager, &shots, &count)) ||
-        !memory_read(camera + 0x890, &cinematic_saved_time, sizeof(cinematic_saved_time))) {
-        log_append("AUTODRIVE: cinematic camera unavailable here.\r\n");
-        return;
-    }
-    if (!select_shot(camera, shots, count, 17) && !select_shot(camera, shots, count, 19)) {
-        log_append("AUTODRIVE: no cinematic shots in CarRelativeCams.\r\n");
-        return;
-    }
-    if (!set_camera_group(manager, CINEMATIC_GROUP)) {
-        *(volatile double *)(camera + 0x890) = cinematic_saved_time;
-        log_append("AUTODRIVE: cinematic camera unavailable here.\r\n");
-        return;
-    }
-    cinematic_previous = previous;
-    hud_set_hidden(1);
-    log_append("AUTODRIVE: cinematic camera on.\r\n");
-}
-
-static void cinematic_tick(float dt) {
-    void *manager = camera_manager();
-    unsigned char *shots, *camera;
-    unsigned count;
-    if (cinematic_previous < 0) return;
-    if (camera_group(manager) != CINEMATIC_GROUP) {
-        cinematic_previous = -1; /* the player picked another camera */
-        hud_set_hidden(0);
-        return;
-    }
-    if (!(camera = relative_camera(manager, &shots, &count))) return;
-    if (dt > 0.0f && dt < 1.0f) shot_elapsed += dt;
-    if (!shot_length) shot_length = playing_shot_length(camera, shots, count);
-    float length = shot_length ? shot_length : 8.0f;
-    if (shot_elapsed < length) return;
-    int next = cinematic_label == 17 ? 19 : 17;
-    if (!select_shot(camera, shots, count, next)) select_shot(camera, shots, count, cinematic_label);
-}
-
-static void cinematic_leave(void) {
-    void *manager = camera_manager();
-    unsigned char *shots, *camera;
-    unsigned count;
-    if (cinematic_previous >= 0 && camera_group(manager) == CINEMATIC_GROUP) {
-        set_camera_group(manager, cinematic_previous);
-        if ((camera = relative_camera(manager, &shots, &count)))
-            *(volatile double *)(camera + 0x890) = cinematic_saved_time;
-    }
-    cinematic_previous = -1;
-    hud_set_hidden(0);
-}
-
-static void autodrive_stop(const char *reason) {
-    cinematic_leave();
-    if (autodrive_car && driver_mode(autodrive_car) == 0)
-        ((SetAIDriving)(image + 0x18b7040))(autodrive_car, 0);
-    autodrive_car = NULL;
-    log_append(reason);
-}
-
-static void autodrive_start(void) {
-    void *car = player_car();
-    if (!car) {
-        log_append("AUTODRIVE: no human-driven local car found.\r\n");
-        return;
-    }
-    ((SetAIDriving)(image + 0x18b7040))(car, 1);
-    if (driver_mode(car) != 0) {
-        log_append("AUTODRIVE: the AI driver did not engage.\r\n");
-        return;
-    }
-    autodrive_car = car;
-    autodrive_elapsed = 0.0f;
-    cinematic_tried = 0;
-    /* The press that started the drive must be released before any driving
-       input counts as a cancel. */
-    input_armed = 0;
-    log_append("AUTODRIVE: AI driver engaged on the local car.\r\n");
-}
-
-/* ANNA menu entries (D-pad Down). HUDAnnaComponent keeps the available command
-   names in a std::vector<std::string> at +0xb8 and rebuilds its menu (+0xf8)
-   with AddOption 0x10b0da0, which labels each item with the localized
-   "IDS_SpeechItem_<name>" via 0x10b9870. On select, ANNAManualControlComponent
-   reads the highlighted name through 0xaaa710 and hands it to the voice-command
-   dispatcher. Car is added first in the native rebuild, its entries
-   (Autodrive, Lights, Doors) listed inside it; they are labelled with our own text, and removed from the selection before it reaches the
-   dispatcher. The select handler runs on the game thread, so actions run
-   immediately. */
 typedef struct {
     union {
         char text[16];
@@ -685,182 +355,7 @@ static int game_language_code(char code[4]) {
     memory_copy(code, language.text, language.size + 1);
     return 1;
 }
-typedef void (*AddOption)(void *, const MsvcString *);
-typedef void (*DestroyNames)(void *, void *, void *, unsigned char);
-typedef void **(*MakeLabel)(void *, void **, const MsvcString *);
 typedef void **(*CreateUIString)(void **);
-typedef MsvcString *(*HighlightedName)(void *, MsvcString *);
-
-typedef struct {
-    const char *name; /* < 16 characters, so the native string stays inline */
-    const char *label, *close_label; /* close_label: a car part that is open */
-    void (*action)(void *component, int part);
-    int enabled, part; /* part >= 0: listed in the Car submenu, not the top level */
-} AnnaEntry;
-
-/* Car parts: ForzaCar's animator (+0x73a8) points to the car's animation graph
-   at +0x1e0 and takes named events through 0x1889b40(car, name), the
-   path the game uses for "doorLF:close". The graph's events are a map at
-   graph+0x268 (end node at +0x270), searched with 0x1d08e60. Cars define
-   "<part>:open" and "<part>:close" (sometimes "<part>:toggle") for the parts
-   they animate (the same clips ForzaVista plays). */
-enum { PART_ROOF, PART_HOOD, PART_TRUNK, PART_DOOR_LF, PART_DOOR_RF, PART_DOOR_LR, PART_DOOR_RR,
-       PART_COUNT };
-static const char *const part_names[PART_COUNT] = {"roof",   "hood",   "trunk", "doorLF",
-                                                   "doorRF", "doorLR", "doorRR"};
-typedef void (*CarEvent)(void *, const char *);
-typedef void *(*EventFind)(void *, void **, const MsvcString *);
-static void *parts_car;
-static unsigned parts_open;
-
-static int car_has_event(void *car, const char *part, const char *action) {
-    unsigned char *animator, *graph;
-    void *end, *found = NULL;
-    MsvcString key = {{{0}}, 0, 15};
-    size_t part_length = text_length(part), action_length = text_length(action);
-    if (!car || part_length + 1 + action_length > 15 ||
-        !memory_read_pointer((unsigned char *)car + 0x73a8, (void **)&animator) || !animator ||
-        !memory_read_pointer(animator + 0x1e0, (void **)&graph) || !graph ||
-        !memory_read_pointer(graph + 0x270, &end) || !end)
-        return 0;
-    memory_copy(key.text, part, part_length);
-    key.text[part_length] = ':';
-    memory_copy(key.text + part_length + 1, action, action_length);
-    key.size = part_length + 1 + action_length;
-    ((EventFind)(image + 0x1d08e60))(graph + 0x268, &found, &key);
-    return found && found != end;
-}
-
-/* PART_ALL is the Doors page's Open All / Close All entry, listed when the
-   car has at least two animated parts. Headlights (ForzaCar, read each frame
-   into the light material packet by 0x1889140) come from +0x7852 while the
-   manual flag +0x7851 is set, else from +0x7868. The car update rewrites
-   them every frame, so the override is applied just before the packet is
-   built: its one call (0x18b8e22) is wrapped. The packet's hazard and
-   indicator inputs (+0x786f..+0x7871, the bytes the setters 0x18ac200,
-   0x18afcf0 and 0x18b2ef0 write) drive the native blink; car models draw it
-   once their indicator materials are repaired (see indicator_material_load). */
-enum { LIGHT_PACKET_THUNK = 0x18b2d61 };
-enum { PART_ALL = PART_COUNT, LIGHT_HEAD, LIGHT_HAZARD, LIGHT_LEFT, LIGHT_RIGHT, PAGE_LIGHTS,
-       PAGE_DOORS, ITEM_AUTODRIVE, MENU_ITEMS };
-enum { CAR_LIGHTS_MANUAL = 0x7851, CAR_LIGHTS_ON = 0x7852, CAR_LIGHTS_AUTO = 0x7868 };
-enum { CAR_HAZARDS = 0x786f, CAR_SIGNAL_LEFT = 0x7870, CAR_SIGNAL_RIGHT = 0x7871 };
-enum { SIGNAL_OFF, SIGNAL_HAZARD, SIGNAL_LEFT, SIGNAL_RIGHT };
-static void *headlight_car;
-static int headlight_override = -1; /* -1 native, else 0 off / 1 on */
-/* signal_car blinks signal_active; signal_cleared is a car whose signals
-   still have to be switched off (compared only, never dereferenced here). */
-static void *signal_car, *signal_cleared;
-static int signal_active, signal_turned;
-
-static int is_light(int part) {
-    return part >= LIGHT_HEAD && part <= LIGHT_RIGHT;
-}
-
-static int signal_of(int light) {
-    return light - LIGHT_HAZARD + SIGNAL_HAZARD;
-}
-
-static int headlights_on(void *car) {
-    if (car == headlight_car && headlight_override >= 0) return headlight_override;
-    unsigned char manual, value;
-    if (!memory_read((unsigned char *)car + CAR_LIGHTS_MANUAL, &manual, 1) ||
-        !memory_read((unsigned char *)car + (manual ? CAR_LIGHTS_ON : CAR_LIGHTS_AUTO), &value, 1))
-        return 0;
-    return value != 0;
-}
-
-static int single_part_supported(void *car, int part) {
-    return car_has_event(car, part_names[part], "toggle") ||
-           (car_has_event(car, part_names[part], "open") &&
-            car_has_event(car, part_names[part], "close"));
-}
-
-static int item_enabled(int part);
-
-static int part_supported(void *car, int part) {
-    if (!item_enabled(part)) return 0;
-    if (part == ITEM_AUTODRIVE) return car != NULL;
-    if (is_light(part) || part == PAGE_LIGHTS) return car != NULL;
-    if (part < PART_ALL) return single_part_supported(car, part);
-    int count = 0;
-    for (int i = 0; i < PART_COUNT; ++i) count += single_part_supported(car, i);
-    return part == PAGE_DOORS ? count >= 1 : count >= 2;
-}
-
-static int part_is_open(void *car, int part) {
-    if (part == LIGHT_HEAD) return car && headlights_on(car);
-    if (is_light(part)) return car && car == signal_car && signal_active == signal_of(part);
-    if (part > PART_ALL || car != parts_car) return 0;
-    return part == PART_ALL ? parts_open != 0 : (int)(parts_open >> part & 1);
-}
-
-/* The Car submenu lists its pages; each page lists its entries. */
-static const int car_page_items[] = {ITEM_AUTODRIVE, PAGE_LIGHTS, PAGE_DOORS};
-static const int lights_page_items[] = {LIGHT_HEAD, LIGHT_HAZARD, LIGHT_LEFT, LIGHT_RIGHT};
-static const int doors_page_items[] = {PART_ALL,     PART_ROOF,    PART_HOOD,    PART_TRUNK,
-                                       PART_DOOR_LF, PART_DOOR_RF, PART_DOOR_LR, PART_DOOR_RR};
-static int car_page; /* 0: the Car submenu, else PAGE_LIGHTS or PAGE_DOORS */
-
-static unsigned page_items(const int **items) {
-    if (car_page == PAGE_LIGHTS) {
-        *items = lights_page_items;
-        return ARRAY_COUNT(lights_page_items);
-    }
-    if (car_page == PAGE_DOORS) {
-        *items = doors_page_items;
-        return ARRAY_COUNT(doors_page_items);
-    }
-    *items = car_page_items;
-    return ARRAY_COUNT(car_page_items);
-}
-
-/* ForzaCar keeps its world velocity at +0x7600. */
-static int car_stationary(void *car) {
-    float velocity[3];
-    if (!memory_read((unsigned char *)car + 0x7600, velocity, sizeof(velocity))) return 0;
-    for (int i = 0; i < 3; ++i)
-        if (!float_is_finite(velocity[i])) return 0;
-    return velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2] < 0.25f;
-}
-
-static void toggle_part(void *component, int part);
-static void open_car_submenu(void *component, int part);
-static void open_car_page(void *component, int page);
-static void relabel_car_menu(void *component, int first);
-static void anna_toggle_autodrive(void *component, int part);
-enum { ANNA_CAR, ANNA_PARTS, ANNA_ALL = ANNA_PARTS + PART_ALL, ANNA_AUTODRIVE = ANNA_PARTS + ITEM_AUTODRIVE };
-static AnnaEntry anna_entries[] = {
-    [ANNA_CAR] = {"EO_Car", "Car", NULL, open_car_submenu, 0, -1},
-    [ANNA_PARTS + PART_ROOF] = {"EO_Roof", "Open Roof", "Close Roof", toggle_part, 0, PART_ROOF},
-    [ANNA_PARTS + PART_HOOD] = {"EO_Hood", "Open Hood", "Close Hood", toggle_part, 0, PART_HOOD},
-    [ANNA_PARTS + PART_TRUNK] = {"EO_Trunk", "Open Trunk", "Close Trunk", toggle_part, 0,
-                                 PART_TRUNK},
-    [ANNA_PARTS + PART_DOOR_LF] = {"EO_DoorLF", "Open Front Left Door",
-                                   "Close Front Left Door", toggle_part, 0, PART_DOOR_LF},
-    [ANNA_PARTS + PART_DOOR_RF] = {"EO_DoorRF", "Open Front Right Door",
-                                   "Close Front Right Door", toggle_part, 0, PART_DOOR_RF},
-    [ANNA_PARTS + PART_DOOR_LR] = {"EO_DoorLR", "Open Rear Left Door", "Close Rear Left Door",
-                                   toggle_part, 0, PART_DOOR_LR},
-    [ANNA_PARTS + PART_DOOR_RR] = {"EO_DoorRR", "Open Rear Right Door",
-                                   "Close Rear Right Door", toggle_part, 0, PART_DOOR_RR},
-    [ANNA_ALL] = {"EO_AllParts", "Open All", "Close All", toggle_part, 0, PART_ALL},
-    [ANNA_PARTS + LIGHT_HEAD] = {"EO_Headlights", "Headlights On", "Headlights Off",
-                                 toggle_part, 0, LIGHT_HEAD},
-    [ANNA_PARTS + LIGHT_HAZARD] = {"EO_Hazards", "Hazard Lights On", "Hazard Lights Off",
-                                   toggle_part, 0, LIGHT_HAZARD},
-    [ANNA_PARTS + LIGHT_LEFT] = {"EO_SignalLeft", "Left Indicator On", "Left Indicator Off",
-                                 toggle_part, 0, LIGHT_LEFT},
-    [ANNA_PARTS + LIGHT_RIGHT] = {"EO_SignalRight", "Right Indicator On",
-                                  "Right Indicator Off", toggle_part, 0, LIGHT_RIGHT},
-    [ANNA_PARTS + PAGE_LIGHTS] = {"EO_Lights", "Lights", NULL, open_car_page, 0, PAGE_LIGHTS},
-    [ANNA_PARTS + PAGE_DOORS] = {"EO_Doors", "Doors", NULL, open_car_page, 0, PAGE_DOORS},
-    [ANNA_AUTODRIVE] = {"EO_Autodrive", "Autodrive", NULL, anna_toggle_autodrive, 0, ITEM_AUTODRIVE},
-};
-
-static int item_enabled(int part) {
-    return anna_entries[ANNA_PARTS + part].enabled;
-}
 
 /* Treasure Map. The native purchase completion (0x1532e00) calls 0x151bf80,
    which marks the map owned for the current world (0x228 mainland, 0x229 and
@@ -964,723 +459,6 @@ static void treasure_map_tick(void) {
     ((void (*)(void))(image + 0x151bf80))();
     log_append("TREASURE MAP: unlocked for the current world.\r\n");
 }
-static volatile LONG anna_autodrive_requested;
-
-static const char *msvc_text(const MsvcString *value) {
-    return value->capacity >= 16 ? value->pointer : value->text;
-}
-
-/* An open car part is listed as "<name>+": ANNA reuses an option whose name
-   it has already labelled, so the suffix makes it relabel Open/Close. */
-static int anna_entry_index(const MsvcString *name) {
-    const char *text = msvc_text(name);
-    size_t size = name->size;
-    for (unsigned i = 0; i < ARRAY_COUNT(anna_entries); ++i) {
-        const char *own = anna_entries[i].name;
-        size_t length = text_length(own);
-        int suffixed = anna_entries[i].part >= 0 && size == length + 1 && text[length] == '+';
-        if (anna_entries[i].enabled && (size == length || suffixed) &&
-            memory_equal(text, own, length))
-            return (int)i;
-    }
-    return -1;
-}
-
-/* Replaces both native calls that destroy the consumed name vector, right
-   after the native AddOption loop: append ours, then finish natively. */
-/* The same rebuild serves the top-level menu and ANNA's follow-up lists. Only
-   the top level carries these native commands. */
-static int anna_top_level(MsvcString *begin, MsvcString *end) {
-    static const char *const markers[] = {"WhatShouldIDo", "RouteToNearest"};
-    for (MsvcString *name = begin; name < end; ++name) {
-        const char *text = msvc_text(name);
-        for (unsigned i = 0; i < ARRAY_COUNT(markers); ++i) {
-            size_t length = text_length(markers[i]);
-            if (name->size == length && memory_equal(text, markers[i], length)) return 1;
-        }
-    }
-    return 0;
-}
-
-static ULONGLONG car_submenu_until;
-static const char car_submenu_carrier[] = "StartMatchmakingFor";
-
-/* Car goes first. Both menu rebuilds (the list handler 0xab3fb0 and the
-   refresh 0xab7f60, wrapped below) clear the menu with 0x10b2810 and then add
-   the names in the vector at +0xb8. Car is added right after that clear, so
-   the native restore of the highlighted entry counts it like any other. */
-static void *anna_rebuilding;
-static void *anna_component; /* HUDAnnaComponent, seen on select */
-
-static void anna_clear_menu(void *menu) {
-    ((void (*)(void *))(image + 0x10b2810))(menu);
-    unsigned char *component = anna_rebuilding;
-    MsvcString *begin, *end;
-    void *own_menu;
-    if (!component || !anna_entries[ANNA_CAR].enabled ||
-        !memory_read_pointer(component + 0xf8, &own_menu) || own_menu != menu ||
-        !memory_read_pointer(component + 0xb8, (void **)&begin) ||
-        !memory_read_pointer(component + 0xc0, (void **)&end) || begin >= end)
-        return;
-    /* Any list but the Car submenu's own (EO_ names) leaves its pages. */
-    if (begin->size < 3 || !memory_equal(msvc_text(begin), "EO_", 3)) car_page = 0;
-    if (!anna_top_level(begin, end) || !driven_car()) return;
-    MsvcString name = {{{0}}, text_length(anna_entries[ANNA_CAR].name), 15};
-    memory_copy(name.text, anna_entries[ANNA_CAR].name, name.size);
-    ((AddOption)(image + 0x10b0da0))(menu, &name);
-}
-
-/* UIString text lives at +0x28 (length +0x30). Localized strings borrow it
-   from their table (+0x38); without a table the base destructor frees it with
-   the UI allocator, sized (length + 1) * 2. The UI allocator's alloc hook is
-   0x1edbd00, so literal labels are copied into a buffer from there. */
-static void **anna_make_label(void *self, void **output, const MsvcString *name) {
-    int index = anna_entry_index(name);
-    if (index < 0) return ((MakeLabel)(image + 0x10b9870))(self, output, name);
-    ((CreateUIString)(image + 0x1214480))(output);
-    unsigned char *label = *output;
-    if (label) {
-        const char *english = anna_entries[index].label;
-        int part = anna_entries[index].part;
-        if (anna_entries[index].close_label && part >= 0 && part_is_open(driven_car(), part))
-            english = anna_entries[index].close_label;
-        wchar_t text[128];
-        unsigned length = fh3_text_wide(english, text, ARRAY_COUNT(text));
-        wchar_t *copy = ((Allocate)(image + 0x1edbd00))((length + 1) * sizeof(wchar_t));
-        if (copy) {
-            memory_copy(copy, text, (length + 1) * sizeof(wchar_t));
-            *(wchar_t **)(label + 0x28) = copy;
-            *(unsigned *)(label + 0x30) = length;
-        }
-    }
-    return output;
-}
-
-static MsvcString *anna_selected_name(void *component, MsvcString *output) {
-    ((HighlightedName)(image + 0xaaa710))(component, output);
-    anna_component = component;
-    int index = anna_entry_index(output);
-    if (index >= 0) {
-        log_append("ANNA: custom entry selected.\r\n");
-        anna_entries[index].action(component, anna_entries[index].part);
-        if (index != ANNA_AUTODRIVE) {
-            /* Assign (0x245070) the carrier command so ANNA opens a follow-up list. */
-            MsvcString carrier = {{{0}}, sizeof(car_submenu_carrier) - 1,
-                                  sizeof(car_submenu_carrier) - 1};
-            carrier.pointer = (char *)car_submenu_carrier;
-            ((void (*)(MsvcString *, const MsvcString *, size_t, size_t))(image + 0x245070))(
-                output, &carrier, 0, (size_t)-1);
-        } else {
-            /* An empty name dispatches nothing natively, so ANNA closes. */
-            ((char *)msvc_text(output))[0] = 0;
-            output->size = 0;
-        }
-    }
-    return output;
-}
-
-/* Consumed by the next SatNav update, which also runs the cancel checks. */
-static void anna_toggle_autodrive(void *component, int part) {
-    (void)component;
-    (void)part;
-    InterlockedExchange(&anna_autodrive_requested, 1);
-}
-
-/* The Car submenu borrows a native follow-up list so ANNA keeps it active
-   and highlighted: selecting Car dispatches StartMatchmakingFor, whose
-   follow-up names land in HUDAnnaComponent's
-   vector at +0xb8, which is turned into menu options either by the list
-   message handler 0xab3fb0(component, &title) or by the per-frame refresh
-   0xab7f60(component, flag). Both are wrapped: while armed, the follow-up
-   names are replaced with the car's parts before the native code adds them.
-   The buffer is grown with the game allocator (0x1cd05f0; freed by 0x3680c0)
-   when the car has more parts than it holds. */
-typedef void (*AnnaListHandler)(void *, const MsvcString *);
-typedef void (*AnnaRefresh)(void *, unsigned char);
-
-static void open_car_submenu(void *component, int part) {
-    (void)component;
-    (void)part;
-    car_page = 0;
-    car_submenu_until = GetTickCount64() + 2000;
-}
-
-/* A page entry is an answer like a part, so the list is rebuilt in place. */
-static void open_car_page(void *component, int page) {
-    car_page = page;
-    relabel_car_menu(component, 1);
-}
-
-/* Back (D-pad Left) is ANNA's action 0xda in input context 0xf, asked at
-   0xa01ec6 through 0x1a198f0 before the "Back" command is dispatched. On the
-   Lights or Doors page it returns to the Car submenu instead. */
-
-static unsigned char anna_back_pressed(void *input, unsigned context, unsigned action,
-                                       unsigned char consume) {
-    unsigned char pressed = ((unsigned char (*)(void *, unsigned, unsigned, unsigned char))(
-        image + 0x1a198f0))(input, context, action, consume);
-    if (pressed && car_page && anna_component) {
-        open_car_page(anna_component, 0);
-        return 0;
-    }
-    return pressed;
-}
-
-static void free_game_string(MsvcString *value) {
-    if (value->capacity > 15 && value->pointer) ((void (*)(void *))(image + 0x3680c0))(value->pointer);
-}
-
-static void replace_follow_up(void *component) {
-    unsigned char *names = (unsigned char *)component + 0xb8;
-    MsvcString *begin, *end, *capacity;
-    if (!car_submenu_until || !memory_read_pointer(names, (void **)&begin) ||
-        !memory_read_pointer(names + 8, (void **)&end) ||
-        !memory_read_pointer(names + 16, (void **)&capacity) || !begin || begin == end ||
-        anna_top_level(begin, end))
-        return;
-    int armed = GetTickCount64() < car_submenu_until;
-    car_submenu_until = 0;
-    void *car = player_car();
-    const int *items;
-    unsigned item_count = page_items(&items), count = 0;
-    for (unsigned k = 0; armed && car && k < item_count; ++k) count += part_supported(car, items[k]);
-    if (!count) return; /* the native follow-up stays */
-    for (MsvcString *name = begin; name < end; ++name) free_game_string(name);
-    if ((size_t)(capacity - begin) < count) {
-        void *heap = ((void *(*)(void))(image + 0x1cd25b0))();
-        MsvcString *grown =
-            heap ? ((MsvcString * (*)(void *, size_t, unsigned, unsigned))(image + 0x1cd05f0))(
-                       heap, count * sizeof(MsvcString), 0, 0)
-                 : NULL;
-        if (!grown) {
-            *(MsvcString **)(names + 8) = begin; /* nothing left to show */
-            return;
-        }
-        ((void (*)(void *))(image + 0x3680c0))(begin);
-        begin = grown;
-        *(MsvcString **)names = begin;
-        *(MsvcString **)(names + 16) = begin + count;
-    }
-    unsigned used = 0;
-    for (unsigned k = 0; k < item_count; ++k) {
-        int i = items[k];
-        const AnnaEntry *entry = &anna_entries[ANNA_PARTS + i];
-        if (!part_supported(car, i)) continue;
-        MsvcString *name = begin + used++;
-        *name = (MsvcString){{{0}}, text_length(entry->name), 15};
-        memory_copy(name->text, entry->name, name->size);
-        if (part_is_open(car, i)) name->text[name->size++] = '+';
-    }
-    *(MsvcString **)(names + 8) = begin + used;
-}
-
-/* A part selected inside the list is an answer to the borrowed command, so
-   ANNA keeps showing the same list: re-add the options with their new labels.
-   AddOption keeps the highlight at the menu's restore index (+0x21c) while its
-   restore flag (+0x21a) is set; each option's highlight flag is at +0x40 of
-   the items in [[menu+0x210]+0x50]+0x28 -> +0x28. A new page (first)
-   highlights its first entry; the shown list still has the old page's
-   entries then. */
-static void relabel_car_menu(void *component, int first) {
-    void *car = player_car();
-    unsigned char *menu, *view, *collection, *list, **items;
-    if (!car || !memory_read_pointer((unsigned char *)component + 0xf8, (void **)&menu) || !menu ||
-        !memory_read_pointer(menu + 0x210, (void **)&view) || !view ||
-        !memory_read_pointer(view + 0x50, (void **)&collection) || !collection ||
-        !memory_read_pointer(collection + 0x28, (void **)&list) || !list ||
-        !memory_read_pointer(list + 0x28, (void **)&items))
-        return;
-    const int *page;
-    unsigned page_count = page_items(&page);
-    int highlighted = 0, count = 0;
-    for (unsigned k = 0; k < page_count; ++k) count += part_supported(car, page[k]);
-    for (int i = 0; !first && items && i < count; ++i) {
-        unsigned char *item, selected;
-        if (memory_read_pointer(items + i, (void **)&item) && item &&
-            memory_read(item + 0x40, &selected, 1) && selected)
-            highlighted = i;
-    }
-    ((void (*)(void *))(image + 0x10b2810))(menu);
-    *(int *)(menu + 0x21c) = highlighted;
-    menu[0x21a] = 1;
-    for (unsigned k = 0; k < page_count; ++k) {
-        int i = page[k];
-        const AnnaEntry *entry = &anna_entries[ANNA_PARTS + i];
-        if (!part_supported(car, i)) continue;
-        MsvcString name = {{{0}}, text_length(entry->name), 15};
-        memory_copy(name.text, entry->name, name.size);
-        if (part_is_open(car, i)) name.text[name.size++] = '+';
-        ((AddOption)(image + 0x10b0da0))(menu, &name);
-    }
-}
-
-static void anna_list_message(void *component, const MsvcString *title) {
-    replace_follow_up(component);
-    anna_rebuilding = component;
-    ((AnnaListHandler)(image + 0xab3fb0))(component, title);
-    anna_rebuilding = NULL;
-}
-
-static void anna_refresh(void *component, unsigned char flag) {
-    replace_follow_up(component);
-    anna_rebuilding = component;
-    ((AnnaRefresh)(image + 0xab7f60))(component, flag);
-    anna_rebuilding = NULL;
-}
-
-/* In free roam the car graph runs its race LOD, whose LODSelect branch has
-   no part animations; ForzaVista runs LOD 0 (Car_Autovista). The graph input
-   GameInputs:AnimationLOD picks the branch: look it up with 0x21f7490(graph,
-   &name) and set it with 0x21f83f0(input, value), as the car does for
-   GameInputs:headLights. */
-static void *lod_graph, *lod_input;
-static ULONGLONG lod_restore_at;
-
-static void close_all_parts(void *car);
-static void toggle_light(void *car, int light);
-/* Replaces the call to the light packet builder 0x1889140(car, dt). */
-static void car_light_packet(void *car, float dt) {
-    unsigned char *bytes = car;
-    if (car && car == headlight_car && headlight_override >= 0) {
-        bytes[CAR_LIGHTS_MANUAL] = 1;
-        bytes[CAR_LIGHTS_ON] = (unsigned char)headlight_override;
-    }
-    if (car && (car == signal_car || car == signal_cleared)) {
-        int signal = car == signal_car ? signal_active : SIGNAL_OFF;
-        bytes[CAR_HAZARDS] = signal == SIGNAL_HAZARD;
-        bytes[CAR_SIGNAL_LEFT] = signal == SIGNAL_LEFT;
-        bytes[CAR_SIGNAL_RIGHT] = signal == SIGNAL_RIGHT;
-        if (car == signal_cleared) signal_cleared = NULL;
-    }
-    ((void (*)(void *, float))(image + 0x1889140))(car, dt);
-}
-
-/* ForzaCar's world velocity (+0x7600) above about 1 m/s (3.6 km/h). */
-static int car_moving(void *car) {
-    float velocity[3];
-    if (!memory_read((unsigned char *)car + 0x7600, velocity, sizeof(velocity))) return 0;
-    for (int i = 0; i < 3; ++i)
-        if (!float_is_finite(velocity[i])) return 0;
-    return velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2] > 1.0f;
-}
-
-/* Tapping the throttle, or the car moving at all (rolling downhill, pushed,
-   driven by the AI), closes every open part; the race LOD (Car_Race_Focus)
-   returns once every part has closed. */
-static void car_parts_tick(void) {
-    if (parts_open && parts_car) {
-        void *car = player_car();
-        int close = car != parts_car || car_moving(car) || focused_key('W') || focused_key(VK_UP);
-        for (DWORD pad = 0; !close && load_pads() && pad < 4; ++pad) {
-            PadState state;
-            close = get_pad_state(pad, &state) == ERROR_SUCCESS && state.right_trigger > 40;
-        }
-        if (close) {
-            if (car == parts_car) close_all_parts(car);
-            else parts_open = 0; /* the car changed; its parts reset with it */
-        }
-    }
-    if (!lod_restore_at || GetTickCount64() < lod_restore_at) return;
-    lod_restore_at = 0;
-    void *car = player_car();
-    unsigned char *animator;
-    void *graph;
-    if (lod_input && car && memory_read_pointer((unsigned char *)car + 0x73a8, (void **)&animator) &&
-        animator && memory_read_pointer(animator + 0x1e0, &graph) && graph == lod_graph)
-        ((void (*)(void *, float))(image + 0x21f83f0))(lod_input, 1.0f);
-}
-
-static void use_autovista_lod(void *car) {
-    unsigned char *animator;
-    void *graph;
-    if (!memory_read_pointer((unsigned char *)car + 0x73a8, (void **)&animator) || !animator ||
-        !memory_read_pointer(animator + 0x1e0, &graph) || !graph)
-        return;
-    if (graph != lod_graph) {
-        static const char name[] = "GameInputs:AnimationLOD";
-        MsvcString key = {{{0}}, sizeof(name) - 1, sizeof(name) - 1};
-        key.pointer = (char *)name;
-        lod_input = ((void *(*)(void *, const MsvcString *))(image + 0x21f7490))(graph, &key);
-        lod_graph = graph;
-    }
-    if (lod_input) ((void (*)(void *, float))(image + 0x21f83f0))(lod_input, 0.0f);
-}
-
-static void send_part_event(void *car, int part, int open) {
-    int currently = parts_open >> part & 1;
-    if (currently == open) return;
-    const char *action = car_has_event(car, part_names[part], "toggle") ? "toggle"
-                         : open                                       ? "open"
-                                                                      : "close";
-    char event[16];
-    size_t length = text_length(part_names[part]);
-    memory_copy(event, part_names[part], length);
-    event[length] = ':';
-    memory_copy(event + length + 1, action, text_length(action) + 1);
-    use_autovista_lod(car);
-    ((CarEvent)(image + 0x1889b40))(car, event);
-    log_append("CAR PARTS: sent ");
-    log_append(event);
-    log_append(".\r\n");
-    parts_open ^= 1u << part;
-    lod_restore_at = parts_open ? 0 : GetTickCount64() + 3000; /* let the close play out */
-}
-
-static void close_all_parts(void *car) {
-    for (int i = 0; i < PART_COUNT; ++i)
-        if (single_part_supported(car, i)) send_part_event(car, i, 0);
-}
-
-/* Indicators turn themselves off like a real stalk: once the steering has
-   turned (|steering| >= 0.3) and come back to the centre (<= 0.1). The
-   steering is the driver's input: the left stick of any pad, or a steering
-   key (full lock). */
-static float steering_input(void) {
-    static const int keys[] = {'A', 'D', VK_LEFT, VK_RIGHT};
-    for (unsigned i = 0; i < ARRAY_COUNT(keys); ++i)
-        if (focused_key(keys[i])) return 1.0f;
-    float strongest = 0.0f;
-    for (DWORD pad = 0; load_pads() && pad < 4; ++pad) {
-        PadState state;
-        if (get_pad_state(pad, &state) != ERROR_SUCCESS) continue;
-        float x = state.left_x < 0 ? -(float)state.left_x / 32768.0f : (float)state.left_x / 32767.0f;
-        if (x > strongest) strongest = x;
-    }
-    return strongest;
-}
-
-static void set_signal(void *car, int signal) {
-    static const char *const messages[] = {
-        "LIGHTS: indicators off.\r\n", "LIGHTS: hazard lights on.\r\n",
-        "LIGHTS: left indicator on.\r\n", "LIGHTS: right indicator on.\r\n"};
-    if (signal_car && signal_car != car) signal_cleared = signal_car;
-    signal_car = signal ? car : NULL;
-    if (!signal) signal_cleared = car;
-    signal_active = signal;
-    signal_turned = steering_input() >= 0.3f;
-    log_append(messages[signal]);
-}
-
-/* D-pad Left/Right (the RadioLeft/RadioRight actions 0x1d/0x1e) both change
-   the radio station and, held for a second, toggle that indicator. The
-   radio consumers (the driving input handler 0xe04xxx, in input contexts 9
-   and 0xe, and the radio page update 0x14705e0) ask
-   0x1a198f0(input, context, action, 1) whether the action was just pressed;
-   those six calls are wrapped. A press the game reports
-   while that D-pad direction is down on a pad starts a hold and is held
-   back: released within the second, it is reported on the next query (a
-   tap changes the station), held, it toggles the indicator instead. The
-   query only answers inside the radio's input context, so menus keep the
-   D-pad. Keyboard radio keys pass straight through. */
-enum { RADIO_QUERY = 0x1a198f0, RADIO_QUERY_THUNK = 0x1a1a6c2, RADIO_LEFT = 0x1d, RADIO_RIGHT = 0x1e };
-enum { PAD_DPAD_LEFT = 0x4, PAD_DPAD_RIGHT = 0x8, INDICATOR_HOLD_MS = 1000, RADIO_TAP_MS = 250 };
-typedef unsigned char (*ActionPressed)(void *, unsigned, unsigned, unsigned char);
-static int dpad_indicators;
-static int hold_side, hold_consumed, tap_side;
-static ULONGLONG hold_since, tap_deadline;
-
-static WORD dpad_down(void) {
-    WORD buttons = 0;
-    for (DWORD pad = 0; load_pads() && pad < 4; ++pad) {
-        PadState state;
-        if (get_pad_state(pad, &state) == ERROR_SUCCESS) buttons |= state.buttons;
-    }
-    return buttons & (PAD_DPAD_LEFT | PAD_DPAD_RIGHT);
-}
-
-static WORD side_button(int side) {
-    return side == SIGNAL_LEFT ? PAD_DPAD_LEFT : PAD_DPAD_RIGHT;
-}
-
-/* Per frame: finish holds and cancel indicators after a turn. */
-static void signals_tick(void) {
-    if (!signal_car && !hold_side) return;
-    void *car = driven_car();
-    if (signal_car && car != signal_car) {
-        signal_cleared = signal_car; /* the car changed or the drive ended */
-        signal_car = NULL;
-        signal_active = SIGNAL_OFF;
-    }
-    if (hold_side) {
-        ULONGLONG now = GetTickCount64();
-        if (!(dpad_down() & side_button(hold_side))) {
-            if (!hold_consumed) {
-                tap_side = hold_side;
-                tap_deadline = now + RADIO_TAP_MS;
-            }
-            hold_side = 0;
-        } else if (!hold_consumed && now - hold_since >= INDICATOR_HOLD_MS) {
-            hold_consumed = 1;
-            if (car) set_signal(car, car == signal_car && signal_active == hold_side ? SIGNAL_OFF
-                                                                                       : hold_side);
-        }
-    }
-    if (car && car == signal_car &&
-        (signal_active == SIGNAL_LEFT || signal_active == SIGNAL_RIGHT)) {
-        float steering = steering_input();
-        if (steering >= 0.3f) signal_turned = 1;
-        else if (signal_turned && steering <= 0.1f) set_signal(car, SIGNAL_OFF);
-    }
-}
-
-static unsigned char radio_action_pressed(void *input, unsigned context, unsigned action,
-                                          unsigned char consume) {
-    unsigned char pressed = ((ActionPressed)(image + RADIO_QUERY))(input, context, action, consume);
-    int side = action == RADIO_LEFT ? SIGNAL_LEFT : action == RADIO_RIGHT ? SIGNAL_RIGHT : 0;
-    if (!side) return pressed;
-    signals_tick();
-    if (pressed && (dpad_down() & side_button(side))) {
-        if (!hold_side) {
-            hold_side = side;
-            hold_consumed = 0;
-            hold_since = GetTickCount64();
-        }
-        return 0;
-    }
-    if (!pressed && tap_side == side) {
-        tap_side = 0;
-        return GetTickCount64() <= tap_deadline;
-    }
-    return pressed;
-}
-
-/* Lights: the headlight override, hazards and indicators. */
-static void toggle_light(void *car, int light) {
-    if (light != LIGHT_HEAD) {
-        set_signal(car, part_is_open(car, light) ? SIGNAL_OFF : signal_of(light));
-        return;
-    }
-    int on = !headlights_on(car);
-    headlight_car = car;
-    headlight_override = on;
-    log_append(on ? "LIGHTS: headlights on.\r\n" : "LIGHTS: headlights off.\r\n");
-}
-
-/* Parts open only while the car is stationary; closing always works. */
-static void toggle_part(void *component, int part) {
-    void *car = player_car();
-    if (!car || !part_supported(car, part)) return;
-    if (is_light(part)) {
-        toggle_light(car, part);
-        relabel_car_menu(component, 0);
-        return;
-    }
-    if (car != parts_car) {
-        parts_car = car; /* a new car starts with everything closed */
-        parts_open = 0;
-    }
-    int open = !part_is_open(car, part);
-    if (open && !car_stationary(car)) {
-        log_append("CAR PARTS: the car must be stationary to open parts.\r\n");
-    } else if (part == PART_ALL) {
-        if (open) {
-            for (int i = 0; i < PART_COUNT; ++i)
-                if (single_part_supported(car, i)) send_part_event(car, i, 1);
-        } else {
-            close_all_parts(car);
-        }
-    } else {
-        send_part_event(car, part, open);
-    }
-    relabel_car_menu(component, 0);
-}
-
-/* Indicator lamps. Car materials are GrubReader ("burG") chunks, loaded by
-   0x1ebf820(self, owner, view, context) from its one call at 0x1eb7c3f. Many
-   cars' turn-signal materials leave their LightType property at 70 (none),
-   so the hazard and indicator inputs never reach them. For a material named
-   like a turn signal (turn, indicator, blinker) whose side is known (from its
-   name, or from a model entirely on one side of the car), a private copy of
-   the chunk gets LightType 21 (left) or 20 (right) and is loaded in its
-   place. The game's buffers and files are never changed; materials without
-   that property, or on both sides, are left alone. */
-typedef struct {
-    uint32_t tag;
-    uint16_t version, metadata_count;
-    uint32_t metadata, offset, size, unpacked;
-} GrubChunk;
-typedef struct {
-    void *table, *allocation, *stream;
-    const unsigned char *header;
-    const GrubChunk *chunks;
-    const unsigned char *data;
-    uint32_t count, padding;
-} GrubReader;
-typedef struct {
-    const GrubReader *reader;
-    const GrubChunk *chunk;
-} GrubView;
-_Static_assert(sizeof(GrubChunk) == 24 && sizeof(GrubReader) == 0x38 && sizeof(GrubView) == 16,
-               "GrubReader layout");
-typedef void (*MaterialLoad)(void *, void *, const GrubView *, void *);
-enum { MATERIAL_LOAD = 0x1ebf820, MATERIAL_LOAD_THUNK = 0x1ebf942 };
-enum { GRUB_MATERIAL = 0x4d617449, GRUB_MODEL = 0x4d6f646c, GRUB_NAME = 0x4e616d65,
-       GRUB_BOUNDS = 0x42426f78, GRUB_PROPERTIES = 0x4d545052 };
-enum { LIGHT_TYPE_NONE = 70, LIGHT_TYPE_RIGHT = 20, LIGHT_TYPE_LEFT = 21 };
-static volatile LONG material_messages;
-
-/* The reader's data offset and total size, checked against its chunk count. */
-static int grub_header(const GrubReader *reader, uint32_t *data_offset, uint32_t *total) {
-    unsigned char head[20];
-    uint32_t count;
-    if (!memory_read(reader->header, head, sizeof(head)) || !memory_equal(head, "burG\1\1\0\0", 8))
-        return 0;
-    memory_copy(data_offset, head + 8, 4);
-    memory_copy(total, head + 12, 4);
-    memory_copy(&count, head + 16, 4);
-    return reader->count && reader->count <= 8192 && reader->count == count &&
-           *data_offset >= 20 + reader->count * sizeof(GrubChunk) && *data_offset <= 16u << 20 &&
-           *total > *data_offset && *total <= 64u << 20;
-}
-
-/* Copies a chunk's metadata entry `tag` (at most `capacity` bytes); its size,
-   0 when missing or malformed. */
-static size_t grub_metadata(const GrubReader *reader, const GrubChunk *chunk, uint32_t tag,
-                            void *output, size_t capacity) {
-    uint32_t offset, total;
-    if (!grub_header(reader, &offset, &total) || !chunk->metadata_count ||
-        chunk->metadata_count > 64 || chunk->metadata > offset ||
-        (size_t)chunk->metadata_count * 8 > offset - chunk->metadata)
-        return 0;
-    for (unsigned i = 0; i < chunk->metadata_count; ++i) {
-        size_t at = chunk->metadata + i * 8;
-        unsigned char entry[8];
-        uint32_t entry_tag;
-        uint16_t packed, relative;
-        if (!memory_read(reader->header + at, entry, sizeof(entry))) return 0;
-        memory_copy(&entry_tag, entry, 4);
-        if (entry_tag != tag) continue;
-        memory_copy(&packed, entry + 4, 2);
-        memory_copy(&relative, entry + 6, 2);
-        size_t size = packed >> 4;
-        if (relative > offset - at || size > offset - at - relative || size > capacity) return 0;
-        return memory_read(reader->header + at + relative, output, size) ? size : 0;
-    }
-    return 0;
-}
-
-/* The chunk's name in lower case; 0 when missing or not printable. */
-static size_t grub_name(const GrubReader *reader, const GrubChunk *chunk, char name[513]) {
-    size_t length = grub_metadata(reader, chunk, GRUB_NAME, name, 512);
-    if (length && !name[length - 1]) --length;
-    for (size_t i = 0; i < length; ++i) {
-        if (name[i] < ' ' || name[i] > '~') return 0;
-        if (name[i] >= 'A' && name[i] <= 'Z') name[i] += 32;
-    }
-    name[length] = 0;
-    return length;
-}
-
-static int contains_any(const char *text, size_t length, const char *const *needles,
-                        unsigned count) {
-    for (unsigned i = 0; i < count; ++i)
-        if (text_find(text, length, needles[i])) return 1;
-    return 0;
-}
-
-static unsigned material_side(const GrubReader *reader, const char *name, size_t length) {
-    static const char *const left[] = {"lightl", "lensl", "signall", "indicatorl", "mirrorl", "left",
-                                       "_lf_",   "_lr_",  "_fl_",    "_rl_",       "_l_"};
-    static const char *const right[] = {"lightr", "lensr", "signalr", "indicatorr", "mirrorr",
-                                        "right",  "_rf_",  "_rr_",    "_fr_",       "_r_"};
-    int is_left = contains_any(name, length, left, ARRAY_COUNT(left));
-    int is_right = contains_any(name, length, right, ARRAY_COUNT(right));
-    if (is_left != is_right) return is_left ? LIGHT_TYPE_LEFT : LIGHT_TYPE_RIGHT;
-    /* The first model's bounds (min xyz, max xyz): one side of the car only. */
-    for (uint32_t i = 0; i < reader->count; ++i) {
-        GrubChunk chunk;
-        float bounds[6];
-        if (!memory_read(reader->chunks + i, &chunk, sizeof(chunk))) return 0;
-        if (chunk.tag != GRUB_MODEL) continue;
-        if (grub_metadata(reader, &chunk, GRUB_BOUNDS, bounds, sizeof(bounds)) != sizeof(bounds))
-            return 0;
-        for (int j = 0; j < 6; ++j)
-            if (!float_is_finite(bounds[j])) return 0;
-        for (int j = 0; j < 3; ++j)
-            if (bounds[j] > bounds[j + 3]) return 0;
-        return bounds[3] < -0.05f ? LIGHT_TYPE_LEFT : bounds[0] > 0.05f ? LIGHT_TYPE_RIGHT : 0;
-    }
-    return 0;
-}
-
-/* A heap copy of the material chunk with its unset LightType filled in, or NULL. */
-static unsigned char *repair_material(const GrubView *view, GrubReader *reader, GrubChunk *chunk,
-                                      char name[513], unsigned *side) {
-    GrubView shown;
-    uint32_t offset, total;
-    if (!memory_read(view, &shown, sizeof(shown)) ||
-        !memory_read(shown.reader, reader, sizeof(*reader)) ||
-        !memory_read(shown.chunk, chunk, sizeof(*chunk)) || chunk->tag != GRUB_MATERIAL ||
-        !grub_header(reader, &offset, &total) || !reader->data || chunk->size != chunk->unpacked ||
-        chunk->offset < offset || chunk->offset > total || chunk->size > total - chunk->offset ||
-        chunk->size < 20 || chunk->size > 1u << 20)
-        return NULL;
-    size_t name_length = grub_name(reader, chunk, name);
-    static const char *const signals[] = {"turn", "indicator", "blinker"};
-    if (!contains_any(name, name_length, signals, ARRAY_COUNT(signals)) ||
-        !(*side = material_side(reader, name, name_length)))
-        return NULL;
-    size_t length = chunk->size;
-    unsigned char *copy = HeapAlloc(GetProcessHeap(), 0, length);
-    if (!copy) return NULL;
-    uint32_t count, start, size;
-    int changed = 0;
-    if (!memory_read(reader->data + (chunk->offset - offset), copy, length)) goto failed;
-    memory_copy(&start, copy + 8, 4);
-    memory_copy(&size, copy + 12, 4);
-    memory_copy(&count, copy + 16, 4);
-    if (!memory_equal(copy, "burG\1\1\0\0", 8) || !count || count > 64 ||
-        start < 20 + count * sizeof(GrubChunk) || start > length || size != length)
-        goto failed;
-    static const unsigned char light_type[] = {3, 0, 0xa0, 0x73, 0x30, 0x49, 4};
-    for (uint32_t i = 0; i < count; ++i) {
-        GrubChunk part;
-        memory_copy(&part, copy + 20 + i * sizeof(GrubChunk), sizeof(part));
-        if (part.offset < start || part.offset > length || part.size > length - part.offset ||
-            part.size != part.unpacked)
-            goto failed;
-        if (part.tag != GRUB_PROPERTIES) continue;
-        unsigned char *properties = copy + part.offset;
-        for (size_t j = 0; j + 27 <= part.size; ++j) {
-            uint32_t value;
-            if (!memory_equal(properties + j, light_type, sizeof(light_type))) continue;
-            memory_copy(&value, properties + j + 23, 4);
-            if (value != LIGHT_TYPE_NONE) continue;
-            memory_copy(properties + j + 23, side, 4);
-            changed = 1;
-        }
-    }
-    if (changed) {
-        reader->data = copy; /* the copy is the whole chunk: it starts at the data offset */
-        chunk->offset = offset;
-        return copy;
-    }
-failed:
-    HeapFree(GetProcessHeap(), 0, copy);
-    return NULL;
-}
-
-static void indicator_material_load(void *self, void *owner, const GrubView *view, void *context) {
-    GrubReader reader;
-    GrubChunk chunk;
-    char name[513];
-    unsigned side = 0;
-    unsigned char *copy = view ? repair_material(view, &reader, &chunk, name, &side) : NULL;
-    if (!copy) {
-        ((MaterialLoad)(image + MATERIAL_LOAD))(self, owner, view, context);
-        return;
-    }
-    GrubView replacement = {&reader, &chunk};
-    ((MaterialLoad)(image + MATERIAL_LOAD))(self, owner, &replacement, context);
-    HeapFree(GetProcessHeap(), 0, copy);
-    if (InterlockedIncrement(&material_messages) <= 32) {
-        log_append("LIGHTS: indicator material ");
-        log_append(name);
-        log_append(side == LIGHT_TYPE_LEFT ? " lights as the left indicator (in memory).\r\n"
-                                          : " lights as the right indicator (in memory).\r\n");
-    }
-}
-
 /* Horn Accelerator, the HornUnlock add-on (product
    3bd05167-3977-4bc9-9870-5ad74e6eb21a). Store ownership asks the wrapper
    0xfa6350(manager, product), which passes manager+8 on to 0xfa6360; the
@@ -1745,6 +523,17 @@ static void extras_refresh(void *record) {
 
 void *fh3_player_car(void) { return player_car(); }
 
+static void hud_set_hidden(int mode);
+static void hud_set_prompt(const wchar_t *before, const char *button, const wchar_t *after);
+static void hud_set_anna_status(const wchar_t *label, const wchar_t *value);
+static void hud_set_anna_ready(int ready);
+void fh3_set_anna_ready(int ready) { hud_set_anna_ready(ready); }
+void fh3_set_hud_hidden(int mode) { hud_set_hidden(mode); }
+void fh3_set_anna_status(const wchar_t *label, const wchar_t *value) { hud_set_anna_status(label, value); }
+void fh3_set_hud_prompt(const wchar_t *before, const char *button, const wchar_t *after) {
+    hud_set_prompt(before, button, after);
+}
+
 static void garage_tick(void);
 
 static void satnav_update(void *self, float dt) {
@@ -1752,38 +541,8 @@ static void satnav_update(void *self, float dt) {
     if (unlock_treasure_map) treasure_map_tick();
     if (unrestricted_photo) photo_mode_tick();
     camera_fov_tick();
-    car_parts_tick();
-    signals_tick();
     garage_tick();
     fh3_mods_frame(dt);
-    if (!autodrive_enabled) return;
-    int down = focused_key(toggle_key) || toggle_chord();
-    int pressed = (down && !key_was_down) || InterlockedExchange(&anna_autodrive_requested, 0);
-    key_was_down = down;
-    if (autodrive_car) {
-        if (driver_mode(autodrive_car) != 0) {
-            /* A native state (event start, reset, car change) took the car back. */
-            autodrive_car = NULL;
-            cinematic_leave();
-            log_append("AUTODRIVE: the game ended the AI drive.\r\n");
-            return;
-        }
-        int input = driving_input();
-        if (!input) input_armed = 1;
-        if (pressed) autodrive_stop("AUTODRIVE: toggle returned control to the player.\r\n");
-        else if (input && input_armed)
-            autodrive_stop("AUTODRIVE: driving input returned control to the player.\r\n");
-        else {
-            if (dt > 0.0f && dt < 1.0f) autodrive_elapsed += dt;
-            /* Switch after a few seconds so the start of the drive stays visible. */
-            if (autodrive_cinematic && !cinematic_tried && autodrive_elapsed >= 3.0f)
-                cinematic_enter();
-            else
-                cinematic_tick(dt);
-        }
-        return;
-    }
-    if (pressed) autodrive_start();
 }
 
 /* Minimap follows the orbit camera. MapViewControllerTrackingMiniMap's update
@@ -2091,7 +850,6 @@ enum {
     UI_DRIFT,
     UI_DRIFT_FIRST,
     UI_DRIFT_LAST = UI_DRIFT_FIRST + DRIFT_TUNING_COUNT - 1,
-    UI_CINEMATIC,
     UI_FPS,
     UI_FPS_GPU,
     UI_FPS_MS,
@@ -2099,7 +857,14 @@ enum {
     UI_LIVERY_4K, /* video options page from here on */
     UI_LIVERY_MSAA,
     UI_LIVERY_SUPERSAMPLING,
-    UI_HUD_HIDDEN, /* A_Hud page */
+    UI_HUD_HIDDEN, /* A_Hud page from here on */
+    UI_LETTERBOX,
+    UI_PROMPT_BEFORE,
+    UI_PROMPT_BUTTON,
+    UI_PROMPT_AFTER,
+    UI_ANNA_LABEL, /* HUDAnnaControl (through its Page): the tag above ANNA, her ring lit */
+    UI_ANNA_VALUE,
+    UI_ANNA_READY, /* her button shows the D-pad where the game has her unavailable (races) */
     UI_MAKE_GRID,  /* PopupMenu: the manufacturer picker's grid layout */
     UI_FRAME_STATS, /* every page (base type 0x4e214e0): the FPS readout */
     UI_FPS_BOX_PAGE, /* every page: whether the readout draws its box */
@@ -2108,18 +873,23 @@ enum {
 static const char *const ui_names[UI_COUNT] = {
     "EOChaseNearFOV", "EOChaseFarFOV", "EOHoodFOV", "EOBumperFOV", "EOCockpitFOV",
     "EOMinimapFollowsCamera", "EODriftCamera", "EODriftSensitivity", "EODriftSpeed",
-    "EODriftRange", "EOAutodriveCinematic", "EOShowFPS", "EOShowGPUUsage", "EOShowFrameTime", "EOFPSBackground",
+    "EODriftRange", "EOShowFPS", "EOShowGPUUsage", "EOShowFrameTime", "EOFPSBackground",
     "EOLivery4K", "EOLiveryMSAA", "EOLiverySupersampling",
-    "EOHudHidden", "EOMakeGrid", "EOFrameStats", "EOFPSBox"};
+    "EOHudHidden", "EOLetterbox", "EOPromptBefore", "EOPromptButton", "EOPromptAfter", "EOAnnaLabel", "EOAnnaValue", "EOAnnaReady", "EOMakeGrid", "EOFrameStats", "EOFPSBox"};
 static UiProperty ui_properties[UI_COUNT];
 static UiLink ui_links[UI_COUNT];
 static int ui_registered;
 
 /* The HUD (ForzaUI.A_Hud, its own data context) binds LayoutRoot's
-   Visibility to EOHudHidden. Its getter records the page so a change can
-   raise PropertyChanged the way the native page setters do (0x56d4f0). */
-static int hud_hidden;
+   Visibility to EOHudHidden, its letterbox bars to EOLetterbox and a plugin's
+   prompt to EOPromptBefore/Button/After. Their getters record the page so a
+   change can raise PropertyChanged the way the native page setters do
+   (0x56d4f0). */
+static int hud_hidden, hud_letterbox;
+static wchar_t prompt_before[96], prompt_after[96], anna_label[48], anna_value[32];
+static char prompt_button[16];
 static void *hud_page, *hud_page_vtable;
+static int anna_ready;
 
 static int ui_index(const UiProperty *property) {
     return property >= ui_properties && property < ui_properties + UI_COUNT
@@ -2153,6 +923,7 @@ static void ui_save(const wchar_t *section, const wchar_t *key, int value) {
 
 static int picker_owns(void *popup);
 static void **frame_stats_text(void **output, void *object);
+static void *make_ui_string(const wchar_t *text, unsigned length);
 static void frame_stats_configure(int which, int on);
 static int frame_stats_enabled, frame_stats_gpu, frame_stats_ms, frame_stats_box = 1;
 
@@ -2166,18 +937,39 @@ static void **ui_get(void **output, UiProperty *property, void *object) {
         if (!value) value = *(volatile float *)(image + camera_fovs[i].rva);
         return ((UiBox)(image + 0x495110))(output, &value);
     }
-    if (index == UI_MINIMAP || index == UI_DRIFT || index == UI_CINEMATIC ||
+    if (index == UI_MINIMAP || index == UI_DRIFT ||
         (index >= UI_FPS && index <= UI_FPS_BOX)) {
         int value = (index == UI_MINIMAP   ? minimap_follows_camera
                      : index == UI_DRIFT   ? drift_camera
                      : index == UI_FPS     ? frame_stats_enabled
                      : index == UI_FPS_GPU ? frame_stats_gpu
                      : index == UI_FPS_MS  ? frame_stats_ms
-                     : index == UI_FPS_BOX ? frame_stats_box
-                                           : autodrive_cinematic) != 0;
+                                           : frame_stats_box) != 0;
         return ((UiBox)(image + 0x5592b0))(output, &value);
     }
     if (index == UI_FRAME_STATS) return frame_stats_text(output, object);
+    if (index == UI_LETTERBOX || index == UI_ANNA_READY) {
+        unsigned char value = (index == UI_LETTERBOX ? hud_letterbox : anna_ready) != 0;
+        if (object && memory_read_pointer(object, &hud_page_vtable)) hud_page = object;
+        return ((UiBox)(image + 0x5592d0))(output, &value);
+    }
+    if (index >= UI_PROMPT_BEFORE && index <= UI_ANNA_VALUE) {
+        wchar_t button[16];
+        const wchar_t *text = index == UI_PROMPT_BEFORE ? prompt_before
+                              : index == UI_PROMPT_AFTER ? prompt_after
+                              : index == UI_ANNA_LABEL   ? anna_label
+                              : index == UI_ANNA_VALUE   ? anna_value
+                                                         : button;
+        if (index >= UI_ANNA_LABEL && object && memory_read_pointer(object, &hud_page_vtable)) hud_page = object;
+        unsigned length = 0;
+        for (; index == UI_PROMPT_BUTTON && prompt_button[length] && length + 1 < 16; ++length)
+            button[length] = (wchar_t)prompt_button[length];
+        if (index == UI_PROMPT_BUTTON) button[length] = 0;
+        length = 0;
+        while (text[length]) ++length;
+        *output = make_ui_string(text, length);
+        return output;
+    }
     if (index == UI_FPS_BOX_PAGE) {
         int value = frame_stats_box != 0;
         return ((UiBox)(image + 0x5592b0))(output, &value);
@@ -2227,13 +1019,6 @@ static void ui_set(UiProperty *property, void *object, void *boxed) {
         if (!memory_read((unsigned char *)boxed + 0x28, &value, sizeof(value))) return;
         drift_camera = value != 0;
         ui_save(L"Camera", L"DriftCamera", drift_camera);
-    } else if (index == UI_CINEMATIC) {
-        int value;
-        if (!memory_read((unsigned char *)boxed + 0x28, &value, sizeof(value))) return;
-        autodrive_cinematic = value != 0;
-        /* Turning it off mid-drive hands the camera back right away. */
-        if (!autodrive_cinematic) cinematic_leave();
-        ui_save(L"Vehicle", L"AutodriveCinematic", autodrive_cinematic);
     } else if (index >= UI_FPS && index <= UI_FPS_BOX) {
         int value;
         if (!memory_read((unsigned char *)boxed + 0x28, &value, sizeof(value))) return;
@@ -2859,11 +1644,11 @@ static int ui_register(void) {
     for (unsigned i = 0; i < UI_COUNT; ++i) {
         UiProperty *property = &ui_properties[i];
         memory_copy(property,
-                    i == UI_FRAME_STATS                  ? text
+                    i == UI_FRAME_STATS || (i >= UI_PROMPT_BEFORE && i <= UI_ANNA_VALUE) ? text
                     : i == UI_FPS_BOX_PAGE               ? integer
                     : i >= UI_HUD_HIDDEN                 ? hud
                     : i >= UI_LIVERY_4K                  ? video
-                    : i == UI_MINIMAP || i == UI_DRIFT || i == UI_CINEMATIC ||
+                    : i == UI_MINIMAP || i == UI_DRIFT ||
                               (i >= UI_FPS && i <= UI_FPS_BOX)
                           ? integer
                                                        : real,
@@ -2877,7 +1662,7 @@ static int ui_register(void) {
         void *type = i == UI_FRAME_STATS || i == UI_FPS_BOX_PAGE
                          ? ((void *(*)(void *))(image + 0x14b3940))(NULL)
                      : i == UI_MAKE_GRID ? ((void *(*)(void *))(image + 0x1607070))(NULL)
-                     : image + (i == UI_HUD_HIDDEN  ? 0x4e246c0
+                     : image + (i >= UI_HUD_HIDDEN && i <= UI_ANNA_READY ? 0x4e246c0
                                 : i >= UI_LIVERY_4K ? 0x4e558f0
                                                     : 0x4e247a0);
         ((void (*)(void *, UiLink *))(image + 0x1fe9210))(type, &ui_links[i]);
@@ -2900,8 +1685,6 @@ static const char ui_resources[] =
     "Description=\"Extra Options: field of view of the cockpit camera.\" />"
     "\r\n<local:TileMenuDataItem x:Key=\"EO_Item_Minimap\" Heading=\"Minimap Follows Camera\" "
     "Description=\"Extra Options: turn the minimap with the right-stick look camera.\" />"
-    "\r\n<local:TileMenuDataItem x:Key=\"EO_Item_Cinematic\" Heading=\"Autodrive Cinematic Camera\" "
-    "Description=\"Extra Options: switch to slow orbiting cinematic shots with the HUD hidden after a few seconds of Autodrive. Driving input brings your camera and HUD back.\" />"
     "\r\n<local:TileMenuDataItem x:Key=\"EO_Item_FPS\" Heading=\"Show FPS\" "
     "Description=\"Extra Options: frame rate in the top-right corner of the HUD and menus.\" />"
     "\r\n<local:TileMenuDataItem x:Key=\"EO_Item_FPSGPU\" Heading=\"Show GPU Usage\" "
@@ -2934,9 +1717,6 @@ static const char ui_resources[] =
 static const char ui_controls[] =
     "<local:SpinnerControl Label=\"Minimap Follows Camera\" Tag=\"{StaticResource EO_Item_Minimap}\" "
     "SelectedIndex=\"{Binding EOMinimapFollowsCamera}\" ItemsSource=\"{Binding OnOffOptions}\" "
-    "Style=\"{StaticResource A_Style_SpinnerControl_Default}\" />\r\n"
-    "<local:SpinnerControl Label=\"Autodrive Cinematic Camera\" Tag=\"{StaticResource EO_Item_Cinematic}\" "
-    "SelectedIndex=\"{Binding EOAutodriveCinematic}\" ItemsSource=\"{Binding OnOffOptions}\" "
     "Style=\"{StaticResource A_Style_SpinnerControl_Default}\" />\r\n"
     "<local:SpinnerControl Label=\"Show FPS\" Tag=\"{StaticResource EO_Item_FPS}\" "
     "SelectedIndex=\"{Binding EOShowFPS}\" ItemsSource=\"{Binding OnOffOptions}\" "
@@ -3001,7 +1781,126 @@ static const char video_control_anchor[] = "</local:CommonListBox>";
     "Value=\"#66000000\"/><Style.Triggers><DataTrigger Binding=\"{Binding EOFPSBox" source \
     "}\" Value=\"0\"><Setter Property=\"Background\" Value=\"Transparent\"/></DataTrigger>"    \
     "</Style.Triggers></Style></Border.Style>"
+/* Letterbox and prompt, before LayoutRoot so they stay while the HUD is hidden: two black bars slide
+   in from above and below (EOLetterbox), and a plugin's prompt sits at the bottom centre (EOPromptButton
+   set: text, the button's picture, text). */
+#define HUD_LETTERBOX_AND_PROMPT \
+    "<Grid IsHitTestVisible=\"False\"><Grid.Resources><CircleEase x:Key=\"EO_LetterboxEase\" EasingMode=\"EaseOut\"/></Grid.Resources>\r\n" \
+    "<Rectangle Fill=\"Black\" Height=\"330\" VerticalAlignment=\"Top\" Margin=\"-200,-200,-200,0\" IsHitTestVisible=\"False\">" \
+    "<Rectangle.RenderTransform><TranslateTransform Y=\"-330\"/></Rectangle.RenderTransform>" \
+    "<Rectangle.Style><Style TargetType=\"{x:Type Rectangle}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOLetterbox}\" Value=\"True\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/><DataTrigger.EnterActions><BeginStoryboard><Storyboard>" \
+    "<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty=\"(UIElement.RenderTransform).(TranslateTransform.Y)\">" \
+    "<DiscreteDoubleKeyFrame KeyTime=\"0:0:0\" Value=\"-330\"/>" \
+    "<EasingDoubleKeyFrame KeyTime=\"0:0:0.6\" Value=\"0\" EasingFunction=\"{StaticResource EO_LetterboxEase}\"/>" \
+    "</DoubleAnimationUsingKeyFrames></Storyboard></BeginStoryboard></DataTrigger.EnterActions>" \
+    "</DataTrigger></Style.Triggers></Style></Rectangle.Style></Rectangle>\r\n" \
+    "<Rectangle Fill=\"Black\" Height=\"330\" VerticalAlignment=\"Bottom\" Margin=\"-200,0,-200,-200\" IsHitTestVisible=\"False\">" \
+    "<Rectangle.RenderTransform><TranslateTransform Y=\"330\"/></Rectangle.RenderTransform>" \
+    "<Rectangle.Style><Style TargetType=\"{x:Type Rectangle}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOLetterbox}\" Value=\"True\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/><DataTrigger.EnterActions><BeginStoryboard><Storyboard>" \
+    "<DoubleAnimationUsingKeyFrames Storyboard.TargetProperty=\"(UIElement.RenderTransform).(TranslateTransform.Y)\">" \
+    "<DiscreteDoubleKeyFrame KeyTime=\"0:0:0\" Value=\"330\"/>" \
+    "<EasingDoubleKeyFrame KeyTime=\"0:0:0.6\" Value=\"0\" EasingFunction=\"{StaticResource EO_LetterboxEase}\"/>" \
+    "</DoubleAnimationUsingKeyFrames></Storyboard></BeginStoryboard></DataTrigger.EnterActions>" \
+    "</DataTrigger></Style.Triggers></Style></Rectangle.Style></Rectangle>\r\n" \
+    "</Grid>\r\n" \
+    "<Border HorizontalAlignment=\"Center\" VerticalAlignment=\"Bottom\" Margin=\"0,0,0,60\" Padding=\"14,4,14,4\" " \
+    "CornerRadius=\"3\" Background=\"#B0000000\" IsHitTestVisible=\"False\" " \
+    "Visibility=\"{Binding EOPromptButton, Converter={StaticResource A_StringVisConverter}}\">" \
+    "<StackPanel Orientation=\"Horizontal\">" \
+    "<local:FZTextBlock Text=\"{Binding EOPromptBefore}\" Style=\"{StaticResource A_Style_FZTextBlock_PlayerBarBold}\" " \
+    "FontSize=\"26\" VerticalAlignment=\"Center\"/>" \
+    "<Grid Margin=\"8,0,8,0\" VerticalAlignment=\"Center\">" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_LB}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"LB\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_RB}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"RB\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_LT}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"LT\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_RT}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"RT\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_A}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"A\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_B}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"B\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_X}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"X\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_Y}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"Y\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_View}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"View\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_Menu}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"Menu\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_L3}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"L3\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_R3}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"R3\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_DPadUp}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"DPadUp\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_DPadDown}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"DPadDown\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_DPadLeft}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"DPadLeft\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_DPadRight}\" Width=\"40\" Height=\"40\">" \
+    "<local:FZMaterial.Style><Style TargetType=\"{x:Type local:FZMaterial}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/>" \
+    "<Style.Triggers><DataTrigger Binding=\"{Binding EOPromptButton}\" Value=\"DPadRight\">" \
+    "<Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style>" \
+    "</local:FZMaterial.Style></local:FZMaterial>" \
+    "</Grid>" \
+    "<local:FZTextBlock Text=\"{Binding EOPromptAfter}\" Style=\"{StaticResource A_Style_FZTextBlock_PlayerBarBold}\" " \
+    "FontSize=\"26\" VerticalAlignment=\"Center\"/>" \
+    "</StackPanel></Border>\r\n"
+
 static const char hud_controls[] =
+    HUD_LETTERBOX_AND_PROMPT
     "<Border CornerRadius=\"3\" Padding=\"8,1,8,1\" "
     "HorizontalAlignment=\"Right\" VerticalAlignment=\"Top\" Margin=\"0,6,8,0\" "
     "IsHitTestVisible=\"False\" Visibility=\"{Binding EOFrameStats, "
@@ -3071,6 +1970,55 @@ static const char make_menu[] =
     "<local:CommonListBox x:Name=\"Menu\" Style=\"{StaticResource EO_MakeMenu}\" "
     "ItemsSource=\"{Binding Collection}\"/>";
 
+/* ANNA's HUD control (minimap, ring, list), its status (the button below the minimap) replaced:
+ * - while a plugin sets a status (EOAnnaLabel) her ring glows as when she listens (her ShowFull glow,
+ *   held) and a tag sits above her button: the label, then the value in her colour;
+ * - while a plugin has her ready (EOAnnaReady: races, where the game has her unavailable) the button
+ *   shows D-pad Down and ANNA instead of her crossed microphone.
+ * Bound through the HUD page, her DataContext being hers. */
+static const char anna_controls[] =
+    "<Decorator IsHitTestVisible=\"False\"><Decorator.Style><Style TargetType=\"{x:Type Decorator}\">"
+    "<Setter Property=\"Visibility\" Value=\"Collapsed\"/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions>"
+    "<Condition Binding=\"{Binding AnnaDisplayMode}\" Value=\"3\"/><Condition Binding=\"{Binding EOAnnaLabel, RelativeSource={RelativeSource FindAncestor, AncestorType=Page}, Converter={StaticResource A_StringVisConverter}}\" Value=\"{x:Static Visibility.Visible}\"/>"
+    "</MultiDataTrigger.Conditions><Setter Property=\"Visibility\" Value=\"Visible\"/></MultiDataTrigger>"
+    "</Style.Triggers></Style></Decorator.Style>"
+    "<local:FZMaterial Preset=\"{StaticResource A_FZMaterialPresetAdditive}\" Width=\"310\" Height=\"310\" HorizontalAlignment=\"Left\" VerticalAlignment=\"Bottom\" Margin=\"-8,0,0,-15\"><local:FZMaterial.Effect>"
+    "<local:TextureMaskEffect Texture=\"{StaticResource A_Brush_Outline}\" Mask=\"{StaticResource A_Brush_OutlineMaskGradient}\" Color=\"{StaticResource A_Color_Minimap_EdgeActive}\" FadeInStart=\"0\" FadeInEnd=\"0\" FadeOutStart=\"0.65\" FadeOutEnd=\"0.8\"/>"
+    "</local:FZMaterial.Effect></local:FZMaterial></Decorator>\r\n"
+    "<Decorator IsHitTestVisible=\"False\"><Decorator.Style><Style TargetType=\"{x:Type Decorator}\">"
+    "<Setter Property=\"Visibility\" Value=\"Collapsed\"/><Style.Triggers><MultiDataTrigger><MultiDataTrigger.Conditions>"
+    "<Condition Binding=\"{Binding AnnaDisplayMode}\" Value=\"1\"/><Condition Binding=\"{Binding EOAnnaLabel, RelativeSource={RelativeSource FindAncestor, AncestorType=Page}, Converter={StaticResource A_StringVisConverter}}\" Value=\"{x:Static Visibility.Visible}\"/>"
+    "</MultiDataTrigger.Conditions><Setter Property=\"Visibility\" Value=\"Visible\"/></MultiDataTrigger>"
+    "</Style.Triggers></Style></Decorator.Style>"
+    "<local:FZMaterial Preset=\"{StaticResource A_FZMaterialPresetAdditive}\" Width=\"179\" Height=\"54\" HorizontalAlignment=\"Left\" VerticalAlignment=\"Bottom\" Margin=\"57,0,0,-10\"><local:FZMaterial.Effect>"
+    "<local:TextureMaskEffect Texture=\"{StaticResource A_Brush_Outline_ANNAOnly}\" Mask=\"{StaticResource A_Brush_OutlineMaskGradient}\" Color=\"{StaticResource A_Color_Minimap_EdgeActive}\" FadeInStart=\"0\" FadeInEnd=\"0\" FadeOutStart=\"1\" FadeOutEnd=\"1\"/>"
+    "</local:FZMaterial.Effect></local:FZMaterial></Decorator>\r\n"
+    "<Grid Width=\"156\" HorizontalAlignment=\"Left\" VerticalAlignment=\"Bottom\" Margin=\"67,0,0,44\" IsHitTestVisible=\"False\" Visibility=\"{Binding EOAnnaLabel, RelativeSource={RelativeSource FindAncestor, AncestorType=Page}, Converter={StaticResource A_StringVisConverter}}\">"
+    "<Border Background=\"#33000000\" CornerRadius=\"9\" Padding=\"16,7,16,7\" HorizontalAlignment=\"Center\">"
+    "<StackPanel Orientation=\"Horizontal\">"
+    "<local:FZTextBlock Text=\"{Binding EOAnnaLabel, RelativeSource={RelativeSource FindAncestor, AncestorType=Page}}\" Style=\"{StaticResource A_Style_FZTextBlock_HudMedium_Tight}\" FontSize=\"22\" Margin=\"0,0,6,0\" VerticalAlignment=\"Center\"/>"
+    "<local:FZTextBlock Text=\"{Binding EOAnnaValue, RelativeSource={RelativeSource FindAncestor, AncestorType=Page}}\" Style=\"{StaticResource A_Style_FZTextBlock_HudMedium_Tight}\" FontSize=\"22\" Color=\"{StaticResource A_Color_Minimap_EdgeActive}\" VerticalAlignment=\"Center\"/>"
+    "</StackPanel></Border></Grid>\r\n"
+    "<Decorator x:Name=\"HUDAnnaControl_ANNAStatus\" Style=\"{StaticResource A_Style_FrameworkElement_HideIfMapOnly}\">"
+    "<Border BorderBrush=\"{StaticResource A_Brush_ANNAButtonBorder}\" CornerRadius=\"9\" BorderThickness=\"3\" HorizontalAlignment=\"Left\" VerticalAlignment=\"Bottom\" Margin=\"67,0,0,0\" Width=\"156\">"
+    "<Viewbox Width=\"142\" Height=\"30\" Stretch=\"Uniform\" StretchDirection=\"DownOnly\">"
+    "<Grid HorizontalAlignment=\"Center\" Margin=\"-3,0,0,0\">"
+    "<StackPanel Orientation=\"Horizontal\" Visibility=\"{Binding IsVoiceAvailable, Converter={StaticResource A_FZBooleanToVisibilityConverter}}\">"
+    "<local:FZMaterial x:Name=\"ANNAMic\" Width=\"30\" Height=\"30\" Margin=\"0,-4,4,-3\" ImageSource=\"/ForzaUI;component/Textures/Anthem/HUD/ANNA_Mic_Icon_Available.png\" Color=\"White\" VerticalAlignment=\"Top\"/>"
+    "<local:FZTextBlock local:TextBlockInlineMarkup.Markup=\"{local:Loc Anna.IDS_Label_Available}\" local:TextBlockInlineMarkup.ResourceBaseName=\"A_Style_ANNAStatusMarkup_\" Style=\"{StaticResource A_Style_FZTextBlock_HudMedium_Tight}\" VerticalAlignment=\"Center\"/>"
+    "</StackPanel>"
+    "<StackPanel Orientation=\"Horizontal\"><StackPanel.Style><Style TargetType=\"{x:Type FrameworkElement}\" BasedOn=\"{StaticResource A_Style_FrameworkElement_ANNAAvailable_DPad}\"><Style.Triggers><DataTrigger Binding=\"{Binding EOAnnaReady, RelativeSource={RelativeSource FindAncestor, AncestorType=Page}}\" Value=\"True\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>"
+    "<Viewbox Height=\"25\" MinWidth=\"25\" Margin=\"0,0,4,0\">"
+    "<local:ControllerButtonControl CommandOverride=\"INPUTCMD_ANNA_ACTIVATE\" ContextOverride=\"INPUTCONTEXT_RACING\" SupportsControllerInput=\"True\" Visibility=\"Visible\" Margin=\"0\" UseAlternateVisualStyle=\"True\"/>"
+    "</Viewbox><local:FZTextBlock local:TextBlockInlineMarkup.Markup=\"{local:Loc Anna.IDS_Label_ANNA}\" local:TextBlockInlineMarkup.ResourceBaseName=\"A_Style_ANNAStatusMarkup_\" Style=\"{StaticResource A_Style_FZTextBlock_HudMedium_Tight}\" VerticalAlignment=\"Center\"/></StackPanel>"
+    "<StackPanel Orientation=\"Horizontal\"><StackPanel.Style><Style TargetType=\"{x:Type FrameworkElement}\" BasedOn=\"{StaticResource A_Style_FrameworkElement_ANNAUnavailable}\"><Style.Triggers><DataTrigger Binding=\"{Binding EOAnnaReady, RelativeSource={RelativeSource FindAncestor, AncestorType=Page}}\" Value=\"True\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>"
+    "<local:FZMaterial Width=\"30\" Height=\"30\" Margin=\"0,-4,4,-3\" ImageSource=\"/ForzaUI;component/Textures/Anthem/HUD/ANNA_Mic_Icon_Unavailable.png\" Color=\"White\" VerticalAlignment=\"Top\" Opacity=\"{StaticResource A_Double_ANNAStatusFadedOpacity}\"/>"
+    "<local:FZTextBlock local:TextBlockInlineMarkup.Markup=\"{local:Loc Anna.IDS_Label_Unavailable}\" local:TextBlockInlineMarkup.ResourceBaseName=\"A_Style_ANNAStatusMarkup_\" Style=\"{StaticResource A_Style_FZTextBlock_HudMedium_Tight}\" VerticalAlignment=\"Center\"/>"
+    "</StackPanel>"
+    "<StackPanel Orientation=\"Horizontal\"><StackPanel.Style><Style TargetType=\"{x:Type FrameworkElement}\"><Setter Property=\"Visibility\" Value=\"Collapsed\"/><Style.Triggers><DataTrigger Binding=\"{Binding EOAnnaReady, RelativeSource={RelativeSource FindAncestor, AncestorType=Page}}\" Value=\"True\"><Setter Property=\"Visibility\" Value=\"Visible\"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>"
+    "<local:FZMaterial ImageSource=\"{StaticResource A_BitmapImage_ControllerButton_DPadDown}\" Width=\"25\" Height=\"25\" Margin=\"0,0,4,0\" Color=\"White\" VerticalAlignment=\"Center\"/><local:FZTextBlock local:TextBlockInlineMarkup.Markup=\"{local:Loc Anna.IDS_Label_ANNA}\" local:TextBlockInlineMarkup.ResourceBaseName=\"A_Style_ANNAStatusMarkup_\" Style=\"{StaticResource A_Style_FZTextBlock_HudMedium_Tight}\" VerticalAlignment=\"Center\"/></StackPanel>"
+    "</Grid></Viewbox></Border></Decorator>\r\n";
+
 /* Copy the page with the two insertions; 0 if an anchor is missing or repeated. */
 /* Resources go right after the resource anchor, controls right before the
    control anchor; both anchors must appear exactly once. */
@@ -3092,15 +2040,60 @@ static const UiPage ui_pages[] = {
      "x:Class=\"ForzaUI.Scenes.Anthem.CarSelect\"", "</local:ControllerButtonPanel>", NULL},
     {"x:Key=\"A_ControlTemplate_PlayerBar\"", "player bar", "", bar_controls,
      "x:Key=\"A_ControlTemplate_PlayerBar\"",
-     "<StackPanel Orientation=\"Horizontal\" DockPanel.Dock=\"Right\"", NULL}};
+     "<StackPanel Orientation=\"Horizontal\" DockPanel.Dock=\"Right\"", NULL},
+    {"x:Class=\"ForzaUI.HUDAnnaControl\"", "ANNA control", "", anna_controls,
+     "x:Class=\"ForzaUI.HUDAnnaControl\"", "<Decorator x:Name=\"HUDAnnaControl_ANNAStatus\"", "</Decorator>"}};
 
-static void hud_set_hidden(int hidden) {
-    hidden = hidden != 0;
-    if (hud_hidden == hidden) return;
-    hud_hidden = hidden;
+static void hud_changed(int property) {
     void *vtable;
     if (hud_page && memory_read_pointer(hud_page, &vtable) && vtable == hud_page_vtable)
-        ((void (*)(void *, void *))(image + 0x56d4f0))(hud_page, &ui_properties[UI_HUD_HIDDEN]);
+        ((void (*)(void *, void *))(image + 0x56d4f0))(hud_page, &ui_properties[property]);
+}
+
+/* 0: the HUD as usual; 1: hidden; 2: hidden, with the letterbox's black bars. */
+static void hud_set_hidden(int mode) {
+    int hidden = mode != 0, letterbox = mode == 2;
+    if (hud_hidden != hidden) {
+        hud_hidden = hidden;
+        hud_changed(UI_HUD_HIDDEN);
+    }
+    if (hud_letterbox != letterbox) {
+        hud_letterbox = letterbox;
+        hud_changed(UI_LETTERBOX);
+    }
+}
+
+static void copy_wide(wchar_t *out, unsigned capacity, const wchar_t *text) {
+    unsigned i = 0;
+    for (; text && text[i] && i + 1 < capacity; ++i) out[i] = text[i];
+    out[i] = 0;
+}
+
+/* A prompt at the bottom of the HUD: text, a controller button's picture, text. No button: none. */
+static void hud_set_prompt(const wchar_t *before, const char *button, const wchar_t *after) {
+    copy_wide(prompt_before, ARRAY_COUNT(prompt_before), before);
+    copy_wide(prompt_after, ARRAY_COUNT(prompt_after), after);
+    unsigned i = 0;
+    for (; button && button[i] && i + 1 < sizeof(prompt_button); ++i) prompt_button[i] = button[i];
+    prompt_button[i] = 0;
+    hud_changed(UI_PROMPT_BEFORE);
+    hud_changed(UI_PROMPT_BUTTON);
+    hud_changed(UI_PROMPT_AFTER);
+}
+
+/* ANNA's status: her ring lit and "label value" above her button; NULL label: none. */
+static void hud_set_anna_status(const wchar_t *label, const wchar_t *value) {
+    copy_wide(anna_label, ARRAY_COUNT(anna_label), label);
+    copy_wide(anna_value, ARRAY_COUNT(anna_value), label ? value : NULL);
+    hud_changed(UI_ANNA_LABEL);
+    hud_changed(UI_ANNA_VALUE);
+}
+
+/* ANNA answers D-pad Down where the game has her unavailable (a plugin's race menu). */
+static void hud_set_anna_ready(int ready) {
+    if (anna_ready == (ready != 0)) return;
+    anna_ready = ready != 0;
+    hud_changed(UI_ANNA_READY);
 }
 
 static unsigned ui_extend(const UiPage *page, const char *text, unsigned length, char *out,
@@ -3322,48 +2315,6 @@ static unsigned livery_prepare(Site *sites, int resolution_4k, int samples, int 
     return count;
 }
 
-static unsigned anna_prepare(Site *sites) {
-    static const unsigned clears[] = {0xab3ff8, 0xab7f94}, labels[] = {0x10b0e39},
-                          selects[] = {0xa01e2d};
-    unsigned count = redirect_calls(sites, 0x10b2892, 0x10b2810, clears, 2, anna_clear_menu);
-    count += redirect_calls(sites + count, 0x10019f3, 0x10b9870, labels, 1, anna_make_label);
-    count += redirect_calls(sites + count, 0x1002c93, 0xaaa710, selects, 1, anna_selected_name);
-    if (anna_entries[ANNA_CAR].enabled) {
-        static const unsigned backs[] = {0xa01ec6};
-        count += redirect_calls(sites + count, 0x1a1a7d3, 0x1a198f0, backs, 1, anna_back_pressed);
-        static const unsigned refreshes[] = {0xab2a72};
-        count += redirect_calls(sites + count, 0xa9fe11, 0xab7f60, refreshes, 1, anna_refresh);
-        /* The list handler is registered by address: lea rax, [rip + handler]. */
-        Site jump = {0xaa0101, 12, {0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc,0xcc},
-                     {0x48,0xb8,0,0,0,0,0,0,0,0,0xff,0xe0}, 0};
-        uintptr_t handler = (uintptr_t)anna_list_message;
-        memory_copy(jump.replacement + 2, &handler, sizeof(handler));
-        sites[count++] = jump;
-        Site lea = {0xa9c1e7, 7, {0x48,0x8d,0x05}, {0x48,0x8d,0x05}, 0};
-        int32_t native = (int32_t)(0xab3fb0 - (0xa9c1e7 + 7)),
-                redirected = (int32_t)(0xaa0101 - (0xa9c1e7 + 7));
-        memory_copy(lea.original + 3, &native, sizeof(native));
-        memory_copy(lea.replacement + 3, &redirected, sizeof(redirected));
-        sites[count++] = lea;
-    }
-    return count;
-}
-
-/* Headlight, hazard and indicator overrides, the indicator material repair
-   and, with dpad, the D-pad hold on the radio actions. */
-static unsigned lights_prepare(Site *sites, int dpad) {
-    static const unsigned packets[] = {0x18b8e22}, materials[] = {0x1eb7c3f},
-                          radio[] = {0xe040a4, 0xe040d7, 0xe0420c, 0xe0423f, 0x147062f, 0x147067b};
-    unsigned count = redirect_calls(sites, LIGHT_PACKET_THUNK, 0x1889140, packets, 1,
-                                    car_light_packet);
-    count += redirect_calls(sites + count, MATERIAL_LOAD_THUNK, MATERIAL_LOAD, materials, 1,
-                            indicator_material_load);
-    if (dpad)
-        count += redirect_calls(sites + count, RADIO_QUERY_THUNK, RADIO_QUERY, radio,
-                                ARRAY_COUNT(radio), radio_action_pressed);
-    return count;
-}
-
 static unsigned horn_prepare(Site *sites) {
     Site wrapper = {HORN_OWNED, 12, {0x48,0x8b,0x49,0x08,0xe9,0x07,0x00,0x00,0x00,0xcc,0xcc,0xcc},
                     {0x48,0xb8,0,0,0,0,0,0,0,0,0xff,0xe0}, 0};
@@ -3426,10 +2377,7 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         sites[count++] = (Site){0x992770, 5, {0xe8,0x3b,0x70,0x72,0x00}, {0xb8,1,0,0,0}, 0};
         log_append("VIP: VIP license refresh and Main/IsVip reads forced on.\r\n");
     }
-    autodrive_enabled = option(L"Vehicle", L"Autodrive", 1);
     unlock_treasure_map = option(L"Content", L"UnlockTreasureMap", 0);
-    int car_menu = option(L"Vehicle", L"CarPartsInAnna", 1);
-    dpad_indicators = option(L"Vehicle", L"IndicatorsOnDpad", 1);
     return_to_garage = option(L"Frontend", L"ReturnToGarage", 1);
     for (unsigned i = 0; i < ARRAY_COUNT(camera_fovs); ++i) {
         wchar_t value[32];
@@ -3462,7 +2410,7 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         count += drift_prepare(sites + count);
         if (drift_camera) log_append("CAMERA: drift camera follows the slide on chase cameras.\r\n");
     }
-    if (in_game_menu || autodrive_enabled) {
+    if (in_game_menu || load_mods) { /* plugins may hide the HUD */
         static const unsigned loads[] = {0x21db70c};
         count += redirect_calls(sites + count, 0x1004542, 0x21dd6c0, loads, 1, ui_load_resource);
         log_append("SETTINGS: settings rows and HUD scene extensions scheduled.\r\n");
@@ -3483,8 +2431,8 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         log_append(photo_no_collision
                       ? "PHOTO MODE: boundary and height limits removed; collision off.\r\n"
                       : "PHOTO MODE: boundary and height limits removed; collision kept.\r\n");
-    if (autodrive_enabled || unlock_treasure_map || unrestricted_photo || camera_fov_used ||
-        in_game_menu || car_menu || dpad_indicators || return_to_garage || load_mods) {
+    if (unlock_treasure_map || unrestricted_photo || camera_fov_used || in_game_menu ||
+        return_to_garage || load_mods) {
         /* SatNavComponent vtable slot 2 is its per-frame update. */
         Site slot = {0x4378bd0, 8, {0}, {0}, 0};
         uintptr_t original = (uintptr_t)(image + 0x8f7d10), callback = (uintptr_t)satnav_update;
@@ -3492,40 +2440,12 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
         memory_copy(slot.replacement, &callback, sizeof(callback));
         sites[count++] = slot;
     }
-    if (autodrive_enabled) {
-        read_autodrive_bindings();
-        autodrive_cinematic = option(L"Vehicle", L"AutodriveCinematic", 1);
-        log_append("AUTODRIVE: AutodriveKey or AutodriveButtons toggles the AI driver; throttle, "
-                  "brake or steering cancels.\r\n");
-        anna_entries[ANNA_AUTODRIVE].enabled = option(L"Vehicle", L"AutodriveInAnna", 1);
-    }
-    if (car_menu) {
-        for (unsigned i = ANNA_PARTS; i < ARRAY_COUNT(anna_entries); ++i)
-            if (i != ANNA_AUTODRIVE) anna_entries[i].enabled = 1;
-        log_append("CAR PARTS: ANNA Car submenu with Lights (headlights, hazards, indicators) and "
-                  "Doors (roof, hood, trunk, doors).\r\n");
-    }
-    /* Car heads the ANNA menu when it lists anything (Autodrive, Lights, Doors). */
-    anna_entries[ANNA_CAR].enabled = car_menu || anna_entries[ANNA_AUTODRIVE].enabled;
-    if (car_menu || dpad_indicators) {
-        count += lights_prepare(sites + count, dpad_indicators);
-        log_append("LIGHTS: hazard and indicator overrides; indicator materials repaired in memory.\r\n");
-        if (dpad_indicators)
-            log_append("LIGHTS: hold D-pad Left/Right for 1 s for the indicators; a tap changes the "
-                      "radio station.\r\n");
-    }
     if (option(L"Content", L"UnlockHornAccelerator", 1)) {
         count += horn_prepare(sites + count);
         log_append("HORN ACCELERATOR: add-on reported owned and shown as purchased in Extras.\r\n");
     }
     if (unlock_treasure_map)
         log_append("TREASURE MAP: unlocks once per world after it has loaded.\r\n");
-    int anna_used = 0;
-    for (unsigned i = 0; i < ARRAY_COUNT(anna_entries); ++i) anna_used |= anna_entries[i].enabled;
-    if (anna_used) {
-        count += anna_prepare(sites + count);
-        log_append("ANNA: custom menu entries enabled.\r\n");
-    }
     livery_4k = option(L"Livery", L"Resolution4K", 1);
     livery_msaa4 = GetPrivateProfileIntW(L"Livery", L"MSAA", 4, ini_path) == 4;
     livery_supersampling = option(L"Livery", L"Supersampling", 0);
