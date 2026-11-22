@@ -66,11 +66,11 @@ jobs:
         shell: bash
         run: |
           mods="$PWD/dist/package/mods/Forza Horizon 3"
-          mkdir -p "$mods/NoPause/plugins" "$mods/GrooveMusicRadio/plugins"
+          # ANNA (github.com/qiangqiang101/FH3-ANNA) and Groove Music Radio
+          # (github.com/qiangqiang101/FH3-GrooveMusic) are released from their own repositories.
+          mkdir -p "$mods/NoPause/plugins"
           sh fh3/plugins/NoPause/build.sh "$mods/NoPause/plugins/NoPause.dll"
-          sh fh3/plugins/GrooveMusicRadio/build.sh "$mods/GrooveMusicRadio/plugins/GrooveMusicRadio.dll"
           cp fh3/plugins/NoPause/NoPause.ini "$mods/NoPause/"
-          cp fh3/plugins/GrooveMusicRadio/GrooveMusicRadio.ini "$mods/GrooveMusicRadio/"
 
       - name: Create Azimuth ZIP
         working-directory: dist/package

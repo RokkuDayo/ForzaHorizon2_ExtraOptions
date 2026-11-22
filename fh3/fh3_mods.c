@@ -453,6 +453,10 @@ static void load_plugin(const wchar_t *mod, const wchar_t *folder, const wchar_t
     context->hook_call = plugin_hook_call;
     context->hook_pointer = plugin_hook_pointer;
     context->player_car = fh3_player_car;
+    context->set_hud_hidden = fh3_set_hud_hidden;
+    context->set_hud_prompt = fh3_set_hud_prompt;
+    context->set_anna_status = fh3_set_anna_status;
+    context->set_anna_ready = fh3_set_anna_ready;
     FH3PluginInitializeFn initialize =
         (FH3PluginInitializeFn)(uintptr_t)GetProcAddress(module, "FH3PluginInitialize");
     BOOL ready = initialize ? initialize(context) : TRUE;

@@ -28,7 +28,21 @@ original game media. FH3 stages loose mod media in the game's
 otherwise. Edit the original package files. FH3's loader supports loose
 media and plugins. The FH2 and FM5 JSON patch formats are title-specific.
 
-The FH3 plugin SDK is `source/fh3/fh3_plugin.h`. The NoPause, Groove Music
-Radio and example plugin sources are optional projects in
-`source/fh3/plugins`. The main DLL build does not compile those plugins.
+The FH3 plugin SDK is `source/fh3/fh3_plugin.h`. API version 2 adds
+`set_hud_hidden` (hide the HUD, optionally behind a letterbox) and
+`set_hud_prompt` (a button prompt at the bottom of the HUD); version 3 adds
+`set_anna_status` (ANNA's ring lit and a tag above her) and `set_anna_ready`
+(her button shows D-pad Down where the game has her unavailable). The NoPause
+and example plugin sources are optional projects
+in `source/fh3/plugins`. The main DLL build does not compile those plugins.
+
+ANNA's menu (D-pad Down while driving) is the
+[FH3 ANNA](https://github.com/qiangqiang101/FH3-ANNA) plugin,
+`mods/Forza Horizon 3/ANNA/plugins/ANNA.dll`: her Car list (Auto Drive, Lights,
+Doors), Auto Drive with its cinematic camera, the headlight, hazard and indicator
+overrides (with the D-pad hold) and the car's doors. Its settings are in
+`mods/Forza Horizon 3/ANNA/ANNA.ini`, written on first start with the values
+`FH3_ExtraOptions.ini`'s former `[Vehicle]` section had. Other mods add entries
+through its `fh3anna.h`. [Groove Music Radio](https://github.com/qiangqiang101/FH3-GrooveMusic)
+brings back the radio's Groove station with your own music.
 The FH3-specific ZIP repacker is in `source/fh3/tools/fh3_zip.py`.
