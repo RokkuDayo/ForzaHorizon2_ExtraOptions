@@ -1,0 +1,7 @@
+# FM6 integration candidate 1
+
+Based on the supplied global snapshot and standalone Pre7. The global winmm proxy dispatches FM6 only to a companion C++ DLL, using the native mapper handoff. This avoids mixing the global freestanding C linker with C++ runtime code. It is one distribution, not one binary. No standalone proxy or launcher hooks are included. Existing FH2/FH3/FM5 paths remain unchanged. FM6 only includes camera/blur/HUD features; VIP, DLC patches, font, intro, wheels and menu FPS patches are not ported in this candidate. Accept/Cancel/Reset still use immediate save behavior. No game assets are changed on disk.
+
+Use GitHub Actions Build. Extract package into a clean Azimuth directory after backing up old DLLs and INIs. Do not run the standalone winmm or another Extra Options loader simultaneously. Copy old [FM6] camera settings into FM6_ExtraOptions.ini if desired. Open HUD Options; exercise all controls, restart and check persistence. Send FM6_ExtraOptions.log. Test other titles individually for regressions. Native mapper handoff timing and Windows compilation have not been tested here.
+
+Credits: RokkuDayo global Extra Options; Victor Alves ForzaMotorsport Extra Options (MIT notice in fm6/LICENSE-Victor.txt); FM6 camera/HUD experiment contributors. Verify global repository redistribution terms before public release; supplied snapshot does not contain a root license.
