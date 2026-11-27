@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   azimuth:
-    name: Azimuth (FH2, FM5, FH3)
+    name: Azimuth (FH2, FM5, FH3, FM6)
     runs-on: windows-latest
 
     steps:
@@ -46,14 +46,22 @@ jobs:
       - name: Build Extra Options and FH2 plugins
         run: |
           $zig = (Get-Command zig.exe).Source
-          python build.py $zig --azimuth --fm5 --fh3 --build-dir "$env:RUNNER_TEMP/extra-options-build" --output dist/package/winmm.dll
+          python build.py $zig --azimuth --fm5 --fh3 --fm6 --build-dir "$env:RUNNER_TEMP/extra-options-build" --output dist/package/winmm.dll
           if ($LASTEXITCODE -ne 0) { throw 'Extra Options build failed' }
           python fh2/plugins/garage-engine-rev/build.py $zig
           if ($LASTEXITCODE -ne 0) { throw 'Garage Revving build failed' }
           python fh2/plugins/weather-control/build.py $zig
           if ($LASTEXITCODE -ne 0) { throw 'Weather Control build failed' }
 
-          Copy-Item config/FH2_ExtraOptions.ini,config/FM5_ExtraOptions.ini,config/FH3_ExtraOptions.ini dist/package
+          $gcc = 'C:/mingw64/bin/g++.exe'
+          if (!(Test-Path $gcc)) { throw 'MinGW GCC missing' }
+          cmake -S fm6 -B "$env:RUNNER_TEMP/fm6-build" -G Ninja "-DCMAKE_CXX_COMPILER:FILEPATH=$gcc" -DCMAKE_BUILD_TYPE=Release
+          if ($LASTEXITCODE -ne 0) { throw 'FM6 configure failed' }
+          cmake --build "$env:RUNNER_TEMP/fm6-build"
+          if ($LASTEXITCODE -ne 0) { throw 'FM6 build failed' }
+          Copy-Item "$env:RUNNER_TEMP/fm6-build/FM6ExtraOptions.dll" dist/package
+          Copy-Item config/FH2_ExtraOptions.ini,config/FM5_ExtraOptions.ini,config/FH3_ExtraOptions.ini,config/FM6_ExtraOptions.ini dist/package
+          Copy-Item fm6/LICENSE-Victor.txt dist/package
           Copy-Item release/mods dist/package -Recurse
           $mods = 'dist/package/mods/Forza Horizon 2'
           Copy-Item fh2/plugins/garage-engine-rev/dist/EO_GarageEngineRev.dll "$mods/Extra Options - Garage Revving/plugins"
@@ -75,7 +83,7 @@ jobs:
       - name: Create Azimuth ZIP
         working-directory: dist/package
         run: |
-          python -m zipfile -c ../ExtraOptions-Azimuth.zip winmm.dll FH2_ExtraOptions.ini FM5_ExtraOptions.ini FH3_ExtraOptions.ini mods
+          python -m zipfile -c ../ExtraOptions-Azimuth.zip winmm.dll FH2_ExtraOptions.ini FM5_ExtraOptions.ini FH3_ExtraOptions.ini FM6_ExtraOptions.ini FM6ExtraOptions.dll LICENSE-Victor.txt mods
           if ($LASTEXITCODE -ne 0) { throw 'Azimuth ZIP creation failed' }
           python -m zipfile -t ../ExtraOptions-Azimuth.zip
 

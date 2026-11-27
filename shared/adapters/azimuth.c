@@ -14,6 +14,23 @@
 #include "fh3/fh3.h"
 #endif
 
+#ifdef EO_ENABLE_FM6
+#define FM6_TITLE_ID 0x64f9397eu
+static int fm6_initialize(unsigned title, unsigned char *game, const wchar_t *directory) {
+    /* The loader handoff is one-shot. Keep this large path buffer off the
+       stack so the freestanding link needs no compiler stack-probe helper. */
+    static wchar_t path[PATH_CAPACITY];
+    if (!game || !path_join(path, directory, L"FM6ExtraOptions.dll")) return 0;
+    HMODULE module = LoadLibraryExW(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (!module) return 0;
+    typedef int (*Init)(unsigned, unsigned char *, const wchar_t *);
+    Init init = (Init)(uintptr_t)GetProcAddress(module, "FM6Initialize");
+    if (!init || !init(title, game, directory)) { FreeLibrary(module); return 0; }
+    status_set("FM6 Extra Options integration initialized; see FM6_ExtraOptions.log.");
+    return 1;
+}
+#endif
+
 #define FH2_TITLE_ID 0x1a96545bu
 
 typedef struct {
@@ -162,6 +179,9 @@ static unsigned package_title(const void *package) {
 
 static int supported_title(unsigned title) {
     if (title == FH2_TITLE_ID) return 1;
+#ifdef EO_ENABLE_FM6
+    if (title == FM6_TITLE_ID) return 1;
+#endif
 #ifdef FH2_ENABLE_FM5
     if (title == FM5_TITLE_ID) return 1;
 #endif
@@ -251,6 +271,12 @@ static void *on_map_game(void *output, const void *folder, const void *package, 
         IMAGE_NT_HEADERS64 nt;
         int mapped = memory_read_pointer(result, (void **)&context) &&
                      memory_read_pointer(context, (void **)&game);
+#ifdef EO_ENABLE_FM6
+        if (title == FM6_TITLE_ID) {
+            if (!fm6_initialize(title, mapped ? game : NULL, mod_directory))
+                refuse("FM6: integration module missing or incompatible; no FM6 patches applied.");
+        } else
+#endif
 #ifdef FH2_ENABLE_FM5
         if (title == FM5_TITLE_ID) {
             /* Never enter FH2's runtime, settings, save adapter or DLL loader.
