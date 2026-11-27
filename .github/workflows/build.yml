@@ -55,7 +55,7 @@ jobs:
 
           $gcc = 'C:/mingw64/bin/g++.exe'
           if (!(Test-Path $gcc)) { throw 'MinGW GCC missing' }
-          cmake -S fm6 -B "$env:RUNNER_TEMP/fm6-build" -G Ninja -DCMAKE_CXX_COMPILER=$gcc -DCMAKE_BUILD_TYPE=Release
+          cmake -S fm6 -B "$env:RUNNER_TEMP/fm6-build" -G Ninja "-DCMAKE_CXX_COMPILER:FILEPATH=$gcc" -DCMAKE_BUILD_TYPE=Release
           if ($LASTEXITCODE -ne 0) { throw 'FM6 configure failed' }
           cmake --build "$env:RUNNER_TEMP/fm6-build"
           if ($LASTEXITCODE -ne 0) { throw 'FM6 build failed' }
