@@ -17,7 +17,9 @@
 #ifdef EO_ENABLE_FM6
 #define FM6_TITLE_ID 0x64f9397eu
 static int fm6_initialize(unsigned title, unsigned char *game, const wchar_t *directory) {
-    wchar_t path[PATH_CAPACITY];
+    /* The loader handoff is one-shot. Keep this large path buffer off the
+       stack so the freestanding link needs no compiler stack-probe helper. */
+    static wchar_t path[PATH_CAPACITY];
     if (!game || !path_join(path, directory, L"FM6ExtraOptions.dll")) return 0;
     HMODULE module = LoadLibraryExW(path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32);
     if (!module) return 0;
