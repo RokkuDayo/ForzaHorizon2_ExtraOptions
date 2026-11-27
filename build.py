@@ -100,6 +100,7 @@ def parse_arguments():
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--boot-diagnostics", action="store_true", help="Instrument boot/mod loading in a separate diagnostic DLL")
     parser.add_argument("--azimuth", action="store_true", help="Build the Azimuth winmm proxy")
+    parser.add_argument("--fm6", action="store_true", help="Enable FM6 companion dispatch (Azimuth only)")
     parser.add_argument("--fm5", action="store_true", help="Opt into the unfinished FM5 title profile (Azimuth only)")
     parser.add_argument("--fh3", action="store_true", help="Include the FH3 title profile (Azimuth only)")
     parser.add_argument("--output", type=Path)
@@ -109,6 +110,8 @@ def parse_arguments():
     arguments = parser.parse_args()
     if arguments.jobs < 1:
         parser.error("--jobs must be positive")
+    if arguments.fm6 and not arguments.azimuth:
+        parser.error("--fm6 requires --azimuth")
     if arguments.fm5 and not arguments.azimuth:
         parser.error("--fm5 requires --azimuth")
     if arguments.fh3 and not arguments.azimuth:
@@ -145,6 +148,8 @@ def compiler_arguments(compiler, options):
         arguments.append("-DFH2_TWEAKS_TEST=1")
     if options.azimuth:
         arguments.append("-DFH2_AZIMUTH=1")
+    if options.fm6:
+        arguments.append("-DEO_ENABLE_FM6=1")
     if options.fm5:
         arguments.append("-DFH2_ENABLE_FM5=1")
     if options.fh3:
