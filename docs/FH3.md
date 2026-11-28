@@ -18,15 +18,40 @@ the shared compatibility code. Azimuth still validates saves.
 
 Place packages in `mods/Forza Horizon 3/<ModName>/` next to Azimuth. Each
 package can contain a loose `media` tree and a `plugins` directory.
-List folder names in a UTF-8 `loadorder.txt` in the FH3 mods folder to
-control priority. Later entries win. Unlisted folders follow alphabetically.
-Set `<ModName>=0` in the INI's `[Mods]` section to disable one.
+`mods/Forza Horizon 3/loadorder.txt` works as in FH2 and FM5: the loader
+creates it on the first run, lists one folder name per line (UTF-8, 64 KiB at
+most) and appends new folders alphabetically on every start; entries whose
+folder is gone are removed. Packages load in file order and later entries win.
+Put `#` in front of a name to disable that package without deleting it; the
+log then says `<ModName> disabled in loadorder.txt`. A duplicate or invalid
+entry disables package loading for that run, and the log says why.
+`<ModName>=0` in the INI's `[Mods]` section also keeps a package off.
 
 Native mount priority is `mediaoverride`, FH3 mod media, `mediapc`, then
 original game media. FH3 stages loose mod media in the game's
 `Mount/__eo_fh3_media__` directory using hard links where possible and copies
-otherwise. Edit the original package files. FH3's loader supports loose
-media and plugins. The FH2 and FM5 JSON patch formats are title-specific.
+otherwise. Edit the original package files. The mirror folder uses the mod
+name with every character other than letters, digits, `.`, `_` and `-`
+replaced by `_` (a space in a `game:` path makes the game's zip manifest loader
+crash), and folders of mods that are gone or disabled are removed from the
+mirror on the next start.
+
+Packages can also carry FH2's `mod.json`, `database.json` and `strings.json`.
+A car pack's `mod.json` can name an FH3 engine sound for each add-on car
+(`"fh3_engine_audio": {"<car>": "<FH3 car>", "*": "<default>"}`); see
+`FH3-car-conversion.md`. Without it an add-on car is silent.
+The database rows go into the in-memory copy of `gamedbRC.slt` that the game
+opens (the file on disk never changes), one savepoint per package, followed by
+SQLite's integrity check; `dependencies` must load first. Strings are added to
+the game's string tables as they load. Packages made for FH2 are translated:
+their `_&` name references point at FH3's string tables, rows FH3 already has
+(makes, shared lists) keep FH3's data, a clashing row of the package's own car
+gets a free ID, FH3-only columns take FH3's most common value, and
+`update`/`delete` operations are left out because they name FH2's rows. Set
+`"game": "FH3"` in `database.json`'s `target` to skip the translation.
+FH3 re-exported every car (Bundle v1.1 models and textures, its own carbin,
+lights and library shaders), so FH2 and FM5 car models are not drawn yet: such
+a car is listed and priced, and the game shows its fallback model.
 
 The FH3 plugin SDK is `source/fh3/fh3_plugin.h`. API version 2 adds
 `set_hud_hidden` (hide the HUD, optionally behind a letterbox) and
