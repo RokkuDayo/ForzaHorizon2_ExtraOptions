@@ -113,10 +113,10 @@ static GameString borrowed(const char *text) {
     return (GameString){text, 0, text_length(text), 31};
 }
 
-static int mount_folder(void *filesystem, const char *folder, unsigned priority) {
+static int mount_folder_at(void *filesystem, const char *folder, const char *target, unsigned priority) {
     void *storage = ((Allocate)(image + 0x1edbd00))(0x88);
     if (!storage) return 0;
-    GameString source = borrowed(folder), destination = borrowed("game:\\media\\");
+    GameString source = borrowed(folder), destination = borrowed(target);
     void *volume = ((ConstructVolume)(image + 0x1c40610))(storage, &source, 1);
     if (!volume) return 0;
     void **methods = *(void ***)volume;
@@ -137,7 +137,10 @@ static int media_overrides;
 unsigned char *fh3_image(void) { return image; }
 const wchar_t *fh3_ini_path(void) { return ini_path; }
 int fh3_mount(void *filesystem, const char *folder, unsigned priority) {
-    return mount_folder(filesystem, folder, priority);
+    return mount_folder_at(filesystem, folder, "game:\\media\\", priority);
+}
+int fh3_mount_at(void *filesystem, const char *folder, const char *target, unsigned priority) {
+    return mount_folder_at(filesystem, folder, target, priority);
 }
 
 static unsigned char initialize_files(void *filesystem) {
@@ -146,10 +149,11 @@ static unsigned char initialize_files(void *filesystem) {
         log_append("FILES: native initialization failed; override mounts skipped.\r\n");
         return result;
     }
-    int override = !media_overrides || mount_folder(filesystem, "game:\\mediaoverride\\", 0x7ffffffe);
-    int pc = !media_overrides || mount_folder(filesystem, "game:\\mediapc\\", 0x7ffffffd - 0x100);
+    int override = !media_overrides || mount_folder_at(filesystem, "game:\\mediaoverride\\", "game:\\media\\", 0x7ffffffe);
+    int pc = !media_overrides || mount_folder_at(filesystem, "game:\\mediapc\\", "game:\\media\\", 0x7ffffffd - 0x100);
     fh3_mods_mount(filesystem);
     ((Sort)(*(void ***)filesystem)[0x1f8 / 8])(filesystem);
+    fh3_mods_mount_cars(filesystem);
     log_append(override && pc ? "FILES: native mounts ready: mediaoverride > mods > mediapc > original "
                                "media.\r\n"
                              : "FILES: an override mount failed; native asset fallback retained.\r\n");
@@ -212,10 +216,13 @@ static int game_database(void *database) {
 static int open_database(const char *filename, void **database) {
     int result = ((SqliteOpen)(image + SQLITE_OPEN))(filename, database);
     if (result || !database || !*database || !game_database(*database)) return result;
+    if (!forzathon_cars && !horizon_editions_autoshow && !forzathon_horns && !forzathon_wheelspins &&
+        !fh3_addons_pending())
+        return result;
     void *copy = NULL;
     if (((SqliteOpen)(image + SQLITE_OPEN))(":memory:", &copy) || !copy) {
         if (copy) ((SqliteCall)(image + SQLITE_CLOSE))(copy);
-        log_append("UNLOCKS: no in-memory database; Forzathon cars and horns stay locked.\r\n");
+        log_append("UNLOCKS: no in-memory database; Forzathon cars, horns and mod databases skipped.\r\n");
         return result;
     }
     void *backup = ((SqliteBackupInit)(image + SQLITE_BACKUP_INIT))(copy, "main", *database, "main");
@@ -239,11 +246,14 @@ static int open_database(const char *filename, void **database) {
                               "ON ','||p.CarAwardIds||',' LIKE '%,'||h.CarId||',%')");
     if (horns) log_append("UNLOCKS: Forzathon horns unlocked (in memory).\r\n");
     if (spins) log_append("UNLOCKS: every Horizon Edition car can be won in Wheelspins (in memory).\r\n");
-    if ((cars || editions || horns || spins) && !((SqliteCall)(image + SQLITE_CLOSE))(*database)) {
+    int mods = copied ? fh3_addons_database(copy) : 0; /* -1: the copy failed its integrity check */
+    if (mods >= 0 && (cars || editions || horns || spins || mods) &&
+        !((SqliteCall)(image + SQLITE_CLOSE))(*database)) {
         *database = copy;
     } else {
         ((SqliteCall)(image + SQLITE_CLOSE))(copy);
-        log_append("UNLOCKS: database edit failed; cars, horns and Wheelspins unchanged.\r\n");
+        if (cars || editions || horns || spins || mods)
+            log_append("UNLOCKS: database edit failed; cars, horns, Wheelspins and mod databases unchanged.\r\n");
     }
     return result;
 }
@@ -1179,7 +1189,6 @@ static void frame_stats_configure(int which, int on) {
     if (frame_stats_enabled && frame_stats_gpu) gpu_sampler_start();
     stats_frames = 0;
     stats_window.QuadPart = 0; /* the text is rebuilt on the next half second */
-    if (!frame_stats_enabled) frame_stats_length = 0;
 }
 
 static void frame_stats_notify(void) {
@@ -1197,6 +1206,18 @@ static void frame_stats_notify(void) {
     }
 }
 
+/* With the readout off, pages are no longer told twice a second that its (empty) text changed: a
+   page nobody else holds any more (its reference count is ours alone) is let go quietly. */
+static void frame_stats_sweep(void) {
+    for (unsigned i = 0; i < ARRAYSIZE(stats_sources); ++i) {
+        unsigned char *page = stats_sources[i].page;
+        if (page && *(volatile int *)(page + 0x10) <= 1) {
+            stats_sources[i].page = NULL;
+            ui_release(page);
+        }
+    }
+}
+
 static void ui_layers_update(void *ui) {
     ((void (*)(void *))(image + UI_LAYERS_UPDATE))(ui);
     LARGE_INTEGER now;
@@ -1211,8 +1232,12 @@ static void ui_layers_update(void *ui) {
     if (!frame_stats_enabled) {
         stats_frames = 0;
         stats_window = now;
-        frame_stats_length = 0;
-        if (ui_registered > 0) frame_stats_notify();
+        if (frame_stats_length) { /* just switched off: the pages clear the readout once */
+            frame_stats_length = 0;
+            if (ui_registered > 0) frame_stats_notify();
+        } else {
+            frame_stats_sweep();
+        }
         return;
     }
     /* fps and tenths of a millisecond per frame, rounded. */
@@ -1525,8 +1550,11 @@ typedef struct {
     void *object, *control;
 } SharedRef;
 static int return_to_garage;
-static int garage_step; /* 1: waiting for the pause menu to close */
-static ULONGLONG garage_at;
+static int garage_step; /* 1: waiting for the pause menu to close; 2: for the quit event to end */
+static ULONGLONG garage_at, garage_quit_at, garage_free_since;
+/* The pause menu's Quit Event tile runs its action (the "quit_event" exit, kept at 0x4e32678) through
+   0x1689f60(page, action, NULL), as its handler 0x1568430 does. */
+enum { PAGE_RUN_ACTION = 0x1689f60, QUIT_EVENT_ACTION = 0x4e32678 };
 
 static void shared_release(SharedRef *ref) {
     unsigned char *control = ref->control;
@@ -1584,10 +1612,45 @@ static int enter_nearest_festival(void) {
     return started;
 }
 
-/* Per frame in the game: once the pause menu has gone, enter the festival. */
+/* Whether the local player is in an event (a race, a PR stunt...): the state the HUD's mini
+   leaderboard shows InEvent by (0x10d80c8). The player manager [0x4d6fc00] (CPlayerManager) has the
+   local player at [[+0x38]]+0x10 while +0x40 is set (0x3c2370); the player's lobby player
+   (CLobbyPlayer, +0x9b8, read by vtable +0x100) keeps its state at +0x960 (vtable +0x40): 3, 4, 5 and 7
+   are in an event (free roam reads 2). Entering the festival hub from there leaves the event half torn
+   down, and the game crashes on leaving the garage. */
+static int player_in_event(void) {
+    unsigned char *manager, *list, *entry, *player, *lobby, state;
+    void *active;
+    if (!memory_read_pointer(image + 0x4d6fc00, (void **)&manager) || !manager ||
+        !memory_read_pointer(manager + 0x40, &active) || !active ||
+        !memory_read_pointer(manager + 0x38, (void **)&list) || !list ||
+        !memory_read_pointer(list, (void **)&entry) || !entry ||
+        !memory_read_pointer(entry + 0x10, (void **)&player) || !player ||
+        !memory_read_pointer(player + 0x9b8, (void **)&lobby) || !lobby || !memory_read(lobby + 0x960, &state, 1))
+        return 0;
+    return state == 3 || state == 4 || state == 5 || state == 7;
+}
+
+/* Per frame in the game: once the pause menu has gone, enter the festival. From an event, first wait
+   until it has ended and the player has driven in free roam for 4 s (the loading back is over); if it
+   hasn't ended within 15 s (the quit was cancelled), forget it. */
 static void garage_tick(void) {
     if (!garage_step) return;
     ULONGLONG now = GetTickCount64();
+    if (garage_step == 2) {
+        if (player_in_event() || !player_car()) {
+            garage_free_since = 0;
+            if (player_in_event() && now - garage_quit_at > 15000) {
+                garage_step = 0;
+                log_append("GARAGE: the event didn't end; Return to Garage cancelled.\r\n");
+            }
+            return;
+        }
+        if (!garage_free_since) garage_free_since = now;
+        if (now - garage_free_since < 4000) return;
+        garage_step = 1;
+        garage_at = now; /* now */
+    }
     if (!garage_at) garage_at = now + 300;
     if (now < garage_at) return;
     garage_step = 0;
@@ -1599,6 +1662,16 @@ static void garage_tick(void) {
 static unsigned char return_to_garage_invoke(void *closure) {
     void *page;
     if (!memory_read_pointer((unsigned char *)closure + 8, &page)) return 1;
+    if (player_in_event()) {
+        /* Entering the festival from an event leaves it half torn down (the game crashes leaving the
+           garage): quit the event as its Quit Event tile does, then enter from free roam (garage_tick). */
+        garage_step = 2;
+        garage_quit_at = GetTickCount64();
+        garage_free_since = 0;
+        log_append("GARAGE: quitting the event first.\r\n");
+        ((unsigned char (*)(void *, void *, void *))(image + PAGE_RUN_ACTION))(page, image + QUIT_EVENT_ACTION, NULL);
+        return 1;
+    }
     garage_step = 1;
     garage_at = 0;
     static const char back[] = "back";
@@ -2450,12 +2523,19 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
     livery_msaa4 = GetPrivateProfileIntW(L"Livery", L"MSAA", 4, ini_path) == 4;
     livery_supersampling = option(L"Livery", L"Supersampling", 0);
     int livery_samples = livery_msaa4 ? 4 : 2;
-    count += livery_prepare(sites + count, livery_4k, livery_samples, livery_supersampling);
-    if (livery_4k || livery_samples == 4 || livery_supersampling) {
+    /* Supersampling doubles the render target again: with 4K liveries that's 16384x16384 (Direct3D's
+       largest), about 4 GB at 4x MSAA for each livery, and a race's many liveries then take up to a
+       minute to redraw (issue #141). With 4K on it's left out: the target stays at 8192x8192. */
+    int supersample = livery_supersampling && !livery_4k;
+    count += livery_prepare(sites + count, livery_4k, livery_samples, supersample);
+    if (livery_4k || livery_samples == 4 || supersample) {
         log_append(livery_4k ? "LIVERY: 4096x4096 livery textures" : "LIVERY: native livery size");
         log_append(livery_samples == 4 ? ", 4x MSAA" : ", native 2x MSAA");
-        log_append(livery_supersampling ? ", supersampled.\r\n" : ".\r\n");
+        log_append(supersample ? ", supersampled.\r\n" : ".\r\n");
     }
+    if (livery_supersampling && livery_4k)
+        log_append("LIVERY: Supersampling is left out with 4K liveries (the render target would be "
+                   "16384x16384).\r\n");
     /* Always installed so Settings can switch the readout on and off. */
     frame_stats_enabled = option(L"HUD", L"ShowFPS", 0);
     frame_stats_gpu = option(L"HUD", L"ShowGPUUsage", 1);
@@ -2523,7 +2603,8 @@ int fh3_initialize(unsigned title_id, unsigned char *game, const wchar_t *execut
     forzathon_horns = option(L"Content", L"UnlockForzathonHorns", 1);
     horizon_editions_autoshow = option(L"Content", L"UnlockForzathonHorizonEditionCarsInAutoshow", 0);
     forzathon_wheelspins = option(L"Content", L"HorizonEditionWheelspins", 1);
-    if (forzathon_cars || horizon_editions_autoshow || forzathon_horns || forzathon_wheelspins) {
+    /* Mods' database.json files are applied to the same in-memory copy. */
+    if (forzathon_cars || horizon_editions_autoshow || forzathon_horns || forzathon_wheelspins || load_mods) {
         static const unsigned opens[] = {0x1a50293, 0x1a562f8};
         count += redirect_calls(sites + count, SQLITE_OPEN_THUNK, SQLITE_OPEN, opens, 2, open_database);
     }

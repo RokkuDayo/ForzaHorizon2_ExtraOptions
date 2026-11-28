@@ -91,7 +91,7 @@ COMMON_SOURCES = [
 FM5_SOURCES = ["fm5/fm5.c", "fm5/fm5_mods.c", "fm5/fm5_carbin.c", "fm5/fm5_rims.c", "fm5/fm5_camera.c",
                "fm5/fm5_camera_menu.c", "fm5/fm5_manufacturer.c", "fm5/fm5_video.c", "fm5/fm5_vehicle.c", "fm5/fm5_ui.c", "fm5/fm5_settings.c", "fm5/fm5_driver.c", "fm5/fm5_audio.c", "fm5/fm5_badge.c", "fm5/fm5_start.c", "fm5/fm5_designs.c", "fm5/fm5_local_liveries.c"]
 
-FH3_SOURCES = ["fh3/fh3.c", "fh3/fh3_mods.c", "fh3/fh3_text.c"]
+FH3_SOURCES = ["fh3/fh3.c", "fh3/fh3_mods.c", "fh3/fh3_text.c", "fh3/fh3_addons.c"]
 
 
 def parse_arguments():
